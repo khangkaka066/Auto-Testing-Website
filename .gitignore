@@ -1,3 +1,5 @@
 venv
 .env
 workspace
+node_modules
+*.json

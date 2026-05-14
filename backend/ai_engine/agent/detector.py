@@ -5,29 +5,38 @@ from openrouter import OpenRouter
 from dotenv import load_dotenv
 import frontmatter
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Literal, Optional
 
 load_dotenv()
 
 class InfoFile(BaseModel):
     file_name: str = Field(description='File name')
     file_path: str = Field(description='File path')
+    framework: str = Field(description='Framework is using in file code')
+    language: str = Field(description='Programming language')
     role: str = Field(description='role of file in system')
     importance: str = Field(description='Priority level: Low, Medium or High')
+    type_side: Literal['client', 'server', 'shared'] = Field(description='Classification type of side')
 
 class SystemArchitecture(BaseModel):
-    client_side: List[InfoFile]
-    server_side: List[InfoFile]
+    files: List[InfoFile]
 
-class DetectorAgent:
-    def __init__(self, setting="backend/settings_agent/Detector.md"):
+class Detector:
+    def __init__(self, setting="backend/ai_engine/settings_agent/Detector.md"):
         self.supported_extensions = {'.js', '.jsx', '.ts', '.tsx', '.vue'}
         self.ignored_dirs = {'node_modules', '.git', 'dist', 'build', 'public'}
         self.api_key = os.getenv('OPENROUTER_API_KEY')
-        with open(setting, 'r', encoding="utf-8") as f:
-            self.settings = frontmatter.load(f)
 
-    def scan_project(self, root_path: str):
+        if self.api_key is None:
+            print("API key is not found. If using Agent, please import API key.")
+            
+        try:
+            with open(setting, 'r', encoding="utf-8") as f:
+                self.settings = frontmatter.load(f)
+        except:
+            raise FileNotFoundError("File setting is not found. Please add file setting for DetectorAgent")
+
+    def scan_project(self, root_path: str) -> list:
         """
         Quét toàn bộ thư mục và phân loại file
         """
@@ -51,7 +60,7 @@ class DetectorAgent:
         
         return detected_files
 
-    def _classify_file(self, path: Path):
+    def _classify_file(self, path: Path) -> str:
         """
         Phân loại sơ bộ dựa trên đường dẫn và tên file
         """
@@ -64,7 +73,7 @@ class DetectorAgent:
             return "API_Logic"
         return "General_Logic"
 
-    async def select_critical_files(self, detected_files):
+    async def select_critical_files(self, detected_files) -> Optional[SystemArchitecture]:
         """
         Dùng LLM (tùy chọn) để chọn ra các file quan trọng nhất cần test 
         nhằm tiết kiệm Token cho bước Analyzer.
@@ -74,9 +83,7 @@ class DetectorAgent:
             prompt+=f"File name: {files.get('file_name', 'Cannot get file name')}" + "|" + f"relative path: {files.get('relative_path', 'Cannot get path')}\n"
         prompt = prompt.strip()
 
-        with OpenRouter(
-            api_key=self.api_key
-        ) as client:
+        with OpenRouter(api_key=self.api_key) as client:
             response = client.chat.send(
                 model=self.settings['model'],
                 messages=[
@@ -100,11 +107,11 @@ class DetectorAgent:
             return content
 
 if __name__ == "__main__":
-    src_code_path = "pc-store-ecommerce-website"
-    detectorAgent = DetectorAgent()
-    scan_projects = detectorAgent.scan_project(src_code_path)
+    src_code_path = "workspace/pc-store-ecommerce-website"
+    detectorAgent = Detector()
+    # scan_projects = detectorAgent.scan_project(src_code_path)
     
-    critical_file = asyncio.run(detectorAgent.select_critical_files(scan_projects))
-    client_sides = critical_file.client_side
-    server_side = critical_file.server_side
-    print(server_side)
+    # critical_file = asyncio.run(detectorAgent.select_critical_files(scan_projects))
+    # client_sides = critical_file.client_side
+    # server_side = critical_file.server_side
+    # print(server_side)
