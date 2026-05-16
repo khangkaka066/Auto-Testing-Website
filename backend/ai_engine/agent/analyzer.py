@@ -3,18 +3,18 @@ import subprocess
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import frontmatter
-from dotenv import load_dotenv
 from openrouter import OpenRouter
+from dotenv import load_dotenv
 
 load_dotenv()
 
 class TestStep(BaseModel):
     step_id: int = Field(description="Thứ tự của bước kiểm thử (1, 2, 3...)")
-    action: str = Field(description="Hành động: 'click', 'input', 'assert_visible', 'assert_text'")
-    target: str = Field(description="CSS Selector, XPath, hoặc data-testid chuẩn xác")
-    value: str = Field(default="", description="Giá trị đầu vào nếu action là 'input'")
+    action: str = Field(description="Hành động: 'click', 'input', 'assert_visible', 'assert_text' (cho UI) HOẶC 'api_call', 'assert_status', 'assert_response' (cho API Module)")
+    target: str = Field(description="CSS Selector, data-testid (cho UI) HOẶC Endpoint URL, Tên hàm xử lý (cho API Module)")
+    value: str = Field(default="", description="Giá trị đầu vào hoặc Payload mẫu nếu cần")
     purpose: str = Field(description="Mục đích của bước này để làm gì?")
-    is_mock_api: bool = Field(default=False, description="True nếu bước này kích hoạt API Call cần được mock/intercept")
+    is_mock_api: bool = Field(default=False, description="True nếu bước này kích hoạt API Call cần được mock/intercept bằng Playwright")
 
 class TestScenario(BaseModel):
     scenario_name: str = Field(description="Tên kịch bản (VD: Đăng nhập thất bại do sai mật khẩu)")
@@ -64,21 +64,31 @@ class Analyzer:
             
         except Exception as e:
             print(f"[Bridge Error]: {str(e)}")
-            return raw_code[:3000]
+            return raw_code
 
     def analyze(self, raw_code: str, framework: str, language: str) -> Optional[AnalyzerOutput]:
         prompt = ""
         code_context = self.preprocess_code(raw_code)
-        prompt += "Content of file code:\n" + code_context + "\n" + \
-        f"Framework: {framework}\n" + \
-        f"Programming language: {language}"
+        # 2. OPTIMIZED USER PROMPT IN ENGLISH FOR LLM PERFORMANCE
+        user_prompt = (
+            f"You are an expert QA Automation Engineer. Analyze the following source code:\n"
+            f"```\n{code_context}\n```\n"
+            f"Framework: {framework}\n"
+            f"Programming language: {language}\n\n"
+            f"CRITICAL REQUIREMENTS:\n"
+            f"1. Extract and map all potential user interactions, state changes, or API integrations into executable test scenarios.\n"
+            f"2. For UI components, accurately identify actionable CSS selectors, XPaths, or data-testids (e.g., inputs, buttons, forms).\n"
+            f"3. Crucial: If the code is a static component, helper function, or lacks explicit form interactions, DO NOT return an empty scenario list. "
+            f"Instead, generate at least one default scenario named 'Component Initialization and Default Rendering' to verify that the component mounts successfully in the DOM.\n"
+            f"4. Strictly output the result using the provided JSON Schema format."
+        )
 
         with OpenRouter(api_key=self.api_key) as client:
             response = client.chat.send(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": code_context}
+                    {"role": "user", "content": user_prompt}
                 ],
                 response_format={
                     "type": "json_schema",

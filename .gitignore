@@ -51,7 +51,7 @@ __pycache__/
 *pyc*
 venv/
 .venv/
-.env
+backend/.env
 
 # Development tools
 chainlit.md
@@ -87,4 +87,3 @@ frontend/node_modules/.cache/default-development/3.pack
 # Backend
 workspace
 node_modules
-*.json
