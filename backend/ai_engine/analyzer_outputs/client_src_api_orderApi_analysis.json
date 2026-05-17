@@ -1,0 +1,30 @@
+{
+    "component_name": "LoginForm",
+    "module_type": "ui",
+    "impact_level": "high",
+    "interactive_elements": [
+        {
+            "element_type": "input",
+            "selector": "input[data-testid=\"email-input\"]",
+            "purpose": "capture user email"
+        },
+        {
+            "element_type": "input",
+            "selector": "input[data-testid=\"password-input\"]",
+            "purpose": "capture user password (masked)"
+        },
+        {
+            "element_type": "button",
+            "selector": "button[data-testid=\"login-button\"]",
+            "purpose": "submit login form"
+        },
+        {
+            "element_type": "link",
+            "selector": "a[data-testid=\"forgot-password-link\"]",
+            "purpose": "navigate to password reset flow"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [],
+    "has_conditional_rendering": false
+}

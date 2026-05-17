@@ -8,34 +8,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class TestStep(BaseModel):
-    step_id: int = Field(description="Thứ tự của bước kiểm thử (1, 2, 3...)")
-    action: str = Field(description="Hành động: 'click', 'input', 'assert_visible', 'assert_text' (cho UI) HOẶC 'api_call', 'assert_status', 'assert_response' (cho API Module)")
-    target: str = Field(description="CSS Selector, data-testid (cho UI) HOẶC Endpoint URL, Tên hàm xử lý (cho API Module)")
-    value: str = Field(default="", description="Giá trị đầu vào hoặc Payload mẫu nếu cần")
-    purpose: str = Field(description="Mục đích của bước này để làm gì?")
-    is_mock_api: bool = Field(default=False, description="True nếu bước này kích hoạt API Call cần được mock/intercept bằng Playwright")
+class UIElement(BaseModel):
+    element_type: str = Field(description="The HTML tag or UI element type (e.g., 'input', 'button', 'form', 'text')")
+    selector: str = Field(description="The exact CSS Selector, XPath, or data-testid used to target this element")
+    purpose: str = Field(description="Brief explanation in VIETNAMESE of what this element does (e.g., 'Ô nhập tài khoản email')")
 
-class TestScenario(BaseModel):
-    scenario_name: str = Field(description="Tên kịch bản (VD: Đăng nhập thất bại do sai mật khẩu)")
-    risk_level: str = Field(description="Mức độ rủi ro: 'High', 'Medium', 'Low'")
-    steps: List[TestStep]
+class APIEndpoint(BaseModel):
+    function_name: str = Field(description="The name of the core function handling the API call or business logic")
+    method: str = Field(default="GET", description="HTTP Method (GET, POST, PUT, DELETE, PATCH)")
+    route_or_target: str = Field(description="The specific backend endpoint route URL or base target")
+    required_payload_fields: List[str] = Field(default=[], description="List of required parameter keys or payload fields")
 
-class AnalyzerOutput(BaseModel):
-    component_name: str = Field(description="Tên component đang được test")
-    scenarios: List[TestScenario]
+class TechnicalAnalysisOutput(BaseModel):
+    component_name: str = Field(description="The logical name of the component or file (e.g., 'LoginForm'). Fallback to 'UnknownComponent' if not found.")
+    module_type: str = Field(description="Must be strictly either 'UI_Component' or 'API_Service_Module'")
+    impact_level: str = Field(description="System critical assessment. Must be strictly: 'High', 'Medium', or 'Low'")
+    interactive_elements: List[UIElement] = Field(default=[], description="List of extracted interactive UI elements. DO NOT leave empty if inputs/buttons exist in code.")
+    extracted_endpoints: List[APIEndpoint] = Field(default=[], description="List of detected network calls or core API services inside the file.")
+    dependencies: List[str] = Field(default=[], description="List of imported third-party libraries, framework hooks, or global states used.")
+    has_conditional_rendering: bool = Field(default=False, description="True if the code contains conditional display logic (e.g., v-if, v-show, ternary operators for error tracking).")
 
 class Analyzer:
     def __init__(self, setting="backend/ai_engine/settings_agent/Analyzer.md"):
-        # Sử dụng model mini để tối ưu chi phí (CAC) cho gói Starter/Free
         self.api_key = os.getenv('OPENROUTER_API_KEY')
         if self.api_key is None:
-            raise("API key is not found. Please import API key in file .env")
+            raise ValueError("API key is not found. Please import API key in file .env")
         
         try:
             with open(setting, 'r', encoding="utf-8") as f:
                 settings = frontmatter.load(f)
-        except:
+        except Exception:
             raise FileNotFoundError("File setting is not found. Please add file setting for AnalyzerAgent.")
         self.model = settings.get("model")
         self.system_prompt = settings.content
@@ -43,7 +45,6 @@ class Analyzer:
     def preprocess_code(self, raw_code: str, ast_script_path="backend/utils/ast_parser.js") -> str:
         """Gửi code sang Node.js để lọc AST và nhận lại code sạch."""
         try:
-            # Khởi tạo tiến trình Node.js
             process = subprocess.Popen(
                 ["node", ast_script_path],
                 stdin=subprocess.PIPE,
@@ -52,35 +53,23 @@ class Analyzer:
                 text=True,
                 encoding='utf-8'
             )
-            
-            # Gửi code và đợi kết quả
             stdout, stderr = process.communicate(input=raw_code)
-            
             if process.returncode != 0:
                 print(f"[Detector Error]: {stderr}")
-                return raw_code[:3000] # Fallback an toàn
-            
+                return raw_code[:3000]
             return stdout.strip()
-            
         except Exception as e:
             print(f"[Bridge Error]: {str(e)}")
             return raw_code
 
-    def analyze(self, raw_code: str, framework: str, language: str) -> Optional[AnalyzerOutput]:
-        prompt = ""
+    def analyze(self, raw_code: str, language: str) -> Optional[TechnicalAnalysisOutput]:
+        """Phân tích cấu trúc mã nguồn tĩnh chỉ dựa vào Code và Ngôn ngữ."""
         code_context = self.preprocess_code(raw_code)
-        # 2. OPTIMIZED USER PROMPT IN ENGLISH FOR LLM PERFORMANCE
+        
+        # User Prompt siêu ngắn, tối giản hóa đầu vào
         user_prompt = (
-            f"You are an expert QA Automation Engineer. Analyze the following source code:\n"
-            f"```\n{code_context}\n```\n"
-            f"Framework: {framework}\n"
-            f"Programming language: {language}\n\n"
-            f"CRITICAL REQUIREMENTS:\n"
-            f"1. Extract and map all potential user interactions, state changes, or API integrations into executable test scenarios.\n"
-            f"2. For UI components, accurately identify actionable CSS selectors, XPaths, or data-testids (e.g., inputs, buttons, forms).\n"
-            f"3. Crucial: If the code is a static component, helper function, or lacks explicit form interactions, DO NOT return an empty scenario list. "
-            f"Instead, generate at least one default scenario named 'Component Initialization and Default Rendering' to verify that the component mounts successfully in the DOM.\n"
-            f"4. Strictly output the result using the provided JSON Schema format."
+            f"Language: {language}\n"
+            f"Source Code:\n```\n{code_context}\n```"
         )
 
         with OpenRouter(api_key=self.api_key) as client:
@@ -93,8 +82,8 @@ class Analyzer:
                 response_format={
                     "type": "json_schema",
                     "json_schema": {
-                        "name": "analyze_output",
-                        "schema_": AnalyzerOutput.model_json_schema()
+                        "name": "technical_analysis_output",
+                        "schema_": TechnicalAnalysisOutput.model_json_schema()
                     }
                 }
             )
@@ -102,14 +91,14 @@ class Analyzer:
         content = response.choices[0].message.content
 
         try:
-            structure_data = AnalyzerOutput.model_validate_json(content)
+            structure_data = TechnicalAnalysisOutput.model_validate_json(content)
             return structure_data
         except Exception as e:
             print(f"Lỗi parse JSON: {e}")
             return content
-
-# Khởi chạy thử nghiệm (Dành cho việc Test Local)
+        
 if __name__ == "__main__":
+    # Test thử nghiệm với đoạn mã Vue.js chứa cả UI và API Logic ngầm
     sample_vue_code = """
     <template>
       <form @submit.prevent="login">
@@ -120,10 +109,10 @@ if __name__ == "__main__":
       <p v-if="error" class="error-msg">{{ error }}</p>
     </template>
     <script>
-    // Logic gọi API axios.post('/api/auth') nằm ở đây
+    // Logic gọi API axios.post('/api/auth/login') nằm ở đây
     </script>
     """
     
     analyzer = Analyzer()
-    result = analyzer.analyze(raw_code=sample_vue_code, framework="Vue.js", language="JavaScript")
-    print(result.scenarios)
+    result = analyzer.analyze(raw_code=sample_vue_code, language="JavaScript")
+    print(result)

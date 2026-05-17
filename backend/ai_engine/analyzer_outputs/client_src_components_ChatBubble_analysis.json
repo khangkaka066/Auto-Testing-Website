@@ -1,0 +1,38 @@
+{
+    "component_name": "ChatBubble",
+    "module_type": "UI",
+    "impact_level": "high",
+    "interactive_elements": [
+        {
+            "element_type": "button",
+            "selector": "button.btn.btn-sm.btn-outline-secondary",
+            "purpose": "toggle chat panel visibility"
+        },
+        {
+            "element_type": "form",
+            "selector": "form.p-2",
+            "purpose": "submit new chat message"
+        },
+        {
+            "element_type": "input",
+            "selector": "input.form-control.form-control-sm.mb-2",
+            "purpose": "capture user input"
+        },
+        {
+            "element_type": "button",
+            "selector": "button.btn.btn-primary.btn-sm.w-100",
+            "purpose": "send message"
+        },
+        {
+            "element_type": "button",
+            "selector": "button.btn.btn-primary.rounded-circle.d-flex.justify-content-center.align-items-center",
+            "purpose": "toggle chat panel"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react",
+        "../api/chatApi"
+    ],
+    "has_conditional_rendering": true
+}

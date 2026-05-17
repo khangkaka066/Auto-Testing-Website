@@ -1,0 +1,121 @@
+{
+    "planner_version": "1.3",
+    "component_name": "ChatBubble",
+    "module_type": "UI",
+    "impact_level": "high",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "TC001",
+            "title": "Toggle Chat Panel Visibility",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the toggle button correctly shows and hides the chat panel.",
+            "preconditions": [
+                "ChatBubble component is rendered in the application",
+                "No prior panel state is assumed"
+            ],
+            "test_data": {},
+            "steps": [
+                "Render the ChatBubble component",
+                "Locate the toggle button using selector \"button.btn.btn-primary.rounded-circle.d-flex.justify-content-center.align-items-center\"",
+                "Click the toggle button",
+                "Assert that the chat panel (form.p-2) becomes visible",
+                "Click the toggle button again",
+                "Assert that the chat panel is hidden"
+            ],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": "No network calls are involved in this interaction."
+            },
+            "criteria": {
+                "pass_when": [
+                    "Panel visibility toggles correctly on each click"
+                ],
+                "fail_when": [
+                    "Panel does not change visibility as expected"
+                ]
+            }
+        },
+        {
+            "case_id": "TC002",
+            "title": "Submit New Chat Message",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify that submitting a new chat message via the form works correctly.",
+            "preconditions": [
+                "Chat panel is visible",
+                "Input field is enabled"
+            ],
+            "test_data": {
+                "message": "Hello world"
+            },
+            "steps": [
+                "Render the ChatBubble component",
+                "If the panel is hidden, click the toggle button to show it",
+                "Locate the input field using selector \"input.form-control.form-control-sm.mb-2\" and enter the sample message \"Hello world\"",
+                "Locate the submit button using selector \"button.btn.btn-primary.btn-sm.w-100\" and click it",
+                "Mock the ../api/chatApi endpoint to return a successful response",
+                "Assert that a success indicator appears (e.g., no error message)"
+            ],
+            "mock_strategy": {
+                "type": "service_stub",
+                "targets": [
+                    "../api/chatApi"
+                ],
+                "notes": "Mock a successful API response to isolate UI behavior."
+            },
+            "criteria": {
+                "pass_when": [
+                    "Message is sent without error and UI reflects success"
+                ],
+                "fail_when": [
+                    "Submission fails or an error message is displayed"
+                ]
+            }
+        },
+        {
+            "case_id": "TC003",
+            "title": "Reject Empty Message Submission",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that submitting an empty message does not send a chat.",
+            "preconditions": [
+                "Chat panel is visible"
+            ],
+            "test_data": {
+                "message": ""
+            },
+            "steps": [
+                "Render the ChatBubble component",
+                "Ensure the panel is visible",
+                "Enter an empty string into the input field",
+                "Click the submit button",
+                "Mock the ../api/chatApino request is made",
+                "Assert that an appropriate validation message is displayed or no API call occurs"
+            ],
+            "mock_strategy": {
+                "type": "service_stub",
+                "targets": [
+                    "../api/chatApi"
+                ],
+                "notes": "Verify that no network request is sent when the message is empty."
+            },
+            "criteria": {
+                "pass_when": [
+                    "No API request is sent and validation feedback is shown"
+                ],
+                "fail_when": [
+                    "Empty message is sent or no validation occurs"
+                ]
+            }
+        }
+    ]
+}
