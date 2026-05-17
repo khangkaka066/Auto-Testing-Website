@@ -1,0 +1,19 @@
+{
+  "input": "backend/ai_engine/filter_outputs/fitered_outputs.json",
+  "output_dir": "backend/ai_engine/coder_outputs",
+  "generated_count": 2,
+  "generated": [
+    {
+      "component_name": "ChatBubble",
+      "source_file": "ChatBubble.json",
+      "spec_file": "ChatBubble.spec.ts",
+      "test_case_count": 3
+    },
+    {
+      "component_name": "LoginForm",
+      "source_file": "orderApi.json",
+      "spec_file": "LoginForm.spec.ts",
+      "test_case_count": 1
+    }
+  ]
+}

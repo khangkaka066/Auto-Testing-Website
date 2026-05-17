@@ -1,5 +1,5 @@
 ---
-model: "nvidia/nemotron-3-super-120b-a12b:free"
+model: "qwen2.5-coder-7b-instruct"
 temperature: 0.1
 max_tokens: 2000
 ---

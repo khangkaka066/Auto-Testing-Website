@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import frontmatter
 from dotenv import load_dotenv
-from openrouter import OpenRouter
+# from openrouter import OpenRouter
+import lmstudio as lms
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -74,9 +75,7 @@ class Planner:
         except Exception as exc:
             raise FileNotFoundError("File setting is not found. Please add file setting for PlannerAgent.") from exc
 
-        self.model = settings.get("model")
-        self.temperature = settings.get("temperature", 0.1)
-        self.max_tokens = settings.get("max_tokens", 2200)
+        self.model = lms.llm(settings.get("model"))
         self.system_prompt = settings.content
 
     def _resolve_applicable_types(
@@ -131,24 +130,30 @@ class Planner:
         return text
 
     def _request_plan_from_llm(self, user_prompt: str) -> str:
-        with OpenRouter(api_key=self.api_key) as client:
-            response = client.chat.send(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "planner_output",
-                        "schema_": PlannerOutput.model_json_schema(),
-                    },
-                },
-            )
-        return response.choices[0].message.content
+        # with OpenRouter(api_key=self.api_key) as client:
+        #     response = client.chat.send(
+        #         model=self.model,
+        #         messages=[
+        #             {"role": "system", "content": self.system_prompt},
+        #             {"role": "user", "content": user_prompt},
+        #         ],
+        #         temperature=self.temperature,
+        #         max_tokens=self.max_tokens,
+        #         response_format={
+        #             "type": "json_schema",
+        #             "json_schema": {
+        #                 "name": "planner_output",
+        #                 "schema_": PlannerOutput.model_json_schema(),
+        #             },
+        #         },
+        #     )
+        response = self.model.respond({"messages": [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]}, response_format=PlannerOutput)
+        content = response.content
+
+        return content
 
     def _parse_or_repair_output(self, content: str) -> PlannerOutput:
         candidate = self._extract_json_object(content)
