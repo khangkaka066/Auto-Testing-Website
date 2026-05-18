@@ -1,11 +1,13 @@
-from fastapi import FastAPI, APIRouter, Header  # Đã thêm Header vào đây
+from fastapi import FastAPI, APIRouter, Header, UploadFile, File  # Đã thêm File
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles  # Thêm StaticFiles để phục vụ ảnh tĩnh qua URL
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
 import logging
 import uuid
+import shutil  # Thêm shutil để hỗ trợ ghi file vào ổ đĩa
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -23,6 +25,10 @@ db_name = os.environ.get('DB_NAME', 'testpilot_db')
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
+# 🛠️ THÊM MỚI: Cấu hình thư mục chứa ảnh đại diện trên ổ đĩa cứng
+UPLOAD_DIR = Path(__file__).parent / "static" / "avatars"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 # Create the main app without a prefix
 app = FastAPI()
 
@@ -35,7 +41,7 @@ api_router = APIRouter(prefix="/api")
 # ====================================================================
 USERS_DB = {}
 
-# 🛠️ THÊM MỚI: Hàm bổ trợ giải mã lấy user_id từ Mock Token để tìm thông tin User trong RAM DB
+# Hàm bổ trợ giải mã lấy user_id từ Mock Token để tìm thông tin User trong RAM DB
 def get_user_by_token(token: str):
     if not token or not token.startswith("testpilot_mock_token_"):
         return None
@@ -72,7 +78,7 @@ class UserLoginInput(BaseModel):
     email: str
     password: str
 
-# 🛠️ THÊM MỚI: Model xác thực dữ liệu cho chức năng cập nhật thông tin cá nhân
+# Model xác thực dữ liệu cho chức năng cập nhật thông tin cá nhân
 class ProfileUpdateInput(BaseModel):
     name: str
     password: Optional[str] = None
@@ -168,13 +174,12 @@ async def login(input_data: UserLoginInput):
         }
     )
 
-# --- 🛠️ THÊM MỚI: API LẤY THÔNG TIN CÁ NHÂN HIỆN TẠI ---
+# --- API LẤY THÔNG TIN CÁ NHÂN HIỆN TẠI (ĐÃ CẬP NHẬT TRẢ VỀ AVATAR) ---
 @api_router.get("/auth/profile")
 async def get_profile(authorization: Optional[str] = Header(None)):
     if not authorization:
         return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
     
-    # Định dạng lại chuỗi token nếu nhận từ header dạng "Bearer <token>"
     token = authorization.replace("Bearer ", "").strip()
     user = get_user_by_token(token)
     
@@ -185,11 +190,12 @@ async def get_profile(authorization: Optional[str] = Header(None)):
         "success": True,
         "user": {
             "name": user["name"],
-            "email": user["email"]
+            "email": user["email"],
+            "avatar": user.get("avatar", "")  # Thêm trường avatar trả về cho Frontend hiển thị
         }
     }
 
-# --- 🛠️ THÊM MỚI: API CẬP NHẬT THÔNG TIN CÁ NHÂN ---
+# --- API CẬP NHẬT THÔNG TIN CÁ NHÂN ---
 @api_router.put("/auth/profile")
 async def update_profile(input_data: ProfileUpdateInput, authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -201,10 +207,8 @@ async def update_profile(input_data: ProfileUpdateInput, authorization: Optional
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không tồn tại"})
     
-    # Cập nhật họ tên mới
     user["name"] = input_data.name.strip()
     
-    # Nếu người dùng điền mật khẩu mới, tiến hành mã hóa và ghi đè mật khẩu cũ
     if input_data.password and input_data.password.strip():
         user["password_hash"] = generate_password_hash(input_data.password)
         
@@ -215,6 +219,39 @@ async def update_profile(input_data: ProfileUpdateInput, authorization: Optional
             "name": user["name"],
             "email": user["email"]
         }
+    }
+
+# --- 🛠️ THÊM MỚI: API TIẾP NHẬN VÀ LƯU TRỮ FILE ẢNH ĐẠI DIỆN ---
+@api_router.post("/auth/avatar")
+async def upload_avatar(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
+    
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không tồn tại"})
+    
+    # Kiểm tra tệp tin tải lên có thuộc định dạng hình ảnh hay không
+    if not file.content_type.startswith("image/"):
+        return JSONResponse(status_code=400, content={"success": False, "message": "File gửi lên bắt buộc phải là hình ảnh"})
+        
+    # Tạo tên file ngẫu nhiên không trùng lặp và tiến hành ghi vào thư mục static
+    file_extension = Path(file.filename).suffix
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Tạo đường dẫn URL tĩnh để client truy cập trực tiếp qua môi trường web
+    avatar_url = f"http://localhost:5000/static/avatars/{unique_filename}"
+    user["avatar"] = avatar_url
+    
+    return {
+        "success": True,
+        "message": "Tải ảnh đại diện thành công!",
+        "avatar_url": avatar_url
     }
 
 # --- Các API Status cũ của bạn (Giữ nguyên) ---
@@ -245,6 +282,9 @@ async def get_status_checks():
         logger.error(f"Lỗi đọc MongoDB: {e}")
         return []
 
+
+# 🛠️ THÊM MỚI: Cấu hình cho phép trình duyệt truy cập thư mục static để xem ảnh trực tiếp
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 # Include the router in the main app
 app.include_router(api_router)

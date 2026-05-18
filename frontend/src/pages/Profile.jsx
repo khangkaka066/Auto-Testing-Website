@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react"; // 🛠️ Đã thêm useRef
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
-import { User, Mail, Lock, ArrowLeft } from "lucide-react";
+import { User, Mail, Lock, ArrowLeft, Camera } from "lucide-react"; // 🛠️ Đã thêm Camera
 
 export default function Profile() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [avatar, setAvatar] = useState(""); // 🛠️ THÊM STATE: Lưu URL ảnh đại diện hiển thị
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false); // 🛠️ THÊM STATE: Trạng thái đang upload file
   const navigate = useNavigate();
+  const fileInputRef = useRef(null); // 🛠️ THÊM REF: Điều khiển thẻ input file ẩn
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -30,6 +33,12 @@ export default function Profile() {
             email: res.data.user.email,
             password: "", // Không hiện mật khẩu cũ vì lý do bảo mật
           });
+          setAvatar(res.data.user.avatar || ""); // Nạp ảnh đại diện nếu có từ server
+          
+          // Đồng bộ thông tin chuẩn vào bộ nhớ đệm ban đầu
+          localStorage.setItem("user_avatar", res.data.user.avatar || "");
+          localStorage.setItem("user_name", res.data.user.name || "");
+          window.dispatchEvent(new Event("userUpdate"));
         }
         setLoading(false);
       })
@@ -38,6 +47,44 @@ export default function Profile() {
         setLoading(false);
       });
   }, [navigate]);
+
+  // 🛠️ THÊM MỚI: Hàm xử lý tải ảnh đại diện lên Backend
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chỉ chọn file hình ảnh!");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const data = new FormData();
+    data.append("file", file); // Đóng gói file tệp tin
+
+    try {
+      setUploading(true);
+      const res = await axios.post("http://localhost:5000/api/auth/avatar", data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      if (res.data.avatar_url) {
+        setAvatar(res.data.avatar_url);
+        
+        // Cập nhật bộ nhớ đệm và phát tín hiệu thay đổi ảnh lập tức lên Navbar
+        localStorage.setItem("user_avatar", res.data.avatar_url);
+        window.dispatchEvent(new Event("userUpdate"));
+        
+        toast.success("Cập nhật ảnh đại diện thành công!");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Không thể tải ảnh lên");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -49,6 +96,10 @@ export default function Profile() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.data.success) {
+        // Lưu lại họ tên mới và cập nhật ký tự chữ cái đầu trên Navbar
+        localStorage.setItem("user_name", formData.name);
+        window.dispatchEvent(new Event("userUpdate"));
+
         toast.success(res.data.message);
         navigate("/dashboard"); // Lưu xong trả về trang Dashboard chính
       }
@@ -80,7 +131,44 @@ export default function Profile() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
           <h2 className="text-2xl font-bold text-slate-900 text-left mb-1">Thông tin cá nhân</h2>
-          <p className="text-slate-500 text-sm text-left mb-6">Cập nhật thông tin hiển thị và mật khẩu bảo mật của bạn.</p>
+          <p className="text-slate-500 text-sm text-left mb-6">Cập nhật thông tin hiển thị và hình ảnh đại diện của bạn.</p>
+
+          {/* 🛠️ THÊM MỚI: KHUNG TRÒN HIỂN THỊ VÀ CLICK CHỌN AVATAR */}
+          <div className="flex flex-col items-center mb-6 relative">
+            <div 
+              onClick={() => !uploading && fileInputRef.current.click()}
+              className="h-24 w-24 rounded-full bg-orange-600 border-4 border-slate-100 shadow-sm flex items-center justify-center text-white font-bold text-3xl cursor-pointer relative group overflow-hidden select-none"
+            >
+              {avatar ? (
+                <img src={avatar} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                formData.name ? formData.name.charAt(0).toUpperCase() : "U"
+              )}
+              
+              {/* Lớp phủ mờ mượt mà hiện icon camera khi hover */}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="h-5 w-5 text-white" />
+              </div>
+            </div>
+            
+            {/* Input file bị ẩn dưới hậu trường */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleAvatarChange} 
+            />
+            
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current.click()}
+              className="text-xs font-semibold text-orange-600 mt-2 hover:underline disabled:opacity-50"
+              disabled={uploading}
+            >
+              {uploading ? "Đang tải ảnh lên..." : "Thay đổi ảnh đại diện"}
+            </button>
+          </div>
 
           <form onSubmit={handleUpdate} className="space-y-4">
             <div>
