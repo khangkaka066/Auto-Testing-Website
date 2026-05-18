@@ -6,12 +6,14 @@ from tqdm import tqdm
 from ai_engine.agent.detector import Detector
 from ai_engine.agent.analyzer import Analyzer
 from ai_engine.agent.planner import Planner
+from ai_engine.agent.coder import Coder
 from utils.filter_tc import filter_planner_outputs
 
 if __name__ == "__main__":
     detector = Detector()
     analyzer = Analyzer()
     planner = Planner()
+    coder = Coder()
     requests_type = ["UI Testing"]
     
     # Cấu hình đường dẫn dự án cần test
@@ -25,11 +27,6 @@ if __name__ == "__main__":
 
     print(f"{Fore.GREEN}[STAGE 1] Quét dự án và phân loại file (Code thuần)...{Style.RESET_ALL}")
     scan_projects = detector.scan_project(src_code_path)
-
-    print(f"{Fore.GREEN}[STAGE 4] Lọc và tạo code test (Coder)...{Style.RESET_ALL}")
-    filtered_outputs = filter_planner_outputs(
-        input_dir=Path(output_planner_json_dir),
-        output_file=Path(os.path.join(output_filter_before_code_dir, "fitered_outputs.json")))
 
     # print(f"\n{Fore.GREEN}[STAGE 2] Phân tích cấu trúc kỹ thuật bằng AI (Analyzer)...{Style.RESET_ALL}")
     
@@ -86,3 +83,9 @@ if __name__ == "__main__":
     #             json.dump(planner_data, json_file, ensure_ascii=False, indent=4)
     #     except Exception as e:
     #         print(f"{Fore.RED}Lỗi khi xử lý file {analyze_json_file}: {e}{Style.RESET_ALL}")
+
+    # print(f"{Fore.GREEN}[STAGE 4] Lọc và tạo code test (Coder)...{Style.RESET_ALL}")
+    # filtered_outputs = coder.generate_from_filtered(
+    #     filtered_file=Path(output_planner_json_dir),
+    #     output_dir=Path(os.path.join(output_filter_before_code_dir, "fitered_outputs.json")),
+    #     base_url="http://localhost:3000")
