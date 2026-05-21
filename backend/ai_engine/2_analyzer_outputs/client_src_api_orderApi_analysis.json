@@ -1,0 +1,16 @@
+{
+    "component_name": "",
+    "module_type": "API_Service_Module",
+    "impact_level": "",
+    "interactive_elements": [
+        {
+            "element_type": "",
+            "selector": "",
+            "purpose": ""
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/api/orderApi.js"
+}

@@ -1,0 +1,108 @@
+{
+    "planner_version": "1.3",
+    "component_name": "ProductTable",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "TC001",
+            "title": "Test Edit Product Button Functionality",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Edit product' button is displayed and functional.",
+            "preconditions": [
+                "The ProductTable component is loaded on the page."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-primary"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC002",
+            "title": "Test Delete Product Button Functionality",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Delete product' button is displayed and functional.",
+            "preconditions": [
+                "The ProductTable component is loaded on the page."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-danger"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC003",
+            "title": "Test Edit Product Modal Opening",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that clicking 'Edit product' button opens the edit modal.",
+            "preconditions": [
+                "The ProductTable component is loaded on the page."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-primary"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC004",
+            "title": "Test Delete Product Confirmation Modal Opening",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that clicking 'Delete product' button opens the delete confirmation modal.",
+            "preconditions": [
+                "The ProductTable component is loaded on the page."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-danger"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/components/ProductTable.jsx"
+}

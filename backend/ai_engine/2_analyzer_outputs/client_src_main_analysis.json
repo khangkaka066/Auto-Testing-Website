@@ -1,0 +1,14 @@
+{
+    "component_name": "UI_Component",
+    "module_type": "react",
+    "impact_level": "low",
+    "interactive_elements": [],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "bootstrap/dist/css/bootstrap.min.css",
+        "bootstrap/dist/js/bootstrap.bundle.min.js",
+        "./App.jsx"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/main.jsx"
+}

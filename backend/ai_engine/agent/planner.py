@@ -64,7 +64,7 @@ class PlannerOutput(BaseModel):
 
 
 class Planner:
-    def __init__(self, setting: str = "backend/ai_engine/settings_agent/Planner.md"):
+    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Planner.md"):
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
@@ -89,17 +89,17 @@ class Planner:
 
         requested = requested_test_types or []
         if not requested:
-            requested = ["UI Testing", "Functional Testing"] if module_type == "UI" else ["API Testing", "Integration Testing"]
+            requested = ["UI Testing", "Functional Testing"] if "UI" in module_type else ["API Testing", "Integration Testing"]
 
         capabilities: Dict[TestScope, bool] = {
-            "UI Testing": module_type == "UI" and len(interactive_elements) > 0,
-            "Functional Testing": module_type == "UI" or len(endpoints) > 0,
+            "UI Testing": "UI" in module_type,
+            "Functional Testing": "UI" in module_type or len(endpoints) > 0,
             "Performance Testing": True,
-            "Responsive Testing": module_type == "UI",
-            "Compatibility Testing": module_type == "UI",
-            "Security Testing": len(endpoints) > 0 or module_type != "UI",
-            "API Testing": len(endpoints) > 0 or module_type != "UI",
-            "Navigation Testing": module_type == "UI" and len(interactive_elements) > 0,
+            "Responsive Testing": "UI" in module_type,
+            "Compatibility Testing": "UI" in module_type,
+            "Security Testing": len(endpoints) > 0 or "UI" not in module_type,
+            "API Testing": len(endpoints) > 0 or "UI" not in module_type,
+            "Navigation Testing": "UI" in module_type and len(interactive_elements) > 0,
             "Integration Testing": len(endpoints) > 0,
         }
 

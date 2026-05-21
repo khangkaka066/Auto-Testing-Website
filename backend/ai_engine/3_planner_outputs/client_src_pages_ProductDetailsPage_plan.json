@@ -1,0 +1,112 @@
+{
+    "planner_version": "1.3",
+    "component_name": "ProductDetailsPage",
+    "module_type": "UI_Component",
+    "impact_level": "",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "P0-1",
+            "title": "Test Go back button presence and clickability",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify the presence and functionality of the 'Go back' button.",
+            "preconditions": [
+                "The application is running.",
+                "ProductDetailsPage is accessible."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-secondary.mb-4.shadow-sm"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P1-2",
+            "title": "Test Add to cart or contact for purchase button presence and clickability",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify the presence and functionality of the 'Add to cart or contact for purchase' button.",
+            "preconditions": [
+                "The application is running.",
+                "ProductDetailsPage is accessible."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-lg.w-100.py-3.fw-bold.shadow-sm"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P2-3",
+            "title": "Test navigation after clicking Go back button",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify the navigation behavior when clicking on the 'Go back' button.",
+            "preconditions": [
+                "The application is running.",
+                "ProductDetailsPage is accessible."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-secondary.mb-4.shadow-sm"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P2-4",
+            "title": "Test navigation after clicking Add to cart or contact for purchase button",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify the navigation behavior when clicking on the 'Add to cart or contact for purchase' button.",
+            "preconditions": [
+                "The application is running.",
+                "ProductDetailsPage is accessible."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-lg.w-100.py-3.fw-bold.shadow-sm"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/pages/ProductDetailsPage.jsx"
+}

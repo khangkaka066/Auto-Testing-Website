@@ -1,0 +1,136 @@
+{
+    "planner_version": "1.3",
+    "component_name": "ProductCard",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "P01",
+            "title": "Check Button Visibility",
+            "priority": "P0",
+            "scope": "Functional Testing",
+            "objective": "Verify that the 'Add to cart' button is displayed correctly.",
+            "preconditions": [
+                "The application must be running and accessible.",
+                "A ProductCard component should be rendered on the screen."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-primary.w-100.fw-semibold"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P02",
+            "title": "Test Button Click Event",
+            "priority": "P0",
+            "scope": "Functional Testing",
+            "objective": "Verify that clicking the 'Add to cart' button triggers the expected event.",
+            "preconditions": [
+                "The application must be running and accessible.",
+                "A ProductCard component should be rendered on the screen."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-primary.w-100.fw-semibold"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P03",
+            "title": "Check Button Interactivity",
+            "priority": "P0",
+            "scope": "Functional Testing",
+            "objective": "Verify that the 'Add to cart' button is enabled and clickable.",
+            "preconditions": [
+                "The application must be running and accessible.",
+                "A ProductCard component should be rendered on the screen."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-primary.w-100.fw-semibold"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P04",
+            "title": "Check Button Visibility with Dependencies",
+            "priority": "P0",
+            "scope": "Functional Testing",
+            "objective": "Verify that the 'Add to cart' button is displayed correctly when there are dependencies such as 'react-router-dom' and 'react'.",
+            "preconditions": [
+                "The application must be running and accessible.",
+                "A ProductCard component should be rendered on the screen."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-primary.w-100.fw-semibold"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "P05",
+            "title": "Check Button Visibility without Conditional Rendering",
+            "priority": "P0",
+            "scope": "Functional Testing",
+            "objective": "Verify that the 'Add to cart' button is displayed correctly when there are no conditional rendering scenarios.",
+            "preconditions": [
+                "The application must be running and accessible.",
+                "A ProductCard component should be rendered on the screen."
+            ],
+            "test_data": {
+                "button_selector": ".btn.btn-outline-primary.w-100.fw-semibold"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/components/ProductCard.jsx"
+}

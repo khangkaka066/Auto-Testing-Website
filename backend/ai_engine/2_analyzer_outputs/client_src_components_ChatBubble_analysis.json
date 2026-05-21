@@ -1,0 +1,26 @@
+{
+    "component_name": "ChatBubble",
+    "module_type": "UI_Component",
+    "impact_level": "high",
+    "interactive_elements": [
+        {
+            "element_type": "button",
+            "selector": ".btn.btn-sm.btn-outline-secondary",
+            "purpose": "Toggle chat bubble visibility"
+        },
+        {
+            "element_type": "input",
+            "selector": ".form-control.form-control-sm.mb-2",
+            "purpose": "Input user message"
+        },
+        {
+            "element_type": "button",
+            "selector": ".btn.btn-primary.btn-sm.w-100",
+            "purpose": "Submit chat message"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/components/ChatBubble.jsx"
+}

@@ -1,0 +1,134 @@
+{
+    "planner_version": "1.3",
+    "component_name": "ProfileForm",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "1",
+            "title": "ProfileForm - Full Name Input Field",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Full Name' input field is accessible and functional.",
+            "preconditions": [
+                "The ProfileForm component is rendered on the page."
+            ],
+            "test_data": {
+                "fullname": "John Doe"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "2",
+            "title": "ProfileForm - Email Input Field",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Email' input field is accessible and functional.",
+            "preconditions": [
+                "The ProfileForm component is rendered on the page."
+            ],
+            "test_data": {
+                "email": "john.doe@example.com"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "3",
+            "title": "ProfileForm - Phone Input Field",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Phone' input field is accessible and functional.",
+            "preconditions": [
+                "The ProfileForm component is rendered on the page."
+            ],
+            "test_data": {
+                "phone": "123-456-7890"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "4",
+            "title": "ProfileForm - Bio Textarea Field",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Bio' textarea field is accessible and functional.",
+            "preconditions": [
+                "The ProfileForm component is rendered on the page."
+            ],
+            "test_data": {
+                "bio": "This is a bio text."
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "5",
+            "title": "ProfileForm - Save Changes Button",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Save Changes' button is accessible and functional.",
+            "preconditions": [
+                "The ProfileForm component is rendered on the page."
+            ],
+            "test_data": {
+                "fullname": "John Doe",
+                "email": "john.doe@example.com",
+                "phone": "123-456-7890",
+                "bio": "This is a bio text."
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/components/ProfileForm.jsx"
+}

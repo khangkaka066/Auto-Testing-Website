@@ -1,0 +1,19 @@
+{
+    "component_name": "ProductCard",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "interactive_elements": [
+        {
+            "element_type": "button",
+            "selector": ".btn.btn-outline-primary.w-100.fw-semibold",
+            "purpose": "Add to cart"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react-router-dom",
+        "react"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/components/ProductCard.jsx"
+}

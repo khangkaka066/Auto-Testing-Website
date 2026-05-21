@@ -4,6 +4,9 @@
 .idea/
 .vscode/
 
+#Agent test
+.agent
+
 # Dependencies
 node_modules/
 /node_modules

@@ -1,0 +1,34 @@
+{
+    "component_name": "Navbar",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "interactive_elements": [
+        {
+            "element_type": "Link",
+            "selector": ".navbar-brand a",
+            "purpose": "Navigation"
+        },
+        {
+            "element_type": "Input",
+            "selector": ".form-control",
+            "purpose": "Search"
+        },
+        {
+            "element_type": "Button",
+            "selector": ".input-group-text",
+            "purpose": "Submit Search"
+        },
+        {
+            "element_type": "Link",
+            "selector": ".dropdown-item",
+            "purpose": "Categories"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react-router-dom",
+        "react"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/components/Navbar.jsx"
+}

@@ -18,8 +18,8 @@ class Runner:
         working_dir: Path | None = None,
         base_url: str | None = None,
     ) -> Dict[str, Any]:
-        if not specs_dir.exists() or not specs_dir.is_dir():
-            raise FileNotFoundError(f"Specs directory not found: {specs_dir}")
+        # if not specs_dir.exists() or not specs_dir.is_dir():
+        #     raise FileNotFoundError(f"Specs directory not found: {specs_dir}")
 
         run_dir = Path.cwd()
         report_file.parent.mkdir(parents=True, exist_ok=True)
@@ -30,7 +30,6 @@ class Runner:
             "npx",
             "playwright",
             "test",
-            str(specs_dir),
             "--reporter=json",
         ]
 
@@ -40,6 +39,7 @@ class Runner:
 
         if working_dir:
             env["USER_PROJECT_PATH"] = str(Path(working_dir).resolve())
+
 
         result = subprocess.run(
             cmd,

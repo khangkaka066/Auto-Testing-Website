@@ -1,0 +1,16 @@
+{
+    "component_name": "ProtectedRoute",
+    "module_type": "API_Service_Module",
+    "impact_level": "high",
+    "interactive_elements": [
+        {
+            "element_type": "Navigate",
+            "selector": "",
+            "purpose": "Redirect user based on authentication status"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/components/ProtectedRoute.jsx"
+}

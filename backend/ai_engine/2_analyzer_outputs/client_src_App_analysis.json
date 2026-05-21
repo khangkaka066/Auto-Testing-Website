@@ -1,0 +1,24 @@
+{
+    "component_name": "App",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "interactive_elements": [
+        {
+            "element_type": "Button",
+            "selector": "[href='/signup']",
+            "purpose": "Sign up"
+        },
+        {
+            "element_type": "Button",
+            "selector": "[href='/signin']",
+            "purpose": "Log in"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react",
+        "react-router-dom"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/App.jsx"
+}

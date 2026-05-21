@@ -1,0 +1,121 @@
+{
+    "planner_version": "1.3",
+    "component_name": "CartPage",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "TC_UI_01",
+            "title": "CartPage Navigation Link Test",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Navigate to products page' link works correctly.",
+            "preconditions": [],
+            "test_data": {
+                "link_selector": ".btn.btn-primary.px-4.py-2.fw-bold"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_UI_02",
+            "title": "CartPage Decrease Product Quantity Test",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Decrease product quantity' button decreases the product count by 1.",
+            "preconditions": [],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-secondary.px-2[onClick*='handleDecrease']"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_UI_03",
+            "title": "CartPage Increase Product Quantity Test",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Increase product quantity' button increases the product count by 1.",
+            "preconditions": [],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-secondary.px-2[onClick*='handleIncrease']"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_UI_04",
+            "title": "CartPage Remove Product Test",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Remove product from cart' button removes a product.",
+            "preconditions": [],
+            "test_data": {
+                "button_selector": ".btn.btn-sm.btn-outline-danger[onClick*='handleRemove']"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_UI_05",
+            "title": "CartPage Checkout Button Test",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Proceed to checkout' button navigates to the checkout page.",
+            "preconditions": [],
+            "test_data": {
+                "button_selector": ".btn.btn-primary.btn-lg.w-100.fw-bold.py-3.shadow-sm"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/pages/CartPage.jsx"
+}

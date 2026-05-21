@@ -1,0 +1,154 @@
+{
+    "planner_version": "1.3",
+    "component_name": "BuildPCPage",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "TC_001",
+            "title": "Validate Modal Open Functionality",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Open modal for selecting products by category' button opens a modal.",
+            "preconditions": [
+                "The user should be on the BuildPCPage."
+            ],
+            "test_data": {
+                "modal_selector": ".modal"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_002",
+            "title": "Validate Item Removal Functionality",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Remove a selected item from the build' button removes an item correctly.",
+            "preconditions": [
+                "The user should have at least one item in the build."
+            ],
+            "test_data": {
+                "item_selector": ".selected-item"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_003",
+            "title": "Validate Clear All Functionality",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Clear all selected items' button clears all selected items.",
+            "preconditions": [
+                "The user should have at least one item selected."
+            ],
+            "test_data": {
+                "item_selector": ".selected-item"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_004",
+            "title": "Validate Add All to Cart Functionality",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Add all selected items to the cart' button adds all selected items to the cart.",
+            "preconditions": [
+                "The user should have at least one item selected."
+            ],
+            "test_data": {
+                "item_selector": ".selected-item"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_005",
+            "title": "Validate Disabled Clear All Button",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Clear all selected items' button is disabled when no items are selected.",
+            "preconditions": [
+                "The user should not have any items selected."
+            ],
+            "test_data": {
+                "item_selector": ".selected-item"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "TC_006",
+            "title": "Validate Disabled Add All Button",
+            "priority": "P2",
+            "scope": "UI Testing",
+            "objective": "Verify that the 'Add all selected items to the cart' button is disabled when no items are selected.",
+            "preconditions": [
+                "The user should not have any items selected."
+            ],
+            "test_data": {
+                "item_selector": ".selected-item"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/pages/BuildPCPage.jsx"
+}

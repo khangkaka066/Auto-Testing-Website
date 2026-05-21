@@ -1,0 +1,161 @@
+{
+    "planner_version": "1.3",
+    "component_name": "ProductForm",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "1",
+            "title": "Display All Input Fields",
+            "priority": "P0",
+            "scope": "Functional Testing",
+            "objective": "Verify that the form displays all input fields correctly.",
+            "preconditions": [
+                "The ProductForm component is rendered on the page."
+            ],
+            "test_data": {
+                "name": "",
+                "price": "",
+                "stock_quantity": "",
+                "category": "",
+                "brand": "",
+                "image_url": "",
+                "description": ""
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "2",
+            "title": "Submit Valid Data",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the form can be submitted with valid data.",
+            "preconditions": [
+                "The ProductForm component is rendered on the page."
+            ],
+            "test_data": {
+                "name": "Sample Product",
+                "price": "19.99",
+                "stock_quantity": "10",
+                "category": "Electronics",
+                "brand": "BrandX",
+                "image_url": "https://example.com/sample.jpg",
+                "description": "This is a sample product."
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "3",
+            "title": "Cancel Form Submission",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify that the form can be cancelled.",
+            "preconditions": [
+                "The ProductForm component is rendered on the page."
+            ],
+            "test_data": {
+                "name": "",
+                "price": "",
+                "stock_quantity": "",
+                "category": "",
+                "brand": "",
+                "image_url": "",
+                "description": ""
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "4",
+            "title": "Input Fields with Empty Values",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify that the form handles empty input fields.",
+            "preconditions": [
+                "The ProductForm component is rendered on the page."
+            ],
+            "test_data": {
+                "name": "",
+                "price": "",
+                "stock_quantity": "",
+                "category": "",
+                "brand": "",
+                "image_url": "",
+                "description": ""
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "5",
+            "title": "Input Fields with Invalid Data",
+            "priority": "P1",
+            "scope": "UI Testing",
+            "objective": "Verify that the form handles invalid input types.",
+            "preconditions": [
+                "The ProductForm component is rendered on the page."
+            ],
+            "test_data": {
+                "name": "Sample Product!",
+                "price": "-1.00",
+                "stock_quantity": "abc",
+                "category": "Electronics#",
+                "brand": "",
+                "image_url": "invalid-url",
+                "description": "This is a sample product with invalid data."
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/components/ProductForm.jsx"
+}

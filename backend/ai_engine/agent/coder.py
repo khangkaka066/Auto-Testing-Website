@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 import frontmatter
 import lmstudio as lms
+from tqdm import tqdm
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
@@ -23,7 +24,7 @@ class CoderBatchOutput(BaseModel):
     generated: List[GeneratedSpec] = Field(default_factory=list)
 
 class Coder:
-    def __init__(self, setting: str = "backend/ai_engine/settings_agent/Coder.md") -> None:
+    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Coder.md") -> None:
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
@@ -55,39 +56,58 @@ class Coder:
         return text
 
     def _load_input_items(self, filtered_input: Path) -> List[Dict[str, Any]]:
-        if filtered_input.is_file():
-            data = json.loads(filtered_input.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                return data
-            raise ValueError("Filtered input file must contain a JSON array.")
-
-        if not filtered_input.is_dir():
+        """Load each filtered planner JSON file and keep only minimal fields required for code generation.
+        This function now returns a list where each entry corresponds to a single component's test plan.
+        """
+        if not filtered_input.exists():
             raise FileNotFoundError(f"Input path does not exist: {filtered_input}")
 
         items: List[Dict[str, Any]] = []
+        # If a single JSON file is passed, treat it as one item
+        if filtered_input.is_file():
+            try:
+                content = json.loads(filtered_input.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in {filtered_input}: {e}")
+            if isinstance(content, dict):
+                component_name = content.get("component_name") or filtered_input.stem
+                items.append({
+                    "source_file": filtered_input.name,
+                    "component_name": component_name,
+                    "test_cases": content.get("test_cases", []),
+                    "planner_output": content,
+                })
+            elif isinstance(content, list):
+                # legacy support – list of items
+                for entry in content:
+                    if isinstance(entry, dict):
+                        component_name = entry.get("component_name") or "generated"
+                        items.append({
+                            "source_file": filtered_input.name,
+                            "component_name": component_name,
+                            "test_cases": entry.get("test_cases", []),
+                            "planner_output": entry,
+                        })
+            return items
+
+        # Directory case – iterate over each JSON file
         for json_file in sorted(filtered_input.glob("*.json")):
             try:
                 content = json.loads(json_file.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
-
             if not isinstance(content, dict):
                 continue
-
-            planner_output = content
-            component_name = planner_output.get("component_name") or json_file.stem
-            item = {
+            component_name = content.get("component_name") or json_file.stem
+            items.append({
                 "source_file": json_file.name,
                 "component_name": component_name,
-                "requested_test_types": planner_output.get("requested_test_types", []),
-                "test_case_count": len(planner_output.get("test_cases", []) or []),
-                "planner_output": planner_output,
-            }
-            items.append(item)
+                "test_cases": content.get("test_cases", []),
+                "planner_output": content,
+            })
 
         if not items:
             raise ValueError(f"No valid planner JSON files found in folder: {filtered_input}")
-
         return items
 
     def _request_codegen_from_llm(self, prompt: str) -> str:
@@ -123,49 +143,46 @@ class Coder:
                 ) from second_error
 
     def generate_from_filtered(self, filtered_input: Path, output_dir: Path, base_url: str) -> Dict[str, Any]:
-        data = self._load_input_items(filtered_input)
+        """Generate Playwright spec files **one per filtered plan file**.
+        This method now loads each planner JSON individually, builds a tiny prompt containing only the relevant test cases
+        and calls the LLM for each component. The result is written to `output_dir` and a manifest is returned.
+        """
+        items = self._load_input_items(filtered_input)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        prompt_payload = {
-            "base_url": base_url,
-            "items": data,
-            "constraints": {
-                "framework": "@playwright/test",
-                "language": "TypeScript",
-                "one_spec_per_component": True,
-                "include_real_actions": True,
-            },
-        }
-        prompt = f"Generate Playwright spec files from this JSON payload:\n{json.dumps(prompt_payload, ensure_ascii=False, indent=2)}"
-
-        content = self._request_codegen_from_llm(prompt)
-        output = self._parse_or_repair_output(content, prompt)
-
         generated_manifest: List[Dict[str, Any]] = []
-        for item in output.generated:
-            spec_name = item.spec_file
-            if not spec_name.endswith(".spec.ts"):
-                spec_name = f"{self._sanitize_name(spec_name)}.spec.ts"
+        for item in tqdm(items, desc="Loading filtered"):
+            # Build a minimal prompt for this single component
+            prompt_payload = {
+                "base_url": base_url,
+                "component": {
+                    "name": item["component_name"],
+                    "test_cases": item["test_cases"],
+                },
+                "constraints": {
+                    "framework": "@playwright/test",
+                    "language": "TypeScript",
+                    "include_real_actions": True,
+                },
+            }
+            prompt = f"Generate a Playwright spec file (TypeScript) for the component below using the given test cases. Return ONLY JSON matching the CoderBatchOutput schema.\n{json.dumps(prompt_payload, ensure_ascii=False, indent=2)}"
+            # Call LLM for this component
+            content = self._request_codegen_from_llm(prompt)
+            output = self._parse_or_repair_output(content, prompt)
 
-            spec_path = output_dir / spec_name
-            spec_path.write_text(item.content.rstrip() + "\n", encoding="utf-8")
-
-            component_name = spec_name.replace(".spec.ts", "")
-            source_file = ""
-            for src_item in data:
-                guess_name = src_item.get("component_name") or src_item.get("planner_output", {}).get("component_name")
-                if str(guess_name).lower() == component_name.lower():
-                    source_file = src_item.get("source_file", "")
-                    break
-
-            generated_manifest.append(
-                {
-                    "component_name": component_name,
-                    "source_file": source_file,
+            # Write each generated spec file
+            for gen in output.generated:
+                spec_name = gen.spec_file
+                if not spec_name.endswith(".spec.ts"):
+                    spec_name = f"{self._sanitize_name(spec_name)}.spec.ts"
+                spec_path = output_dir / spec_name
+                spec_path.write_text(gen.content.rstrip() + "\n", encoding="utf-8")
+                generated_manifest.append({
+                    "component_name": item["component_name"],
+                    "source_file": item["source_file"],
                     "spec_file": spec_name,
-                    "test_case_count": item.test_case_count,
-                }
-            )
+                    "test_case_count": gen.test_case_count,
+                })
 
         manifest = {
             "input": str(filtered_input),

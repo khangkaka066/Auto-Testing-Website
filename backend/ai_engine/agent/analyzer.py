@@ -30,7 +30,7 @@ class TechnicalAnalysisOutput(BaseModel):
     has_conditional_rendering: bool = Field(default=False, description="True if the code contains conditional display logic (e.g., v-if, v-show, ternary operators for error tracking).")
 
 class Analyzer:
-    def __init__(self, setting="backend/ai_engine/settings_agent/Analyzer.md"):
+    def __init__(self, setting="backend/ai_engine/system_prompt/Analyzer.md"):
         # self.api_key = os.getenv('OPENROUTER_API_KEY')
         # if self.api_key is None:
         #     raise ValueError("API key is not found. Please import API key in file .env")

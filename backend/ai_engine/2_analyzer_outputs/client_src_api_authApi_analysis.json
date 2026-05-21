@@ -1,0 +1,12 @@
+{
+    "component_name": "API_Service_Module",
+    "module_type": "API Service Module",
+    "impact_level": "",
+    "interactive_elements": [],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "axios"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/api/authApi.js"
+}

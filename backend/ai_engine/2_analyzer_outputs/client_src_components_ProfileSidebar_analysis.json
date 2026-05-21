@@ -1,0 +1,18 @@
+{
+    "component_name": "ProfileSidebar",
+    "module_type": "UI_Component",
+    "impact_level": "Medium",
+    "interactive_elements": [
+        {
+            "element_type": "button",
+            "selector": ".btn-outline-danger.btn-sm.w-100",
+            "purpose": "logout"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/components/ProfileSidebar.jsx"
+}

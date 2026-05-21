@@ -1,0 +1,23 @@
+{
+    "component_name": "API_Service_Module",
+    "module_type": "Service/Logic",
+    "impact_level": "Insignificant",
+    "interactive_elements": [
+        {
+            "element_type": "Endpoint",
+            "selector": "/api/orders/getAllOrders",
+            "purpose": "Retrieve all orders"
+        },
+        {
+            "element_type": "Endpoint",
+            "selector": "/api/orders/updateOrderStatus/{orderCode}",
+            "purpose": "Update order status"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "../config/db"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "server/src/controllers/orderController.js"
+}

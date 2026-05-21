@@ -1,0 +1,62 @@
+{
+    "planner_version": "1.3",
+    "component_name": "App",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "should_generate_plan": true,
+    "skip_reason": "",
+    "requested_test_types": [
+        "UI Testing"
+    ],
+    "skipped_test_types": [],
+    "generation_notes": [],
+    "test_cases": [
+        {
+            "case_id": "1001",
+            "title": "Verify Sign Up Button",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify the 'Sign up' button is displayed and functional.",
+            "preconditions": [
+                "Application is running."
+            ],
+            "test_data": {
+                "button_text": "Sign up"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        },
+        {
+            "case_id": "1002",
+            "title": "Verify Log In Button",
+            "priority": "P0",
+            "scope": "UI Testing",
+            "objective": "Verify the 'Log in' button is displayed and functional.",
+            "preconditions": [
+                "Application is running."
+            ],
+            "test_data": {
+                "button_text": "Log in"
+            },
+            "steps": [],
+            "mock_strategy": {
+                "type": "none",
+                "targets": [],
+                "notes": ""
+            },
+            "criteria": {
+                "pass_when": [],
+                "fail_when": []
+            }
+        }
+    ],
+    "file_path": "client/src/App.jsx"
+}

@@ -1,0 +1,25 @@
+{
+    "component_name": "ProductPage",
+    "module_type": "UI_Component",
+    "impact_level": "What",
+    "interactive_elements": [
+        {
+            "element_type": "select",
+            "selector": "select.form-select.form-select-sm",
+            "purpose": "Sort products by different criteria"
+        },
+        {
+            "element_type": "button",
+            "selector": "button.btn.btn-primary.btn-sm.mt-auto",
+            "purpose": "Add product to cart"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react",
+        "react-router-dom",
+        "../api/productApi"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/pages/ProductPage.jsx"
+}

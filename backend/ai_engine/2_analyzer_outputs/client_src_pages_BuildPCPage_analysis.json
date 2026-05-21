@@ -1,0 +1,34 @@
+{
+    "component_name": "BuildPCPage",
+    "module_type": "UI_Component",
+    "impact_level": "High",
+    "interactive_elements": [
+        {
+            "element_type": "Button",
+            "selector": ".btn.btn-outline-primary.btn-sm[onClick*=openSection]",
+            "purpose": "Open modal for selecting products by category"
+        },
+        {
+            "element_type": "Button",
+            "selector": ".btn.btn-sm.btn-outline-danger[onClick*=removeFromBuild]",
+            "purpose": "Remove a selected item from the build"
+        },
+        {
+            "element_type": "Button",
+            "selector": ".btn.btn-danger[onClick*=clearAllSelected][disabled*='selectedItems.length === 0']",
+            "purpose": "Clear all selected items"
+        },
+        {
+            "element_type": "Button",
+            "selector": ".btn.btn-success[onClick*=addAllSelectedToCart][disabled*='selectedItems.length === 0']",
+            "purpose": "Add all selected items to the cart"
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [
+        "react",
+        "../api/productApi"
+    ],
+    "has_conditional_rendering": false,
+    "file_path": "client/src/pages/BuildPCPage.jsx"
+}

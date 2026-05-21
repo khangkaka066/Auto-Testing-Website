@@ -1,0 +1,41 @@
+{
+    "component_name": "API_Service_Module",
+    "module_type": "service/logic",
+    "impact_level": "high",
+    "interactive_elements": [
+        {
+            "element_type": "function",
+            "selector": "",
+            "purpose": "Builds a context for products based on the provided product data."
+        },
+        {
+            "element_type": "function",
+            "selector": "",
+            "purpose": "Creates a system prompt for the chatbot using the provided product context."
+        },
+        {
+            "element_type": "function",
+            "selector": "",
+            "purpose": "Runs the Ollama CLI with the given prompt and returns the response."
+        },
+        {
+            "element_type": "function",
+            "selector": "",
+            "purpose": "Runs the Ollama server with the given prompt and returns the response."
+        },
+        {
+            "element_type": "function",
+            "selector": "",
+            "purpose": "Determines whether to use the Ollama server or CLI based on environment variables and runs the appropriate function."
+        },
+        {
+            "element_type": "function",
+            "selector": "",
+            "purpose": "Handles chat requests by validating the input message, retrieving product data from the database, building the prompt, running the chatbot, and returning the response."
+        }
+    ],
+    "extracted_endpoints": [],
+    "dependencies": [],
+    "has_conditional_rendering": false,
+    "file_path": "server/src/controllers/chatController.js"
+}
