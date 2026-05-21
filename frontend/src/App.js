@@ -4,7 +4,8 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";       
 import Register from "./pages/Register"; 
 import Dashboard from "./pages/Dashboard"; 
-import Profile from "./pages/Profile"; // 1. Import trang Profile mới vào
+import Profile from "./pages/Profile"; 
+import TestRunner from "./pages/TestRunner"; // 1. Import trang TestRunner
 import { Toaster } from "./components/ui/sonner";
 
 function App() {
@@ -16,7 +17,8 @@ function App() {
           <Route path="/login" element={<Login />} />       
           <Route path="/register" element={<Register />} /> 
           <Route path="/dashboard" element={<Dashboard />} /> 
-          <Route path="/profile" element={<Profile />} /> {/* 2. Khai báo route đường dẫn /profile */}
+          <Route path="/profile" element={<Profile />} /> 
+          <Route path="/run-test" element={<TestRunner />} /> {/* 2. Khai báo route */}
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-right" />

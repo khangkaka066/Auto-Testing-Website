@@ -1,13 +1,13 @@
-from fastapi import FastAPI, APIRouter, Header, UploadFile, File  # Đã thêm File
+from fastapi import FastAPI, APIRouter, Header, UploadFile, File
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles  # Thêm StaticFiles để phục vụ ảnh tĩnh qua URL
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
 import logging
 import uuid
-import shutil  # Thêm shutil để hỗ trợ ghi file vào ổ đĩa
+import shutil
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -25,7 +25,7 @@ db_name = os.environ.get('DB_NAME', 'testpilot_db')
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
-# 🛠️ THÊM MỚI: Cấu hình thư mục chứa ảnh đại diện trên ổ đĩa cứng
+# Cấu hình thư mục chứa ảnh đại diện trên ổ đĩa cứng
 UPLOAD_DIR = Path(__file__).parent / "static" / "avatars"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -41,6 +41,9 @@ api_router = APIRouter(prefix="/api")
 # ====================================================================
 USERS_DB = {}
 
+# 🛠️ THÊM MỚI: MOCK DATABASE lưu lịch sử Test
+TEST_HISTORY_DB = []
+
 # Hàm bổ trợ giải mã lấy user_id từ Mock Token để tìm thông tin User trong RAM DB
 def get_user_by_token(token: str):
     if not token or not token.startswith("testpilot_mock_token_"):
@@ -48,7 +51,7 @@ def get_user_by_token(token: str):
     parts = token.split("_")
     if len(parts) < 4:
         return None
-    user_id = parts[3]  # Lấy user_id dựa theo cấu trúc token đã tạo ở API Đăng ký/Đăng nhập
+    user_id = parts[3]
     for email, user in USERS_DB.items():
         if user["id"] == user_id:
             return user
@@ -59,7 +62,7 @@ def get_user_by_token(token: str):
 # PYDANTIC MODELS (Định nghĩa cấu trúc dữ liệu đầu vào/đầu ra)
 # ====================================================================
 class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+    model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_name: str
@@ -83,6 +86,10 @@ class ProfileUpdateInput(BaseModel):
     name: str
     password: Optional[str] = None
 
+# 🛠️ THÊM MỚI: Model nhận dữ liệu tên file từ Frontend gửi lên để lưu lịch sử
+class TestHistoryCreate(BaseModel):
+    filename: str
+
 
 # ====================================================================
 # ROUTES (Định nghĩa các API Endpoints)
@@ -92,7 +99,7 @@ class ProfileUpdateInput(BaseModel):
 async def root():
     return {"message": "Hello World"}
 
-# --- API ĐĂNG KÝ (Register) - ĐÃ CẬP NHẬT TỰ ĐỘNG ĐĂNG NHẬP ---
+# --- API ĐĂNG KÝ (Register) ---
 @api_router.post("/auth/register")
 async def register(input_data: UserRegisterInput):
     email = input_data.email.strip()
@@ -138,7 +145,7 @@ async def register(input_data: UserRegisterInput):
     )
 
 # --- API ĐĂNG NHẬP (Login) ---
-@api_router.post("/api/auth/login") # Hỗ trợ cả /api/auth/login trực tiếp hoặc qua router
+@api_router.post("/api/auth/login") 
 @api_router.post("/auth/login")
 async def login(input_data: UserLoginInput):
     email = input_data.email.strip()
@@ -174,7 +181,7 @@ async def login(input_data: UserLoginInput):
         }
     )
 
-# --- API LẤY THÔNG TIN CÁ NHÂN HIỆN TẠI (ĐÃ CẬP NHẬT TRẢ VỀ AVATAR) ---
+# --- API LẤY THÔNG TIN CÁ NHÂN HIỆN TẠI ---
 @api_router.get("/auth/profile")
 async def get_profile(authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -191,7 +198,7 @@ async def get_profile(authorization: Optional[str] = Header(None)):
         "user": {
             "name": user["name"],
             "email": user["email"],
-            "avatar": user.get("avatar", "")  # Thêm trường avatar trả về cho Frontend hiển thị
+            "avatar": user.get("avatar", "")
         }
     }
 
@@ -221,7 +228,7 @@ async def update_profile(input_data: ProfileUpdateInput, authorization: Optional
         }
     }
 
-# --- 🛠️ THÊM MỚI: API TIẾP NHẬN VÀ LƯU TRỮ FILE ẢNH ĐẠI DIỆN ---
+# --- API TIẾP NHẬN VÀ LƯU TRỮ FILE ẢNH ĐẠI DIỆN ---
 @api_router.post("/auth/avatar")
 async def upload_avatar(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -232,11 +239,9 @@ async def upload_avatar(file: UploadFile = File(...), authorization: Optional[st
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không tồn tại"})
     
-    # Kiểm tra tệp tin tải lên có thuộc định dạng hình ảnh hay không
     if not file.content_type.startswith("image/"):
         return JSONResponse(status_code=400, content={"success": False, "message": "File gửi lên bắt buộc phải là hình ảnh"})
         
-    # Tạo tên file ngẫu nhiên không trùng lặp và tiến hành ghi vào thư mục static
     file_extension = Path(file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = UPLOAD_DIR / unique_filename
@@ -244,7 +249,6 @@ async def upload_avatar(file: UploadFile = File(...), authorization: Optional[st
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # Tạo đường dẫn URL tĩnh để client truy cập trực tiếp qua môi trường web
     avatar_url = f"http://localhost:5000/static/avatars/{unique_filename}"
     user["avatar"] = avatar_url
     
@@ -253,6 +257,45 @@ async def upload_avatar(file: UploadFile = File(...), authorization: Optional[st
         "message": "Tải ảnh đại diện thành công!",
         "avatar_url": avatar_url
     }
+
+# --- 🛠️ THÊM MỚI: API LƯU LỊCH SỬ CHẠY TEST ---
+@api_router.post("/test/history")
+async def create_test_history(input_data: TestHistoryCreate, authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
+    
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không hợp lệ"})
+    
+    # Tạo bản ghi mới chứa tên file và thời gian hiện tại chính xác đến từng giây
+    record = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "filename": input_data.filename,
+        "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    }
+    
+    TEST_HISTORY_DB.insert(0, record) # Chèn vào đầu danh sách để lịch sử mới nhất hiện lên trên cùng
+    
+    return {"success": True, "data": record}
+
+# --- 🛠️ THÊM MỚI: API LẤY DANH SÁCH LỊCH SỬ TEST CỦA USER ---
+@api_router.get("/test/history")
+async def get_test_history(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
+    
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không hợp lệ"})
+    
+    # Lọc ra các lịch sử thuộc về user đang đăng nhập
+    user_history = [record for record in TEST_HISTORY_DB if record["user_id"] == user["id"]]
+    
+    return {"success": True, "data": user_history}
 
 # --- Các API Status cũ của bạn (Giữ nguyên) ---
 @api_router.post("/status", response_model=StatusCheck)
@@ -283,7 +326,7 @@ async def get_status_checks():
         return []
 
 
-# 🛠️ THÊM MỚI: Cấu hình cho phép trình duyệt truy cập thư mục static để xem ảnh trực tiếp
+# Cấu hình cho phép trình duyệt truy cập thư mục static để xem ảnh trực tiếp
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 # Include the router in the main app
