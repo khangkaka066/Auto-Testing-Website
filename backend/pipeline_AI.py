@@ -162,37 +162,56 @@ class AIPipelineOrchestrator:
                 
         print(f"{Fore.CYAN}Kết quả: Giữ lại {valid_count} file, Bỏ qua {skipped_count} file.{Style.RESET_ALL}")
 
-    def run_coder(self):
+    def run_coder(self, playwright_config_path):
         print(f"\n{Fore.GREEN}[STAGE 4] Lập trình kịch bản Test (Coder)...{Style.RESET_ALL}")
 
         print(f"{Fore.CYAN}  -> Đang cài đặt Playwright & Trình duyệt (có thể mất vài phút)...{Style.RESET_ALL}")
-        try:
-            subprocess.run(
-                [
-                    "npm", "create", "playwright@latest", "--yes", 
-                    "--", 
-                    "--quiet",                   # Bỏ qua các câu hỏi tương tác
-                    "--lang=TypeScript",         # Chọn ngôn ngữ TypeScript
-                    "--browser=chromium",        # Chỉ cài Chromium cho nhẹ (hoặc xóa dòng này để cài tất cả)
-                    "--github-actions=false",    # Không tạo file CI/CD Github Actions
-                    "--test-dir=tests"           # Chỉ định thư mục test giống với core_ai_dir của bạn
-                ],
-                check=True,
-                shell=(os.name == 'nt')          # Rất quan trọng nếu chạy trên Windows
-            )
-            print(f"{Fore.GREEN}  -> Cài đặt Playwright thành công!{Style.RESET_ALL}")
-        except subprocess.CalledProcessError as e:
-            print(f"{Fore.RED}Lỗi trong quá trình khởi tạo Playwright: {e}{Style.RESET_ALL}")
-            return
-        except FileNotFoundError:
-            print(f"{Fore.RED}Không tìm thấy lệnh 'npm'. Vui lòng cài đặt Node.js trước!{Style.RESET_ALL}")
-            return
+        
+        if Path('tests').is_dir():
+            import shutil
+            shutil.rmtree('tests')
+        
+        if os.path.exists(playwright_config_path):
+            print(f"{Fore.GREEN}  -> Playwright đã được cài đặt từ trước. Bỏ qua bước khởi tạo để tiết kiệm thời gian!{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.CYAN}  -> Đang cài đặt Playwright & Trình duyệt (có thể mất vài phút)...{Style.RESET_ALL}")
+            try:
+                subprocess.run(
+                    [
+                        "npm", "create", "playwright@latest", "--yes", 
+                        "--", 
+                        "--quiet",
+                        "--lang=TypeScript",
+                        "--browser=chromium"
+                    ],
+                    check=True,
+                    cwd=self.workspace_dir, # Đảm bảo cài đúng vào thư mục workspace
+                    shell=(os.name == 'nt')
+                )
+                print(f"{Fore.GREEN}  -> Cài đặt Playwright thành công!{Style.RESET_ALL}")
+            except subprocess.CalledProcessError as e:
+                print(f"{Fore.RED}Lỗi trong quá trình khởi tạo Playwright: {e}{Style.RESET_ALL}")
+                return
+            except FileNotFoundError:
+                print(f"{Fore.RED}Không tìm thấy lệnh 'npm'. Vui lòng cài đặt Node.js trước!{Style.RESET_ALL}")
+                return
 
         filter_dir = self.dirs["4_filter"]
         coder_dir = self.dirs["5_coder"]
         core_ai_dir = "tests"
         os.makedirs(core_ai_dir, exist_ok=True)
         
+        # === THÊM ĐOẠN DỌN DẸP RÁC (CLEAN SLATE) VÀO ĐÂY ===
+        print(f"{Fore.CYAN}  -> Đang dọn dẹp các file test cũ từ lần chạy trước...{Style.RESET_ALL}")
+        import glob
+        old_specs = glob.glob(os.path.join(core_ai_dir, "*.spec.ts"))
+        for f in old_specs:
+            try:
+                os.remove(f)
+            except Exception as e:
+                pass
+        # ===================================================
+
         if not os.path.exists(filter_dir) or not os.listdir(filter_dir):
             print(f"{Fore.YELLOW}Không có file hợp lệ nào trong {filter_dir} để tạo code.{Style.RESET_ALL}")
             return
@@ -202,7 +221,7 @@ class AIPipelineOrchestrator:
         manifest = coder.generate_from_filtered(
             filtered_input=Path(filter_dir),
             output_dir=Path(core_ai_dir),
-            base_url="http://localhost:3000" # Có thể lấy từ tham số động sau
+            base_url="http://localhost:5173" # Có thể lấy từ tham số động sau
         )
         
         # manifest['input'], manifest['output_dir'], manifest['generated']
@@ -214,6 +233,121 @@ class AIPipelineOrchestrator:
         print(f"{Fore.CYAN}  -> Đã tạo {manifest['generated_count']} file spec tại {core_ai_dir}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}  -> Đã lưu manifest log tại {coder_log_path}{Style.RESET_ALL}")
 
+    def run_validator(self):
+        print(f"\n{Fore.GREEN}[STAGE 4.5] Kiểm tra mã nguồn (Validator)...{Style.RESET_ALL}")
+        core_ai_dir = "tests"
+        
+        if not os.path.exists(core_ai_dir):
+            print(f"{Fore.YELLOW}Không có thư mục {core_ai_dir} để kiểm tra. Bỏ qua Validator.{Style.RESET_ALL}")
+            return False
+
+        print(f"{Fore.CYAN}  -> Đang chạy kiểm tra cú pháp tĩnh (Static Syntax Check)...{Style.RESET_ALL}")
+        try:
+            # 1. Lấy danh sách toàn bộ các file code test đã sinh ra
+            import glob
+            spec_files = glob.glob(f"tests/*.spec.ts")
+            
+            if not spec_files:
+                print(f"{Fore.YELLOW}  -> Không có file *.spec.ts nào để kiểm tra.{Style.RESET_ALL}")
+                return False
+
+            # 2. Gọi npx -p typescript tsc để đảm bảo có tsc, và kiểm tra trực tiếp các file
+            # Bổ sung cờ --target es2022 và --lib dom,es2022 để tsc hiểu được cú pháp hiện đại và DOM của Playwright
+            check_cmd = [
+                "npx", "-y", "-p", "typescript", "tsc", 
+                "--noEmit", 
+                "--target", "es2022", 
+                "--moduleResolution", "bundler",
+                "--skipLibCheck",       # Bỏ qua kiểm tra lỗi type bên trong thư viện (node_modules)
+                "--lib", "es2022,dom"   # Cung cấp các kiểu dữ liệu chuẩn của trình duyệt và ES mới nhất
+            ] + spec_files
+
+            result = subprocess.run(
+                check_cmd,
+                capture_output=True,
+                text=True,
+                shell=(os.name == 'nt')
+            )
+            
+            if result.returncode == 0:
+                print(f"{Fore.GREEN}  -> [PASS] Code hoàn toàn hợp lệ! Sẵn sàng cho Executor.{Style.RESET_ALL}")
+                return True
+            else:
+                print(f"{Fore.RED}  -> [FAIL] Validator phát hiện lỗi cú pháp tĩnh:{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}{result.stdout}{Style.RESET_ALL}")
+                
+                # Lưu log lỗi Validator
+                validator_dir = os.path.join(self.base_output_dir, "5.5_validator_outputs")
+                os.makedirs(validator_dir, exist_ok=True)
+                error_log_path = os.path.join(validator_dir, "validator_errors.log")
+                with open(error_log_path, 'w', encoding='utf-8') as f:
+                    f.write(result.stdout)
+                    
+                print(f"{Fore.CYAN}  -> Đã lưu log lỗi tại {error_log_path}. Cần gọi Debugger để sửa!{Style.RESET_ALL}")
+                return False
+                
+        except Exception as e:
+            print(f"{Fore.RED}Lỗi hệ thống khi chạy Validator: {e}{Style.RESET_ALL}")
+            return False
+    def run_debugger(self):
+        print(f"\n{Fore.MAGENTA}[STAGE 4.7] Tự động sửa lỗi mã nguồn (Smart Bug Fixer)...{Style.RESET_ALL}")
+        
+        validator_log_path = os.path.join(self.base_output_dir, "5.5_validator_outputs", "validator_errors.log")
+        if not os.path.exists(validator_log_path):
+            print(f"{Fore.YELLOW}  -> Không tìm thấy file log từ Validator. Bỏ qua Debugger.{Style.RESET_ALL}")
+            return
+            
+        with open(validator_log_path, 'r', encoding='utf-8') as f:
+            error_logs = f.read()
+
+        import re
+        failed_files = list(set(re.findall(r"(tests/[\w\-]+\.spec\.ts)", error_logs)))
+        if not failed_files:
+            return
+
+        print(f"{Fore.CYAN}  -> Bác sĩ AI (Debugger) phát hiện {len(failed_files)} file cần cấp cứu.{Style.RESET_ALL}")
+        
+        # --- [MỚI] ĐỌC MANIFEST ĐỂ TÌM TEST PLAN TƯƠNG ỨNG ---
+        coder_manifest_path = os.path.join(self.dirs["5_coder"], "coder_manifest.json")
+        spec_to_plan_map = {}
+        if os.path.exists(coder_manifest_path):
+            with open(coder_manifest_path, 'r', encoding='utf-8') as mf:
+                manifest_data = json.load(mf)
+                # Map từ "tests/CheckoutPage.spec.ts" -> "client_src_pages_CheckoutPage_plan.json"
+                for item in manifest_data.get("generated", []):
+                    spec_to_plan_map[f"tests/{item['spec_file']}"] = item['source_file']
+        # -----------------------------------------------------
+
+        from ai_engine.agent.debugger import Debugger
+        ai_debugger = Debugger()
+        
+        for file_path in tqdm(failed_files, desc="Fixing failed files"):
+            file_specific_log = "\n".join([line for line in error_logs.split('\n') if file_path in line])
+            full_target_path = file_path
+            
+            # --- [MỚI] LẤY NỘI DUNG TEST PLAN ---
+            test_plan_content = "Không tìm thấy Test Plan."
+            plan_filename = spec_to_plan_map.get(file_path)
+            if plan_filename:
+                plan_file_path = os.path.join(self.dirs["4_filter"], plan_filename)
+                if os.path.exists(plan_file_path):
+                    with open(plan_file_path, 'r', encoding='utf-8') as pf:
+                        plan_data = json.load(pf)
+                        test_cases_array = plan_data.get("test_cases", [])
+                        if test_cases_array:
+                            test_plan_content = json.dumps(test_cases_array, ensure_ascii=False, indent=2)
+                        else:
+                            test_plan_content = "File Plan không chứa test_cases nào."
+            # ------------------------------------
+
+            if os.path.exists(full_target_path):
+                # Truyền thêm test_plan_content vào hàm fix_code
+                success = ai_debugger.fix_code(full_target_path, file_specific_log, test_plan_content)
+                if not success:
+                    print(f"{Fore.RED}  -> [THẤT BẠI] Debugger không thể sửa file {file_path}.{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}  -> Lỗi: Không tìm thấy file {full_target_path} trên hệ thống để sửa.{Style.RESET_ALL}")
+    
     def run_executor(self):
         print(f"\n{Fore.GREEN}[STAGE 5] Chạy test trong Sandbox (Executor)...{Style.RESET_ALL}")
         coder_dir = self.dirs["5_coder"]
@@ -237,7 +371,7 @@ class AIPipelineOrchestrator:
             print(f"{Fore.YELLOW}Không có file spec nào để chạy. Bỏ qua Executor.{Style.RESET_ALL}")
             return None
         
-        report_file = runner.run_specs(
+        runner.run_specs(
             specs_dir = spec_files,
             report_file=Path(report_file),
             working_dir=self.workspace_dir,
@@ -273,9 +407,30 @@ class AIPipelineOrchestrator:
         # self.run_analyzer(detector_out)
         # self.run_planner(test_type="UI Testing")
         # self.run_filter()
-        # self.run_coder()
-        executor_out = self.run_executor()
-        # self.run_reporter(executor_out)
+        # self.run_coder("playwright.config.ts")
+        # --- CƠ CHẾ AUTO-HEALING (TỐI ĐA 3 LẦN) ---
+        MAX_RETRIES = 3
+        attempt = 0
+        is_valid = False
+        
+        while attempt < MAX_RETRIES and not is_valid:
+            if attempt > 0:
+                print(f"\n{Fore.YELLOW}--- Tiến hành phẫu thuật mã nguồn (Lần {attempt}/{MAX_RETRIES}) ---{Style.RESET_ALL}")
+                self.run_debugger() # Gọi bác sĩ AI để sửa code
+                
+            # Validator khám lại xem code đã hết bệnh chưa
+            is_valid = self.run_validator()
+            
+            if not is_valid:
+                attempt += 1
+
+        if is_valid:
+            print(f"\n{Fore.GREEN}[SUCCESS] Mã nguồn sạch 100%. Đang đẩy vào Sandbox (Docker)...{Style.RESET_ALL}")
+            executor_out = self.run_executor()
+            # self.run_reporter(executor_out)
+        else:
+            print(f"\n{Fore.RED}[FAILED] Pipeline thất bại. Debugger AI không thể fix hết lỗi sau {MAX_RETRIES} lần.{Style.RESET_ALL}")
+            
         print(f"\n{Fore.GREEN}=== HOÀN TẤT PIPELINE ==={Style.RESET_ALL}")
 
 if __name__ == "__main__":

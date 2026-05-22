@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import frontmatter
-import lmstudio as lms
+# import lmstudio as lms
+from openai import OpenAI
 from tqdm import tqdm
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -25,7 +26,7 @@ class CoderBatchOutput(BaseModel):
 
 class Coder:
     def __init__(self, setting: str = "backend/ai_engine/system_prompt/Coder.md") -> None:
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
 
@@ -35,7 +36,9 @@ class Coder:
         except Exception as exc:
             raise FileNotFoundError("File setting is not found. Please add file setting for CoderAgent.") from exc
 
-        self.model = lms.llm(settings.get("model"))
+        # self.model = lms.llm(settings.get("model"))
+        self.model = settings.get('model')
+        self.client = OpenAI(api_key=self.api_key)
         self.system_prompt = settings.content
 
     @staticmethod
@@ -111,16 +114,24 @@ class Coder:
         return items
 
     def _request_codegen_from_llm(self, prompt: str) -> str:
-        response = self.model.respond(
-            {
-                "messages": [
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt},
-                ]
-            },
-            response_format=CoderBatchOutput,
+        # response = self.model.respond(
+        #     {
+        #         "messages": [
+        #             {"role": "system", "content": self.system_prompt},
+        #             {"role": "user", "content": prompt},
+        #         ]
+        #     },
+        #     response_format=CoderBatchOutput,
+        # )
+        response = self.client.responses.parse(
+            model=self.model,
+            input=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            text_format=CoderBatchOutput
         )
-        return response.content
+        return response.output_parsed
 
     def _parse_or_repair_output(self, content: str, prompt: str) -> CoderBatchOutput:
         candidate = self._extract_json_object(content)

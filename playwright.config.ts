@@ -73,18 +73,11 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
-      // 1. Khởi động Backend
-      command: 'cd workspace/pc-store-ecommerce-website/server && npm run dev', 
-      url: 'http://localhost:8080', // Playwright sẽ chờ port này phản hồi
-      reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000, // Cho phép tối đa 2 phút để khởi động xong
-    },
-    {
       // 2. Khởi động Frontend
       command: 'cd workspace/pc-store-ecommerce-website/client && npm run dev',
-      url: 'http://localhost:3000', // Playwright sẽ chờ port này phản hồi
+      url: 'http://localhost:5173', // Playwright sẽ chờ port này phản hồi
       reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
+      timeout: 10 * 1000,
     }
   ],
 });

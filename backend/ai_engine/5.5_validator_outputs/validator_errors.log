@@ -1,0 +1,6 @@
+tests/CartPage.spec.ts(22,38): error TS7006: Parameter 'button' implicitly has an 'any' type.
+tests/CartPage.spec.ts(27,48): error TS7006: Parameter 'el' implicitly has an 'any' type.
+tests/CartPage.spec.ts(57,38): error TS7006: Parameter 'button' implicitly has an 'any' type.
+tests/CartPage.spec.ts(62,48): error TS7006: Parameter 'el' implicitly has an 'any' type.
+tests/SignUpPage.spec.ts(47,33): error TS2339: Property 'toHaveCountGreaterThan' does not exist on type 'MakeMatchers<void, Locator, {}>'.
+tests/SignUpPage.spec.ts(91,21): error TS1308: 'await' expressions are only allowed within async functions and at the top levels of modules.
