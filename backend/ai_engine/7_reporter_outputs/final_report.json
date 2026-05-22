@@ -1,16 +1,21 @@
 {
-    "health_score": "red",
+    "health_score": "low",
     "summary": {
         "passed": 0,
         "failed": 1,
-        "total": 1,
-        "duration": "0 seconds"
+        "total": 15,
+        "duration": "52,835 ms"
     },
     "issues": [
         {
-            "page": "N/A",
-            "error": "No test cases found or executed.",
-            "severity": "Critical"
+            "page": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage",
+            "error": "element(s) not found",
+            "severity": "High"
+        },
+        {
+            "page": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage",
+            "error": "expect(received).toBeTruthy() failed",
+            "severity": "Medium"
         }
     ]
 }

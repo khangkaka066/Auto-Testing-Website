@@ -6,7 +6,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
-
+import re
 
 class Runner:
     """Execute generated Playwright specs and create a user-facing summary report."""
@@ -24,7 +24,7 @@ class Runner:
         run_dir = Path.cwd()
         report_file.parent.mkdir(parents=True, exist_ok=True)
 
-        json_report_path = report_file.parent / "playwright-report.json"
+        json_report_path = (report_file.parent / "playwright-report.json").resolve()
 
         cmd: List[str] = [
             "npx",
@@ -50,9 +50,29 @@ class Runner:
             encoding="utf-8",
         )
 
-        raw_output = result.stdout.strip()
-        if raw_output:
-            json_report_path.write_text(raw_output + "\n", encoding="utf-8")
+        # raw_output = result.stdout.strip()
+        # if raw_output:
+        #     json_report_path.write_text(raw_output + "\n", encoding="utf-8")
+        raw_stdout = result.stdout or ""
+        stderr_log = result.stderr or ""
+
+        # --- BẮT JSON AN TOÀN TỪ STDOUT BẰNG REGEX ---
+        match = re.search(r'\{\n\s*"config":', raw_stdout)
+        json_start_idx = match.start() if match else -1
+        
+        raw_output = ""
+        if json_start_idx != -1:
+            json_data = raw_stdout[json_start_idx:].strip()
+            json_report_path.write_text(json_data, encoding="utf-8")
+            raw_output = json_data
+        else:
+            raw_output = raw_stdout.strip()
+            if raw_output.startswith("{"):
+                json_report_path.write_text(raw_output, encoding="utf-8")
+            else:
+                if raw_output:
+                    print("⚠️ CẢNH BÁO: Playwright trả về nội dung không phải JSON!")
+                    print(raw_stdout[:500] + "...(bị cắt dở)")
 
         summary = self._build_summary(
             return_code=result.returncode,
@@ -135,8 +155,8 @@ class Runner:
             walk_suite(s)
 
         total = len(test_cases)
-        passed = sum(1 for t in test_cases if t["status"] == "expected")
-        failed = sum(1 for t in test_cases if t["status"] in {"unexpected", "flaky"})
+        failed = sum(1 for t in test_cases if len(t.get("errors", [])) > 0)
+        passed = total - failed
         skipped = sum(1 for t in test_cases if t["status"] == "skipped")
         timed_out = sum(1 for t in test_cases if t["status"] == "timedout")
 

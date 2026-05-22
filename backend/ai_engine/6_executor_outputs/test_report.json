@@ -1,18 +1,121 @@
 {
   "runner_version": "1.0",
-  "generated_at": "2026-05-21T11:04:20.180265+00:00",
-  "specs_dir": "[PosixPath('tests/admin-layout.spec.ts'), PosixPath('tests/AdminCustomerManagementPage.spec.ts'), PosixPath('tests/App.spec.ts'), PosixPath('tests/buildPCPage.spec.ts'), PosixPath('tests/CartPage.spec.ts'), PosixPath('tests/ChatBubble.spec.ts'), PosixPath('tests/chat_bubble.spec.ts'), PosixPath('tests/CheckoutPage.spec.ts'), PosixPath('tests/CheckoutSuccessPage.spec.ts'), PosixPath('tests/example.spec.ts'), PosixPath('tests/Footer.spec.ts'), PosixPath('tests/footer.spec.ts'), PosixPath('tests/Navbar.spec.ts'), PosixPath('tests/ProductCard.spec.ts'), PosixPath('tests/ProductDetailsPage.spec.ts'), PosixPath('tests/ProductForm.spec.ts'), PosixPath('tests/ProductPage.spec.ts'), PosixPath('tests/ProductTable.spec.ts'), PosixPath('tests/ProfileForm.spec.ts'), PosixPath('tests/ProfilePage.spec.ts'), PosixPath('tests/ProfileSidebar.spec.ts'), PosixPath('tests/SignInPage.spec.ts'), PosixPath('tests/signUpPage.spec.ts')]",
+  "generated_at": "2026-05-22T10:29:22.123301+00:00",
+  "specs_dir": "[PosixPath('tests/AdminCustomerManagementPage.spec.ts')]",
   "status": "failed",
   "return_code": 1,
   "stats": {
-    "total": 0,
-    "passed": 0,
-    "failed": 0,
+    "total": 15,
+    "passed": 9,
+    "failed": 6,
     "skipped": 0,
     "timed_out": 0,
-    "duration_ms": 0
+    "duration_ms": 49359
   },
-  "test_cases": [],
+  "test_cases": [
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Functionality",
+      "status": "unknown",
+      "duration_ms": 1328,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Search Input Functionality",
+      "status": "unknown",
+      "duration_ms": 6232,
+      "errors": [
+        "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m"
+      ]
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with No Input",
+      "status": "unknown",
+      "duration_ms": 1753,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with Invalid Input",
+      "status": "unknown",
+      "duration_ms": 1770,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with Valid Input",
+      "status": "unknown",
+      "duration_ms": 3280,
+      "errors": [
+        "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m"
+      ]
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Functionality",
+      "status": "unknown",
+      "duration_ms": 2289,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Search Input Functionality",
+      "status": "unknown",
+      "duration_ms": 6732,
+      "errors": [
+        "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m"
+      ]
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with No Input",
+      "status": "unknown",
+      "duration_ms": 2531,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with Invalid Input",
+      "status": "unknown",
+      "duration_ms": 2685,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with Valid Input",
+      "status": "unknown",
+      "duration_ms": 4137,
+      "errors": [
+        "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m"
+      ]
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Functionality",
+      "status": "unknown",
+      "duration_ms": 1980,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Search Input Functionality",
+      "status": "unknown",
+      "duration_ms": 6779,
+      "errors": [
+        "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m"
+      ]
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with No Input",
+      "status": "unknown",
+      "duration_ms": 2376,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with Invalid Input",
+      "status": "unknown",
+      "duration_ms": 1995,
+      "errors": []
+    },
+    {
+      "title": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage > Verify Add Customer Button Behavior with Valid Input",
+      "status": "unknown",
+      "duration_ms": 3492,
+      "errors": [
+        "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m"
+      ]
+    }
+  ],
   "stderr": "",
-  "raw_report_path": "backend/ai_engine/6_executor_outputs/playwright-report.json"
+  "raw_report_path": "/media/hung/Work/Project/Auto-Testing-Website/backend/ai_engine/6_executor_outputs/playwright-report.json"
 }

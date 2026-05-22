@@ -10,14 +10,18 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {},
+    "metadata": {
+      "actualWorkers": 10
+    },
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "/media/hung/Work/Project/Auto-Testing-Website/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 10
+        },
         "id": "chromium",
         "name": "chromium",
         "testDir": "/media/hung/Work/Project/Auto-Testing-Website/tests",
@@ -31,7 +35,9 @@
         "outputDir": "/media/hung/Work/Project/Auto-Testing-Website/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 10
+        },
         "id": "firefox",
         "name": "firefox",
         "testDir": "/media/hung/Work/Project/Auto-Testing-Website/tests",
@@ -45,7 +51,9 @@
         "outputDir": "/media/hung/Work/Project/Auto-Testing-Website/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 10
+        },
         "id": "webkit",
         "name": "webkit",
         "testDir": "/media/hung/Work/Project/Auto-Testing-Website/tests",
@@ -74,45 +82,722 @@
     "workers": 10,
     "webServer": null
   },
-  "suites": [],
-  "errors": [
+  "suites": [
     {
-      "message": "SyntaxError: /media/hung/Work/Project/Auto-Testing-Website/tests/CheckoutPage.spec.ts: Unexpected token, expected \",\" (16:31)\n\n  14 |   priority: 'P0',\n  15 |   scope: 'Functional Testing',\n> 16 |   objective: 'Verify that the 'CheckoutPage' renders correctly with all interactive elements.',\n     |                                ^\n  17 |   preconditions: ['Ensure the application is running and accessible.'],\n  18 |   test_data: {\n  19 |     name: 'John Doe',",
-      "stack": "SyntaxError: /media/hung/Work/Project/Auto-Testing-Website/tests/CheckoutPage.spec.ts: Unexpected token, expected \",\" (16:31)\n\n  14 |   priority: 'P0',\n  15 |   scope: 'Functional Testing',\n> 16 |   objective: 'Verify that the 'CheckoutPage' renders correctly with all interactive elements.',\n     |                                ^\n  17 |   preconditions: ['Ensure the application is running and accessible.'],\n  18 |   test_data: {\n  19 |     name: 'John Doe',",
-      "location": {
-        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/CheckoutPage.spec.ts",
-        "line": 16,
-        "column": 31
-      },
-      "snippet": "\u001b[90m   at \u001b[39mCheckoutPage.spec.ts:16\n\n  14 |   priority: 'P0',\n  15 |   scope: 'Functional Testing',\n> 16 |   objective: 'Verify that the 'CheckoutPage' renders correctly with all interactive elements.',\n     |                               ^\n  17 |   preconditions: ['Ensure the application is running and accessible.'],\n  18 |   test_data: {\n  19 |     name: 'John Doe',"
-    },
-    {
-      "message": "TypeError: (intermediate value)(...) is not a function",
-      "stack": "TypeError: (intermediate value)(...) is not a function\n    at Object.<anonymous> (/media/hung/Work/Project/Auto-Testing-Website/tests/Footer.spec.ts:15:1)",
-      "location": {
-        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/Footer.spec.ts",
-        "column": 1,
-        "line": 15
-      },
-      "snippet": "\u001b[90m   at \u001b[39mFooter.spec.ts:15\n\n  13 | })()\n  14 |\n> 15 | // TC002 - Navigation Link Clickability\n     | ^\n  16 | (async () => {\n  17 |   test('Privacy Policy link should be clickable', async ({ page }) => {\n  18 |     await page.goto(baseUrl);"
-    },
-    {
-      "message": "SyntaxError: /media/hung/Work/Project/Auto-Testing-Website/tests/ProductTable.spec.ts: Unexpected token, expected \",\" (6:31)\n\n  4 |\n  5 | // TC001: Test Edit Product Button Functionality\n> 6 | test('TC001 - Verify that the 'Edit product' button is displayed and functional.', async ({ page }) => {\n    |                                ^\n  7 |   await page.goto(baseUrl);\n  8 |   const editButton = page.locator('.btn.btn-sm.btn-outline-primary');\n  9 |",
-      "stack": "SyntaxError: /media/hung/Work/Project/Auto-Testing-Website/tests/ProductTable.spec.ts: Unexpected token, expected \",\" (6:31)\n\n  4 |\n  5 | // TC001: Test Edit Product Button Functionality\n> 6 | test('TC001 - Verify that the 'Edit product' button is displayed and functional.', async ({ page }) => {\n    |                                ^\n  7 |   await page.goto(baseUrl);\n  8 |   const editButton = page.locator('.btn.btn-sm.btn-outline-primary');\n  9 |",
-      "location": {
-        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/ProductTable.spec.ts",
-        "line": 6,
-        "column": 31
-      },
-      "snippet": "\u001b[90m   at \u001b[39mProductTable.spec.ts:6\n\n  4 |\n  5 | // TC001: Test Edit Product Button Functionality\n> 6 | test('TC001 - Verify that the 'Edit product' button is displayed and functional.', async ({ page }) => {\n    |                               ^\n  7 |   await page.goto(baseUrl);\n  8 |   const editButton = page.locator('.btn.btn-sm.btn-outline-primary');\n  9 |"
+      "title": "AdminCustomerManagementPage.spec.ts",
+      "file": "AdminCustomerManagementPage.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "AdminCustomerManagementPage",
+          "file": "AdminCustomerManagementPage.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Verify Add Customer Button Functionality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1328,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.371Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-eb2b3d792d6fe636ee1e",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "Verify Search Input Functionality",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 6232,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:40:31",
+                        "location": {
+                          "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                          "column": 31,
+                          "line": 40
+                        },
+                        "snippet": "  38 |\n  39 |     // Assertions: input is visible and enabled\n> 40 |     await expect(searchInput).toBeVisible();\n     |                               ^\n  41 |     await expect(searchInput).toBeEnabled();\n  42 |\n  43 |     // Fill the input and verify value"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                            "column": 31,
+                            "line": 40
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n\n\n  38 |\n  39 |     // Assertions: input is visible and enabled\n> 40 |     await expect(searchInput).toBeVisible();\n     |                               ^\n  41 |     await expect(searchInput).toBeEnabled();\n  42 |\n  43 |     // Fill the input and verify value\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:40:31"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.410Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/hung/Work/Project/Auto-Testing-Website/test-results/AdminCustomerManagementPag-cbb7f--Search-Input-Functionality-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                        "column": 31,
+                        "line": 40
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-00a20d882f98a63f178a",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with No Input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 1753,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.439Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-b7876a66963d8ebcad23",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 57,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with Invalid Input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 1770,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.440Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-700cb49fd2c8857f7c35",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 85,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with Valid Input",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "failed",
+                      "duration": 3280,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:156:34",
+                        "location": {
+                          "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                          "column": 34,
+                          "line": 156
+                        },
+                        "snippet": "  154 |\n  155 |     // Final assertion: at least one expected action occurred\n> 156 |     await expect(actionObserved).toBeTruthy();\n      |                                  ^\n  157 |   });\n  158 | });\n  159 |"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                            "column": 34,
+                            "line": 156
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  154 |\n  155 |     // Final assertion: at least one expected action occurred\n> 156 |     await expect(actionObserved).toBeTruthy();\n      |                                  ^\n  157 |   });\n  158 | });\n  159 |\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:156:34"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.464Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/hung/Work/Project/Auto-Testing-Website/test-results/AdminCustomerManagementPag-0d5b4-n-Behavior-with-Valid-Input-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                        "column": 34,
+                        "line": 156
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-5adf4282865c6ddcf306",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 114,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Functionality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 5,
+                      "status": "passed",
+                      "duration": 2289,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.492Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-b45d553495ad64618402",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "Verify Search Input Functionality",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 6,
+                      "status": "failed",
+                      "duration": 6732,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:40:31",
+                        "location": {
+                          "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                          "column": 31,
+                          "line": 40
+                        },
+                        "snippet": "  38 |\n  39 |     // Assertions: input is visible and enabled\n> 40 |     await expect(searchInput).toBeVisible();\n     |                               ^\n  41 |     await expect(searchInput).toBeEnabled();\n  42 |\n  43 |     // Fill the input and verify value"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                            "column": 31,
+                            "line": 40
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n\n\n  38 |\n  39 |     // Assertions: input is visible and enabled\n> 40 |     await expect(searchInput).toBeVisible();\n     |                               ^\n  41 |     await expect(searchInput).toBeEnabled();\n  42 |\n  43 |     // Fill the input and verify value\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:40:31"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.406Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/hung/Work/Project/Auto-Testing-Website/test-results/AdminCustomerManagementPag-cbb7f--Search-Input-Functionality-firefox/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                        "column": 31,
+                        "line": 40
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-ff12cf9b2387e21b4a6b",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with No Input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 7,
+                      "status": "passed",
+                      "duration": 2531,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.420Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-c985b4a35f043315b41a",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 57,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with Invalid Input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 8,
+                      "status": "passed",
+                      "duration": 2685,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.451Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-20ca5c1edd30ed14b4db",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 85,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with Valid Input",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 9,
+                      "status": "failed",
+                      "duration": 4137,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:156:34",
+                        "location": {
+                          "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                          "column": 34,
+                          "line": 156
+                        },
+                        "snippet": "  154 |\n  155 |     // Final assertion: at least one expected action occurred\n> 156 |     await expect(actionObserved).toBeTruthy();\n      |                                  ^\n  157 |   });\n  158 | });\n  159 |"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                            "column": 34,
+                            "line": 156
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  154 |\n  155 |     // Final assertion: at least one expected action occurred\n> 156 |     await expect(actionObserved).toBeTruthy();\n      |                                  ^\n  157 |   });\n  158 | });\n  159 |\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:156:34"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:12.425Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/hung/Work/Project/Auto-Testing-Website/test-results/AdminCustomerManagementPag-0d5b4-n-Behavior-with-Valid-Input-firefox/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                        "column": 34,
+                        "line": 156
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-0e06f2d59c5f9964a0ac",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 114,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Functionality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 10,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1980,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:14.561Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-dd112dcf687f7f245b0c",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "Verify Search Input Functionality",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 11,
+                      "parallelIndex": 2,
+                      "status": "failed",
+                      "duration": 6779,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:40:31",
+                        "location": {
+                          "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                          "column": 31,
+                          "line": 40
+                        },
+                        "snippet": "  38 |\n  39 |     // Assertions: input is visible and enabled\n> 40 |     await expect(searchInput).toBeVisible();\n     |                               ^\n  41 |     await expect(searchInput).toBeEnabled();\n  42 |\n  43 |     // Fill the input and verify value"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                            "column": 31,
+                            "line": 40
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.form-control.mb-3')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-control.mb-3')\u001b[22m\n\n\n  38 |\n  39 |     // Assertions: input is visible and enabled\n> 40 |     await expect(searchInput).toBeVisible();\n     |                               ^\n  41 |     await expect(searchInput).toBeEnabled();\n  42 |\n  43 |     // Fill the input and verify value\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:40:31"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:15.106Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/hung/Work/Project/Auto-Testing-Website/test-results/AdminCustomerManagementPag-cbb7f--Search-Input-Functionality-webkit/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                        "column": 31,
+                        "line": 40
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-a89f7f6b5c9519348f81",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with No Input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 12,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2376,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:15.096Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-7649ea8506534e891417",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 57,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with Invalid Input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 14,
+                      "parallelIndex": 7,
+                      "status": "passed",
+                      "duration": 1995,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:16.961Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-816075f19fae07998995",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 85,
+              "column": 7
+            },
+            {
+              "title": "Verify Add Customer Button Behavior with Valid Input",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 13,
+                      "parallelIndex": 4,
+                      "status": "failed",
+                      "duration": 3492,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:156:34",
+                        "location": {
+                          "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                          "column": 34,
+                          "line": 156
+                        },
+                        "snippet": "  154 |\n  155 |     // Final assertion: at least one expected action occurred\n> 156 |     await expect(actionObserved).toBeTruthy();\n      |                                  ^\n  157 |   });\n  158 | });\n  159 |"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                            "column": 34,
+                            "line": 156
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n  154 |\n  155 |     // Final assertion: at least one expected action occurred\n> 156 |     await expect(actionObserved).toBeTruthy();\n      |                                  ^\n  157 |   });\n  158 | });\n  159 |\n    at /media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts:156:34"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-22T10:29:16.679Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/hung/Work/Project/Auto-Testing-Website/test-results/AdminCustomerManagementPag-0d5b4-n-Behavior-with-Valid-Input-webkit/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/media/hung/Work/Project/Auto-Testing-Website/tests/AdminCustomerManagementPage.spec.ts",
+                        "column": 34,
+                        "line": 156
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "5186f7cc77bf87cd431b-fb5f1894684c439dc186",
+              "file": "AdminCustomerManagementPage.spec.ts",
+              "line": 114,
+              "column": 7
+            }
+          ]
+        }
+      ]
     }
   ],
+  "errors": [],
   "stats": {
-    "startTime": "2026-05-21T11:04:19.438Z",
-    "duration": 726.6469999999999,
-    "expected": 0,
+    "startTime": "2026-05-22T10:29:11.140Z",
+    "duration": 10948.926,
+    "expected": 9,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 6,
     "flaky": 0
   }
 }

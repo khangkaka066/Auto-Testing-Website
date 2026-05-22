@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Literal
 
 import frontmatter
-import lmstudio as lms
+# import lmstudio as lms
+from openai import OpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
@@ -29,20 +31,16 @@ class ReporterOutput(BaseModel):
     issues: List[Issue] = Field(default_factory=list)
 
 class Reporter:
-    def __init__(self, setting: str = "backend/ai_engine/settings_agent/Reporter.md"):
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Reporter.md"):
+        self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
 
-        try:
-            with open(setting, "r", encoding="utf-8") as f:
-                settings = frontmatter.load(f)
-            self.model = lms.llm(settings.get("model"))
-            self.system_prompt = settings.content
-        except Exception:
-            # Fallback nếu không có file setting
-            self.model = lms.llm("qwen2.5-coder-7b-instruct")
-            self.system_prompt = "Bạn là một AI QC Manager. Hãy phân tích kết quả test từ Playwright và đưa ra báo cáo tổng quan."
+        with open(setting, "r", encoding="utf-8") as f:
+            settings = frontmatter.load(f)
+        self.model = settings.get("model")
+        self.client = OpenAI(api_key=self.api_key)
+        self.system_prompt = settings.content
 
     @staticmethod
     def _extract_json_object(raw_text: str) -> str:
@@ -54,23 +52,72 @@ class Reporter:
             return text[start:end + 1]
         return text
 
+    def optimize_report_for_llm(self, raw_report):
+        # 1. Regex để xóa toàn bộ mã màu ANSI (\x1b...)
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        
+        optimized_data = {
+            "summary": raw_report.get("stats", {}),
+            "failed_tests": []
+        }
+        
+        # Dùng set hoặc dict để loại bỏ các test bị lặp lại (do chạy nhiều trình duyệt/retry)
+        seen_tests = set()
+        
+        for tc in raw_report.get("test_cases", []):
+            title = tc.get("title", "").split(" > ")[-1] # Chỉ lấy tên test case cuối cùng cho ngắn gọn
+            errors = tc.get("errors", [])
+            
+            # 2. CHỈ đưa vào LLM những test case CÓ LỖI
+            if errors and title not in seen_tests:
+                seen_tests.add(title)
+                
+                # Làm sạch chuỗi lỗi
+                clean_error = ansi_escape.sub('', errors[0])
+                
+                # 3. Rút gọn Error (Chỉ lấy phần cốt lõi, bỏ phần Call log dài dòng)
+                error_lines = clean_error.split('\n')
+                core_error = []
+                for line in error_lines:
+                    if "Call log:" in line: # Bỏ qua toàn bộ stack trace call log phía dưới
+                        break
+                    if line.strip() and "Error: expect" not in line: # Bỏ dòng title error rối rắm
+                        core_error.append(line.strip())
+                
+                optimized_data["failed_tests"].append({
+                    "title": title,
+                    "error_summary": "\n".join(core_error)
+                })
+                
+        return optimized_data
+
     def generate_report(self, executor_json_path: str) -> ReporterOutput:
         with open(executor_json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        prompt = f"Phân tích kết quả chạy test sau và xuất báo cáo:\n{json.dumps(data, ensure_ascii=False, indent=2)}"
+        data = self.optimize_report_for_llm(data)
+
+        prompt = f"\n{json.dumps(data, ensure_ascii=False, indent=2)}"
         
-        response = self.model.respond(
-            {
-                "messages": [
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt},
-                ]
-            },
-            response_format=ReporterOutput,
+        # response = self.model.respond(
+        #     {
+        #         "messages": [
+        #             {"role": "system", "content": self.system_prompt},
+        #             {"role": "user", "content": prompt},
+        #         ]
+        #     },
+        #     response_format=ReporterOutput,
+        # )
+        response = self.client.responses.parse(
+            model=self.model,
+            input=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            text_format=ReporterOutput
         )
         
-        content = self._extract_json_object(response.content)
+        content = self._extract_json_object(response.output_parsed)
         try:
             return ReporterOutput.model_validate_json(content)
         except Exception as e:

@@ -162,7 +162,7 @@ class AIPipelineOrchestrator:
                 
         print(f"{Fore.CYAN}Kết quả: Giữ lại {valid_count} file, Bỏ qua {skipped_count} file.{Style.RESET_ALL}")
 
-    def run_coder(self, playwright_config_path):
+    def run_coder(self, playwright_config_path, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 4] Lập trình kịch bản Test (Coder)...{Style.RESET_ALL}")
 
         print(f"{Fore.CYAN}  -> Đang cài đặt Playwright & Trình duyệt (có thể mất vài phút)...{Style.RESET_ALL}")
@@ -221,7 +221,7 @@ class AIPipelineOrchestrator:
         manifest = coder.generate_from_filtered(
             filtered_input=Path(filter_dir),
             output_dir=Path(core_ai_dir),
-            base_url="http://localhost:5173" # Có thể lấy từ tham số động sau
+            base_url=base_url # Có thể lấy từ tham số động sau
         )
         
         # manifest['input'], manifest['output_dir'], manifest['generated']
@@ -348,7 +348,7 @@ class AIPipelineOrchestrator:
             else:
                 print(f"{Fore.RED}  -> Lỗi: Không tìm thấy file {full_target_path} trên hệ thống để sửa.{Style.RESET_ALL}")
     
-    def run_executor(self):
+    def run_executor(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 5] Chạy test trong Sandbox (Executor)...{Style.RESET_ALL}")
         coder_dir = self.dirs["5_coder"]
         executor_dir = self.dirs["6_executor"]
@@ -375,7 +375,7 @@ class AIPipelineOrchestrator:
             specs_dir = spec_files,
             report_file=Path(report_file),
             working_dir=self.workspace_dir,
-            base_url="http://localhost:3000"
+            base_url=base_url
         )
         
         print(f"{Fore.CYAN}  -> Đã chạy xong test. Lưu kết quả tại {report_file}{Style.RESET_ALL}")
@@ -401,13 +401,13 @@ class AIPipelineOrchestrator:
         print(f"{Fore.CYAN}  -> Điểm số (Health Score): {report_output.health_score}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}  -> Đã lưu báo cáo chung tại: {final_report_path}{Style.RESET_ALL}")
 
-    def execute_pipeline(self):
+    def execute_pipeline(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}=== BẮT ĐẦU CHẠY AI PIPELINE ==={Style.RESET_ALL}")
         # detector_out = self.run_detector()
         # self.run_analyzer(detector_out)
         # self.run_planner(test_type="UI Testing")
         # self.run_filter()
-        # self.run_coder("playwright.config.ts")
+        # self.run_coder("playwright.config.ts", base_url)
         # --- CƠ CHẾ AUTO-HEALING (TỐI ĐA 3 LẦN) ---
         MAX_RETRIES = 3
         attempt = 0
@@ -426,8 +426,8 @@ class AIPipelineOrchestrator:
 
         if is_valid:
             print(f"\n{Fore.GREEN}[SUCCESS] Mã nguồn sạch 100%. Đang đẩy vào Sandbox (Docker)...{Style.RESET_ALL}")
-            executor_out = self.run_executor()
-            # self.run_reporter(executor_out)
+            executor_out = self.run_executor(base_url)
+            self.run_reporter(executor_out)
         else:
             print(f"\n{Fore.RED}[FAILED] Pipeline thất bại. Debugger AI không thể fix hết lỗi sau {MAX_RETRIES} lần.{Style.RESET_ALL}")
             

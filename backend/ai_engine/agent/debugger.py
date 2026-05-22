@@ -1,6 +1,7 @@
 import os
 import frontmatter
-import lmstudio as lms
+# import lmstudio as lms
+from openai import OpenAI
 from colorama import Fore, Style
 from dotenv import load_dotenv
 
@@ -9,7 +10,7 @@ load_dotenv()
 class Debugger:
     def __init__(self, setting: str = "backend/ai_engine/system_prompt/Debugger.md") -> None:
         # Load API key tương tự coder.py (mặc dù LM Studio có thể chạy local)
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             print(f"{Fore.YELLOW}Warning: OPENROUTER_API_KEY is not found in .env{Style.RESET_ALL}")
 
@@ -20,7 +21,9 @@ class Debugger:
             raise FileNotFoundError("File setting is not found. Please add file setting for DebuggerAgent.") from exc
 
         # Khởi tạo model và system_prompt từ file markdown
-        self.model = lms.llm(settings.get("model"))
+        # self.model = lms.llm(settings.get("model"))
+        self.model = settings.get('model')
+        self.client = OpenAI(api_key=self.api_key)
         self.system_prompt = settings.content
 
     # Thêm tham số test_plan (mặc định là chuỗi rỗng)
@@ -46,21 +49,15 @@ class Debugger:
             {code_content}
             """
 
-            response = self.model.respond(
-                {
-                    "messages": [
-                        {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ]
-                }
+            response = self.client.responses.create(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
             )
-            
-            fixed_code = response.content
 
-            # Bóc tách code
-            fixed_code = fixed_code.replace("```typescript\n", "").replace("```ts\n", "").replace("```javascript\n", "").replace("```\n", "").strip()
-            if fixed_code.endswith("```"):
-                fixed_code = fixed_code[:-3].strip()
+            fixed_code = response.output_text
 
             # Ghi đè lại file .spec.ts cũ
             with open(file_path, 'w', encoding='utf-8') as f:
