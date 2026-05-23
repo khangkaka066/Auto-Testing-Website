@@ -1,272 +1,292 @@
-[
-    {
-        "file_name": "eslint.config.js",
-        "file_path": "client/eslint.config.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "vite.config.js",
-        "file_path": "client/vite.config.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "App.jsx",
-        "file_path": "client/src/App.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "main.jsx",
-        "file_path": "client/src/main.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "authApi.js",
-        "file_path": "client/src/api/authApi.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "chatApi.js",
-        "file_path": "client/src/api/chatApi.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "customerApi.js",
-        "file_path": "client/src/api/customerApi.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "orderApi.js",
-        "file_path": "client/src/api/orderApi.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "productApi.js",
-        "file_path": "client/src/api/productApi.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ChatBubble.jsx",
-        "file_path": "client/src/components/ChatBubble.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "Footer.jsx",
-        "file_path": "client/src/components/Footer.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "Navbar.jsx",
-        "file_path": "client/src/components/Navbar.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProductCard.jsx",
-        "file_path": "client/src/components/ProductCard.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProductForm.jsx",
-        "file_path": "client/src/components/ProductForm.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProductTable.jsx",
-        "file_path": "client/src/components/ProductTable.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProfileForm.jsx",
-        "file_path": "client/src/components/ProfileForm.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProfileSidebar.jsx",
-        "file_path": "client/src/components/ProfileSidebar.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProtectedRoute.jsx",
-        "file_path": "client/src/components/ProtectedRoute.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "AdminCustomerManagement.jsx",
-        "file_path": "client/src/pages/AdminCustomerManagement.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "AdminInventory.jsx",
-        "file_path": "client/src/pages/AdminInventory.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "Adminlayout.jsx",
-        "file_path": "client/src/pages/Adminlayout.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "AdminOrder.jsx",
-        "file_path": "client/src/pages/AdminOrder.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "AdminPage.jsx",
-        "file_path": "client/src/pages/AdminPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "AdminProductManagement.jsx",
-        "file_path": "client/src/pages/AdminProductManagement.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "BuildPCPage.jsx",
-        "file_path": "client/src/pages/BuildPCPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "CartPage.jsx",
-        "file_path": "client/src/pages/CartPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "CheckoutCancelPage.jsx",
-        "file_path": "client/src/pages/CheckoutCancelPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "CheckoutPage.jsx",
-        "file_path": "client/src/pages/CheckoutPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "CheckoutSuccessPage.jsx",
-        "file_path": "client/src/pages/CheckoutSuccessPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "HomePage.jsx",
-        "file_path": "client/src/pages/HomePage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProductDetailsPage.jsx",
-        "file_path": "client/src/pages/ProductDetailsPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProductPage.jsx",
-        "file_path": "client/src/pages/ProductPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "ProfilePage.jsx",
-        "file_path": "client/src/pages/ProfilePage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "SignInPage.jsx",
-        "file_path": "client/src/pages/SignInPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "SignUpPage.jsx",
-        "file_path": "client/src/pages/SignUpPage.jsx",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "server.js",
-        "file_path": "server/server.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "app.js",
-        "file_path": "server/src/app.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "db.js",
-        "file_path": "server/src/config/db.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "authController.js",
-        "file_path": "server/src/controllers/authController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "chatController.js",
-        "file_path": "server/src/controllers/chatController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "customerController.js",
-        "file_path": "server/src/controllers/customerController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "orderController.js",
-        "file_path": "server/src/controllers/orderController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "paymentController.js",
-        "file_path": "server/src/controllers/paymentController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "productController.js",
-        "file_path": "server/src/controllers/productController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "userController.js",
-        "file_path": "server/src/controllers/userController.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "authMiddleware.js",
-        "file_path": "server/src/middlewares/authMiddleware.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "authRoutes.js",
-        "file_path": "server/src/routes/authRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "chatRoutes.js",
-        "file_path": "server/src/routes/chatRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "customerRoutes.js",
-        "file_path": "server/src/routes/customerRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "orderRoutes.js",
-        "file_path": "server/src/routes/orderRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "paymentRoutes.js",
-        "file_path": "server/src/routes/paymentRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "productRoutes.js",
-        "file_path": "server/src/routes/productRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "userRoutes.js",
-        "file_path": "server/src/routes/userRoutes.js",
-        "language": "JavaScript"
-    },
-    {
-        "file_name": "userService.js",
-        "file_path": "server/src/services/userService.js",
-        "language": "JavaScript"
+{
+    "status": "success",
+    "source_files": [
+        {
+            "file_name": "eslint.config.js",
+            "file_path": "client/eslint.config.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "vite.config.js",
+            "file_path": "client/vite.config.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "App.jsx",
+            "file_path": "client/src/App.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "main.jsx",
+            "file_path": "client/src/main.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "authApi.js",
+            "file_path": "client/src/api/authApi.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "chatApi.js",
+            "file_path": "client/src/api/chatApi.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "customerApi.js",
+            "file_path": "client/src/api/customerApi.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "orderApi.js",
+            "file_path": "client/src/api/orderApi.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "productApi.js",
+            "file_path": "client/src/api/productApi.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ChatBubble.jsx",
+            "file_path": "client/src/components/ChatBubble.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "Footer.jsx",
+            "file_path": "client/src/components/Footer.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "Navbar.jsx",
+            "file_path": "client/src/components/Navbar.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProductCard.jsx",
+            "file_path": "client/src/components/ProductCard.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProductForm.jsx",
+            "file_path": "client/src/components/ProductForm.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProductTable.jsx",
+            "file_path": "client/src/components/ProductTable.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProfileForm.jsx",
+            "file_path": "client/src/components/ProfileForm.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProfileSidebar.jsx",
+            "file_path": "client/src/components/ProfileSidebar.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProtectedRoute.jsx",
+            "file_path": "client/src/components/ProtectedRoute.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "AdminCustomerManagement.jsx",
+            "file_path": "client/src/pages/AdminCustomerManagement.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "AdminInventory.jsx",
+            "file_path": "client/src/pages/AdminInventory.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "Adminlayout.jsx",
+            "file_path": "client/src/pages/Adminlayout.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "AdminOrder.jsx",
+            "file_path": "client/src/pages/AdminOrder.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "AdminPage.jsx",
+            "file_path": "client/src/pages/AdminPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "AdminProductManagement.jsx",
+            "file_path": "client/src/pages/AdminProductManagement.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "BuildPCPage.jsx",
+            "file_path": "client/src/pages/BuildPCPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "CartPage.jsx",
+            "file_path": "client/src/pages/CartPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "CheckoutCancelPage.jsx",
+            "file_path": "client/src/pages/CheckoutCancelPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "CheckoutPage.jsx",
+            "file_path": "client/src/pages/CheckoutPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "CheckoutSuccessPage.jsx",
+            "file_path": "client/src/pages/CheckoutSuccessPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "HomePage.jsx",
+            "file_path": "client/src/pages/HomePage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProductDetailsPage.jsx",
+            "file_path": "client/src/pages/ProductDetailsPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProductPage.jsx",
+            "file_path": "client/src/pages/ProductPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "ProfilePage.jsx",
+            "file_path": "client/src/pages/ProfilePage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "SignInPage.jsx",
+            "file_path": "client/src/pages/SignInPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "SignUpPage.jsx",
+            "file_path": "client/src/pages/SignUpPage.jsx",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "server.js",
+            "file_path": "server/server.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "app.js",
+            "file_path": "server/src/app.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "db.js",
+            "file_path": "server/src/config/db.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "authController.js",
+            "file_path": "server/src/controllers/authController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "chatController.js",
+            "file_path": "server/src/controllers/chatController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "customerController.js",
+            "file_path": "server/src/controllers/customerController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "orderController.js",
+            "file_path": "server/src/controllers/orderController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "paymentController.js",
+            "file_path": "server/src/controllers/paymentController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "productController.js",
+            "file_path": "server/src/controllers/productController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "userController.js",
+            "file_path": "server/src/controllers/userController.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "authMiddleware.js",
+            "file_path": "server/src/middlewares/authMiddleware.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "authRoutes.js",
+            "file_path": "server/src/routes/authRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "chatRoutes.js",
+            "file_path": "server/src/routes/chatRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "customerRoutes.js",
+            "file_path": "server/src/routes/customerRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "orderRoutes.js",
+            "file_path": "server/src/routes/orderRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "paymentRoutes.js",
+            "file_path": "server/src/routes/paymentRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "productRoutes.js",
+            "file_path": "server/src/routes/productRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "userRoutes.js",
+            "file_path": "server/src/routes/userRoutes.js",
+            "language": "JavaScript"
+        },
+        {
+            "file_name": "userService.js",
+            "file_path": "server/src/services/userService.js",
+            "language": "JavaScript"
+        }
+    ],
+    "infrastructure": {
+        "total_projects": 2,
+        "projects": [
+            {
+                "project_name": "frontend",
+                "root_path": "workspace/pc-store-ecommerce-website/client",
+                "framework": "React",
+                "has_playwright": false
+            },
+            {
+                "project_name": "backend",
+                "root_path": "workspace/pc-store-ecommerce-website/server",
+                "framework": "Vanilla JS",
+                "has_playwright": false
+            }
+        ]
     }
-]
+}

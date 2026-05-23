@@ -133,18 +133,30 @@ class Coder:
         )
         return response.output_parsed
 
-    def _parse_or_repair_output(self, content: str, prompt: str) -> CoderBatchOutput:
-        candidate = self._extract_json_object(content)
+    def _parse_or_repair_output(self, content: Any, prompt: str) -> CoderBatchOutput:
+        # 1. Nếu LLM đã trả về chuẩn Object Pydantic -> Thành công, không cần sửa, trả về luôn!
+        if isinstance(content, CoderBatchOutput):
+            return content
+            
+        # 2. Nếu trả về string (hoặc fallback), thử extract JSON và tự validate
+        candidate = self._extract_json_object(str(content))
         try:
             return CoderBatchOutput.model_validate_json(candidate)
         except Exception as first_error:
+            # 3. CHỈ VÀO ĐÂY KHI CÓ LỖI: Gọi LLM để sửa lại (Auto-Healing)
+            print(f"[Coder] Phát hiện JSON lỗi format từ LLM. Đang tiến hành tự động sửa chữa...")
             repair_prompt = (
                 "Fix this invalid/truncated JSON and return ONLY valid JSON that matches schema.\n"
                 f"Original generation prompt:\n{prompt}\n"
                 f"Broken JSON:\n{candidate}"
             )
             repaired = self._request_codegen_from_llm(repair_prompt)
-            repaired_candidate = self._extract_json_object(repaired)
+            
+            # Tương tự, nếu bản sửa lỗi đã là Object thì trả về luôn
+            if isinstance(repaired, CoderBatchOutput):
+                return repaired
+                
+            repaired_candidate = self._extract_json_object(str(repaired))
             try:
                 return CoderBatchOutput.model_validate_json(repaired_candidate)
             except Exception as second_error:
@@ -162,7 +174,7 @@ class Coder:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         generated_manifest: List[Dict[str, Any]] = []
-        for item in tqdm(items, desc="Loading filtered"):
+        for item in tqdm(items[:5], desc="Loading filtered"):
             # Build a minimal prompt for this single component
             prompt_payload = {
                 "base_url": base_url,

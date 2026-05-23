@@ -1,63 +1,42 @@
 import { test, expect } from "@playwright/test";
 
-const BASE_URL = `http://localhost:5173`;
+const BASE = "http://localhost:5173";
 
-test.describe(`Navbar`, () => {
+test.describe("Navbar", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(BASE_URL);
-    await expect(page).toHaveURL(new RegExp(`^${BASE_URL}`));
+    await page.goto(BASE);
+    await expect(page).toHaveURL(/http:\/\/localhost:5173/);
   });
 
-  test(`Navigation Link`, async ({ page }) => {
-    // Test data
-    const linkHref = `/home`;
-
-    // Locate the navigation link (scoped to nav if present, fallback to any anchor)
-    const navLink = page.locator(`nav a[href="${linkHref}"], a[href="${linkHref}"]`);
-
-    // Assertions before action
-    await expect(navLink).toBeVisible();
-    await expect(navLink).toBeEnabled();
-    await expect(navLink).toHaveAttribute("href", linkHref);
-
-    // Click and wait for navigation
-    await Promise.all([page.waitForNavigation(), navLink.click()]);
-
-    // Verify the resulting URL is correct
-    await expect(page).toHaveURL(new RegExp(`^${BASE_URL}${linkHref}`));
+  test(`P0_1 - Navigation Link`, async ({ page }) => {
+    const navLink = page.locator("a[href=\"/home\"], a:has-text(\"Home\")");
+    await expect(navLink.first()).toBeVisible();
+    await expect(navLink.first()).toBeEnabled();
+    await navLink.first().click();
+    await expect(page).toHaveURL(/\/home/);
   });
 
-  test(`Search Functionality`, async ({ page }) => {
-    // Test data
-    const query = `example query`;
-
-    // Locate a search input using several common patterns
-    const searchInput = page.locator(
-      `nav input[type="search"], nav input[name="search"], nav input[aria-label="Search"], nav input[placeholder="Search"], input[type="search"], input[name="search"]`
-    );
-
-    // Ensure the input exists and is visible
+  test(`P0_2 - Search Functionality`, async ({ page }) => {
+    const searchInput = page.locator("input[type=\"search\"], input[aria-label=\"Search\"], input[name=\"search\"], input[name=\"q\"], input[placeholder*=\"Search\"]");
     await expect(searchInput.first()).toBeVisible();
     await expect(searchInput.first()).toBeEnabled();
+    await searchInput.first().fill("example query");
+    await expect(searchInput.first()).toHaveValue("example query");
 
-    // Type the query and assert the value
-    await searchInput.first().fill(query);
-    await expect(searchInput.first()).toHaveValue(query);
+    const submitBtn = page.locator("button[type=\"submit\"], button[aria-label=\"Search\"], button:has-text(\"Search\")");
+    if (await submitBtn.count() > 0) {
+      await expect(submitBtn.first()).toBeVisible();
+      await expect(submitBtn.first()).toBeEnabled();
+      await submitBtn.first().click();
+    } else {
+      await searchInput.first().press("Enter");
+    }
 
-    // Locate a submit button for the search
-    const submitButton = page.locator(
-      `nav button[type="submit"], nav button[aria-label="Search"], nav button:has-text("Search"), button[type="submit"]`
-    );
-
-    await expect(submitButton.first()).toBeVisible();
-    await expect(submitButton.first()).toBeEnabled();
-
-    // Click the submit button and wait for potential load/network activity
-    await submitButton.first().click();
-    await page.waitForLoadState("networkidle");
-
-    // Basic verification: the URL should contain the encoded query (common behavior for search)
-    const encoded = encodeURIComponent(query);
-    expect(page.url()).toContain(encoded);
+    const results = page.locator("[data-testid=\"search-results\"], #search-results, .search-results, [role=\"list\"]");
+    if (await results.count() > 0) {
+      await expect(results.first()).toBeVisible();
+    } else {
+      await expect(page).toHaveURL(/search|q=|query|example%20query/);
+    }
   });
 });

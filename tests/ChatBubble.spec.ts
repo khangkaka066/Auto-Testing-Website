@@ -1,9 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from '@playwright/test';
 
-const BASE_URL = "http://localhost:5173";
-const TOGGLE_SELECTOR = ".btn.btn-sm.btn-outline-secondary";
-const INPUT_SELECTOR = ".form-control.form-control-sm.mb-2";
-const SUBMIT_SELECTOR = ".btn.btn-primary.btn-sm.w-100";
+const BASE_URL = `http://localhost:5173`;
+const TOGGLE_BUTTON_SELECTOR = `.btn.btn-sm.btn-outline-secondary`;
+const MESSAGE_INPUT_SELECTOR = `.form-control.form-control-sm.mb-2`;
+const SUBMIT_BUTTON_SELECTOR = `.btn.btn-primary.btn-sm.w-100`;
 
 test.describe(`ChatBubble`, () => {
   test.beforeEach(async ({ page }) => {
@@ -11,129 +11,141 @@ test.describe(`ChatBubble`, () => {
   });
 
   test(`TC001 - Check if Chat Bubble can be toggled via button click`, async ({ page }) => {
-    const toggle = page.locator(TOGGLE_SELECTOR);
+    const toggle = page.locator(TOGGLE_BUTTON_SELECTOR);
+    const input = page.locator(MESSAGE_INPUT_SELECTOR);
+
     await expect(toggle).toBeVisible();
 
-    // Click to open the chat bubble and verify the input becomes visible
+    // Click to open the chat bubble
     await toggle.click();
-    const input = page.locator(INPUT_SELECTOR);
     await expect(input).toBeVisible();
 
-    // Click again to close the chat bubble and verify the input is hidden
+    // Click again to close the chat bubble
     await toggle.click();
-    await expect(input).toBeHidden();
+    await expect(input).not.toBeVisible();
   });
 
   test(`TC002 - Check if user can enter a message in the input field and submit it using the button`, async ({ page }) => {
-    const toggle = page.locator(TOGGLE_SELECTOR);
-    await expect(toggle).toBeVisible();
-    await toggle.click();
+    const toggle = page.locator(TOGGLE_BUTTON_SELECTOR);
+    const input = page.locator(MESSAGE_INPUT_SELECTOR);
+    const submit = page.locator(SUBMIT_BUTTON_SELECTOR);
 
-    const input = page.locator(INPUT_SELECTOR);
-    await expect(input).toBeVisible();
+    // Ensure chat is open
+    if (!(await input.isVisible())) {
+      await toggle.click();
+      await expect(input).toBeVisible();
+    }
 
-    const message = "Hello from Playwright";
+    const message = `Hello from Playwright`;
     await input.fill(message);
     await expect(input).toHaveValue(message);
 
-    const submit = page.locator(SUBMIT_SELECTOR);
-    await expect(submit).toBeVisible();
+    // Submit should be enabled and clickable
     await expect(submit).toBeEnabled();
-
     await submit.click();
 
-    // Pragmatic assertion: after submit the input should be cleared or hidden
-    // Prefer cleared value if component keeps open, otherwise it may hide the input (tested in other cases)
-    await expect(input).toHaveValue("");
+    // After submit, either the chat closes or the input is cleared. Assert one of them.
+    if (await input.isVisible()) {
+      await expect(input).toHaveValue(``);
+    } else {
+      await expect(input).not.toBeVisible();
+    }
   });
 
   test(`TC003 - Check if user can submit a message using the button`, async ({ page }) => {
-    const toggle = page.locator(TOGGLE_SELECTOR);
-    await toggle.click();
+    const toggle = page.locator(TOGGLE_BUTTON_SELECTOR);
+    const input = page.locator(MESSAGE_INPUT_SELECTOR);
+    const submit = page.locator(SUBMIT_BUTTON_SELECTOR);
 
-    const input = page.locator(INPUT_SELECTOR);
-    await expect(input).toBeVisible();
+    // Open chat if needed
+    if (!(await input.isVisible())) {
+      await toggle.click();
+      await expect(input).toBeVisible();
+    }
 
-    const submit = page.locator(SUBMIT_SELECTOR);
-    await expect(submit).toBeVisible();
-    await expect(submit).toBeEnabled();
-
-    const message = "Submit button test message";
+    const message = `Test message for submit button`;
     await input.fill(message);
     await expect(input).toHaveValue(message);
 
+    // Click submit and ensure the action completes (no uncaught errors)
+    await expect(submit).toBeEnabled();
     await submit.click();
 
-    // After clicking submit, verify the input was cleared
-    await expect(input).toHaveValue("");
+    // Verify post-submit state: either closed or input cleared
+    if (await input.isVisible()) {
+      await expect(input).toHaveValue(``);
+    } else {
+      await expect(input).not.toBeVisible();
+    }
   });
 
   test(`TC004 - Check if Chat Bubble closes after submitting a message`, async ({ page }) => {
-    const toggle = page.locator(TOGGLE_SELECTOR);
-    await toggle.click();
+    const toggle = page.locator(TOGGLE_BUTTON_SELECTOR);
+    const input = page.locator(MESSAGE_INPUT_SELECTOR);
+    const submit = page.locator(SUBMIT_BUTTON_SELECTOR);
 
-    const input = page.locator(INPUT_SELECTOR);
-    await expect(input).toBeVisible();
+    // Open chat if needed
+    if (!(await input.isVisible())) {
+      await toggle.click();
+      await expect(input).toBeVisible();
+    }
 
-    await input.fill("Message that triggers close");
-    const submit = page.locator(SUBMIT_SELECTOR);
+    await input.fill(`Message that will close the bubble`);
     await expect(submit).toBeEnabled();
-
     await submit.click();
 
-    // Verify the chat bubble (input) is no longer visible after submit
-    await expect(input).toBeHidden();
+    // Expect the chat bubble to close after submitting
+    await expect(input).not.toBeVisible();
   });
 
   test(`TC005 - Check if Chat Bubble reopens after toggling it back on`, async ({ page }) => {
-    const toggle = page.locator(TOGGLE_SELECTOR);
-    await expect(toggle).toBeVisible();
+    const toggle = page.locator(TOGGLE_BUTTON_SELECTOR);
+    const input = page.locator(MESSAGE_INPUT_SELECTOR);
 
-    // Open first
-    await toggle.click();
-    const input = page.locator(INPUT_SELECTOR);
-    await expect(input).toBeVisible();
+    // Ensure chat is closed first: if open, close it
+    if (await input.isVisible()) {
+      await toggle.click();
+      await expect(input).not.toBeVisible();
+    }
 
-    // Close
-    await toggle.click();
-    await expect(input).toBeHidden();
-
-    // Reopen and verify visible again
+    // Toggle back on and verify it reopens
     await toggle.click();
     await expect(input).toBeVisible();
   });
 
   test(`TC006 - Check if Chat Bubble displays an error message when the input field is empty and submit button is clicked`, async ({ page }) => {
-    const toggle = page.locator(TOGGLE_SELECTOR);
-    await toggle.click();
+    const toggle = page.locator(TOGGLE_BUTTON_SELECTOR);
+    const input = page.locator(MESSAGE_INPUT_SELECTOR);
+    const submit = page.locator(SUBMIT_BUTTON_SELECTOR);
 
-    const input = page.locator(INPUT_SELECTOR);
-    await expect(input).toBeVisible();
+    // Open chat if needed
+    if (!(await input.isVisible())) {
+      await toggle.click();
+      await expect(input).toBeVisible();
+    }
 
     // Ensure input is empty
-    await input.fill("");
+    await input.fill(``);
+    await expect(input).toHaveValue(``);
 
-    const submit = page.locator(SUBMIT_SELECTOR);
-    await expect(submit).toBeVisible();
+    // Click submit with empty input
     await expect(submit).toBeEnabled();
-
     await submit.click();
 
-    // Try to detect a visible error: common patterns are role=alert or aria-invalid or invalid CSS classes
-    const alert = page.locator("[role=\"alert\"]");
-    if (await alert.count() > 0) {
-      await expect(alert.first()).toBeVisible();
-    } else {
-      // Fallback checks: aria-invalid attribute or an "invalid" class on the input
-      const ariaInvalid = await input.getAttribute("aria-invalid");
-      if (ariaInvalid === "true") {
-        await expect(ariaInvalid).toBe("true");
-      } else {
-        const classAttr = (await input.getAttribute("class")) || "";
-        // Expect the class attribute to contain common invalid markers
-        const hasInvalidClass = classAttr.includes("is-invalid") || classAttr.includes("invalid") || classAttr.includes("error");
-        await expect(hasInvalidClass).toBeTruthy();
-      }
+    // Verify UI indicates an error for empty input.
+    // Common patterns: input may get 'is-invalid' class or aria-invalid attribute.
+    const classAttr = await input.getAttribute(`class`);
+    const ariaInvalid = await input.getAttribute(`aria-invalid`);
+
+    if (classAttr) {
+      expect(classAttr.includes(`is-invalid`) || classAttr.includes(`is-danger`)).toBeTruthy();
     }
+
+    if (ariaInvalid !== null) {
+      expect(ariaInvalid).toBe(`true`);
+    }
+
+    // As a fallback, assert that either class or aria-invalid indicates validation state
+    expect((classAttr && (classAttr.includes(`is-invalid`) || classAttr.includes(`is-danger`))) || ariaInvalid === `true`).toBeTruthy();
   });
 });

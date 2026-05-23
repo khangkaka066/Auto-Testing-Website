@@ -1,7 +1,7 @@
 {
     "input": "backend/ai_engine/4_filter_outputs",
     "output_dir": "tests",
-    "generated_count": 20,
+    "generated_count": 5,
     "generated": [
         {
             "component_name": "App",
@@ -32,96 +32,6 @@
             "source_file": "client_src_components_ProductCard_plan.json",
             "spec_file": "ProductCard.spec.ts",
             "test_case_count": 5
-        },
-        {
-            "component_name": "ProductForm",
-            "source_file": "client_src_components_ProductForm_plan.json",
-            "spec_file": "ProductForm.spec.ts",
-            "test_case_count": 5
-        },
-        {
-            "component_name": "ProductTable",
-            "source_file": "client_src_components_ProductTable_plan.json",
-            "spec_file": "ProductTable.spec.ts",
-            "test_case_count": 4
-        },
-        {
-            "component_name": "ProfileForm",
-            "source_file": "client_src_components_ProfileForm_plan.json",
-            "spec_file": "ProfileForm.spec.ts",
-            "test_case_count": 5
-        },
-        {
-            "component_name": "ProfileSidebar",
-            "source_file": "client_src_components_ProfileSidebar_plan.json",
-            "spec_file": "ProfileSidebar.spec.ts",
-            "test_case_count": 4
-        },
-        {
-            "component_name": "AdminCustomerManagementPage",
-            "source_file": "client_src_pages_AdminCustomerManagement_plan.json",
-            "spec_file": "AdminCustomerManagementPage.spec.ts",
-            "test_case_count": 5
-        },
-        {
-            "component_name": "AdminLayout",
-            "source_file": "client_src_pages_Adminlayout_plan.json",
-            "spec_file": "AdminLayout.spec.ts",
-            "test_case_count": 3
-        },
-        {
-            "component_name": "BuildPCPage",
-            "source_file": "client_src_pages_BuildPCPage_plan.json",
-            "spec_file": "BuildPCPage.spec.ts",
-            "test_case_count": 6
-        },
-        {
-            "component_name": "CartPage",
-            "source_file": "client_src_pages_CartPage_plan.json",
-            "spec_file": "CartPage.spec.ts",
-            "test_case_count": 5
-        },
-        {
-            "component_name": "CheckoutPage",
-            "source_file": "client_src_pages_CheckoutPage_plan.json",
-            "spec_file": "CheckoutPage.spec.ts",
-            "test_case_count": 4
-        },
-        {
-            "component_name": "CheckoutSuccessPage",
-            "source_file": "client_src_pages_CheckoutSuccessPage_plan.json",
-            "spec_file": "CheckoutSuccessPage.spec.ts",
-            "test_case_count": 2
-        },
-        {
-            "component_name": "ProductDetailsPage",
-            "source_file": "client_src_pages_ProductDetailsPage_plan.json",
-            "spec_file": "ProductDetailsPage.spec.ts",
-            "test_case_count": 4
-        },
-        {
-            "component_name": "ProductPage",
-            "source_file": "client_src_pages_ProductPage_plan.json",
-            "spec_file": "ProductPage.spec.ts",
-            "test_case_count": 2
-        },
-        {
-            "component_name": "ProfilePage",
-            "source_file": "client_src_pages_ProfilePage_plan.json",
-            "spec_file": "ProfilePage.spec.ts",
-            "test_case_count": 5
-        },
-        {
-            "component_name": "SignInPage",
-            "source_file": "client_src_pages_SignInPage_plan.json",
-            "spec_file": "SignInPage.spec.ts",
-            "test_case_count": 10
-        },
-        {
-            "component_name": "SignUpPage",
-            "source_file": "client_src_pages_SignUpPage_plan.json",
-            "spec_file": "SignUpPage.spec.ts",
-            "test_case_count": 6
         }
     ]
 }

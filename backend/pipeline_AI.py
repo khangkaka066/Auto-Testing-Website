@@ -39,19 +39,21 @@ class AIPipelineOrchestrator:
     def run_detector(self):
         print(f"\n{Fore.GREEN}[STAGE 1] Quét dự án và phân loại file (Detector)...{Style.RESET_ALL}")
         detector = Detector()
-        scan_projects = detector.scan_project(self.workspace_dir)
+        detector_results = detector.run(self.workspace_dir)
         
         output_file = os.path.join(self.dirs["1_detector"], "detector_results.json")
-        try:
-            data_to_save = [item.model_dump() for item in scan_projects]
-        except AttributeError:
-            data_to_save = [item.dict() for item in scan_projects]
-            
+        
+        # Lưu thẳng Dict vào file JSON, không cần for...in model_dump nữa
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+            json.dump(detector_results, f, ensure_ascii=False, indent=4)
             
-        print(f"  -> Đã tìm thấy {len(scan_projects)} file code hợp lệ.")
+        # Lấy thông tin để in log đẹp mắt hơn
+        num_files = len(detector_results.get("source_files", []))
+        num_projects = detector_results.get("infrastructure", {}).get("total_projects", 0)
+            
+        print(f"  -> Đã tìm thấy {num_files} file code hợp lệ và cấu hình của {num_projects} project.")
         print(f"  -> Đã lưu kết quả tại: {output_file}")
+        
         return output_file
 
     def run_analyzer(self, detector_json_path: str):
@@ -61,7 +63,9 @@ class AIPipelineOrchestrator:
             return
             
         with open(detector_json_path, 'r', encoding='utf-8') as f:
-            files_to_analyze = json.load(f)
+            # Lấy list source_files từ trong dictionary tổng
+            detector_data = json.load(f)
+            files_to_analyze = detector_data.get("source_files", [])
             
         analyzer = Analyzer()
         
@@ -162,76 +166,70 @@ class AIPipelineOrchestrator:
                 
         print(f"{Fore.CYAN}Kết quả: Giữ lại {valid_count} file, Bỏ qua {skipped_count} file.{Style.RESET_ALL}")
 
-    def run_coder(self, playwright_config_path, base_url="http://localhost:5173"):
+    def run_coder(self, playwright_config_path="playwright.config.ts", base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 4] Lập trình kịch bản Test (Coder)...{Style.RESET_ALL}")
 
-        print(f"{Fore.CYAN}  -> Đang cài đặt Playwright & Trình duyệt (có thể mất vài phút)...{Style.RESET_ALL}")
-        
-        if Path('tests').is_dir():
-            import shutil
-            shutil.rmtree('tests')
-        
-        if os.path.exists(playwright_config_path):
-            print(f"{Fore.GREEN}  -> Playwright đã được cài đặt từ trước. Bỏ qua bước khởi tạo để tiết kiệm thời gian!{Style.RESET_ALL}")
-        else:
-            print(f"{Fore.CYAN}  -> Đang cài đặt Playwright & Trình duyệt (có thể mất vài phút)...{Style.RESET_ALL}")
-            try:
-                subprocess.run(
-                    [
-                        "npm", "create", "playwright@latest", "--yes", 
-                        "--", 
-                        "--quiet",
-                        "--lang=TypeScript",
-                        "--browser=chromium"
-                    ],
-                    check=True,
-                    cwd=self.workspace_dir, # Đảm bảo cài đúng vào thư mục workspace
-                    shell=(os.name == 'nt')
-                )
-                print(f"{Fore.GREEN}  -> Cài đặt Playwright thành công!{Style.RESET_ALL}")
-            except subprocess.CalledProcessError as e:
-                print(f"{Fore.RED}Lỗi trong quá trình khởi tạo Playwright: {e}{Style.RESET_ALL}")
-                return
-            except FileNotFoundError:
-                print(f"{Fore.RED}Không tìm thấy lệnh 'npm'. Vui lòng cài đặt Node.js trước!{Style.RESET_ALL}")
-                return
-
-        filter_dir = self.dirs["4_filter"]
-        coder_dir = self.dirs["5_coder"]
+        # 1. Cấu hình đường dẫn thư mục test (Nằm bên ngoài workspace)
         core_ai_dir = "tests"
         os.makedirs(core_ai_dir, exist_ok=True)
-        
-        # === THÊM ĐOẠN DỌN DẸP RÁC (CLEAN SLATE) VÀO ĐÂY ===
-        print(f"{Fore.CYAN}  -> Đang dọn dẹp các file test cũ từ lần chạy trước...{Style.RESET_ALL}")
+
+        # 2. Kiểm tra file config duy nhất ở thư mục ngoài
+        if os.path.exists(playwright_config_path):
+            print(f"{Fore.GREEN}  -> Đã tìm thấy {playwright_config_path} bên ngoài workspace. Bỏ qua tiêm cấu hình.{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.CYAN}  -> Không tìm thấy {playwright_config_path}. Đang tự động khôi phục từ template...{Style.RESET_ALL}")
+            
+            import shutil
+            template_path = "backend/utils/playwright_template.config.ts"
+            
+            # Kiểm tra xem có file template để copy không
+            if os.path.exists(template_path):
+                try:
+                    shutil.copy(template_path, playwright_config_path)
+                    print(f"{Fore.GREEN}  -> Đã tái tạo file {playwright_config_path} thành công!{Style.RESET_ALL}")
+                except Exception as e:
+                    print(f"{Fore.RED}  -> Lỗi khi copy template: {e}{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}  -> Cảnh báo: Không tìm thấy file mẫu tại {template_path}. Hệ thống có thể bị lỗi ở Stage Executor!{Style.RESET_ALL}")
+
+            # Cài đặt Playwright ngầm (Headless)
+            print(f"{Fore.CYAN}  -> Đang tiến hành cài đặt thư viện Playwright (Zero-interactive)...{Style.RESET_ALL}")
+            try:
+                subprocess.run(["npm", "install", "-D", "@playwright/test"], check=True, shell=(os.name == 'nt'))
+                subprocess.run(["npx", "playwright", "install", "chromium", "--with-deps"], check=True, shell=(os.name == 'nt'))
+            except subprocess.CalledProcessError as e:
+                print(f"{Fore.RED}Lỗi cài đặt Playwright: {e}{Style.RESET_ALL}")
+                return
+
+        # 3. Clean Slate: Dọn dẹp test cũ từ lần chạy trước ở bên ngoài
+        print(f"{Fore.CYAN}  -> Đang dọn dẹp các file test cũ trong thư mục {core_ai_dir}...{Style.RESET_ALL}")
         import glob
-        old_specs = glob.glob(os.path.join(core_ai_dir, "*.spec.ts"))
-        for f in old_specs:
+        for f in glob.glob(os.path.join(core_ai_dir, "*.spec.ts")):
             try:
                 os.remove(f)
-            except Exception as e:
+            except Exception:
                 pass
-        # ===================================================
 
+        # 4. Sinh code kiểm thử
+        filter_dir = self.dirs["4_filter"]
+        coder_dir = self.dirs["5_coder"]
+        
         if not os.path.exists(filter_dir) or not os.listdir(filter_dir):
             print(f"{Fore.YELLOW}Không có file hợp lệ nào trong {filter_dir} để tạo code.{Style.RESET_ALL}")
             return
             
         coder = Coder()
-        # Chạy coder sinh file ra thư mục core-AI
         manifest = coder.generate_from_filtered(
             filtered_input=Path(filter_dir),
             output_dir=Path(core_ai_dir),
-            base_url=base_url # Có thể lấy từ tham số động sau
+            base_url=base_url
         )
         
-        # manifest['input'], manifest['output_dir'], manifest['generated']
-        # Lưu log chạy của Coder vào 5_coder_outputs
         coder_log_path = os.path.join(coder_dir, "coder_manifest.json")
         with open(coder_log_path, 'w', encoding='utf-8') as f:
             json.dump(manifest, f, ensure_ascii=False, indent=4)
             
-        print(f"{Fore.CYAN}  -> Đã tạo {manifest['generated_count']} file spec tại {core_ai_dir}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}  -> Đã lưu manifest log tại {coder_log_path}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}  -> Đã tạo {manifest.get('generated_count', 0)} file spec tại {core_ai_dir} (Ngoài Workspace){Style.RESET_ALL}")
 
     def run_validator(self):
         print(f"\n{Fore.GREEN}[STAGE 4.5] Kiểm tra mã nguồn (Validator)...{Style.RESET_ALL}")
@@ -350,35 +348,46 @@ class AIPipelineOrchestrator:
     
     def run_executor(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 5] Chạy test trong Sandbox (Executor)...{Style.RESET_ALL}")
-        coder_dir = self.dirs["5_coder"]
-        executor_dir = self.dirs["6_executor"]
-        # core_ai_dir = os.path.join(self.base_output_dir, "core-AI")
+        
+        # 1. Lấy đường dẫn đích (workspace chứa code) từ kết quả của Detector
+        detector_json_path = os.path.join(self.dirs["1_detector"], "detector_results.json")
+        target_root_path = self.workspace_dir
+        if os.path.exists(detector_json_path):
+            with open(detector_json_path, 'r', encoding='utf-8') as f:
+                detector_data = json.load(f)
+                projects = detector_data.get("infrastructure", {}).get("projects", [])
+                if projects:
+                    target_root_path = projects[0].get("root_path", self.workspace_dir)
+
+        # 2. Thư mục chứa code test ở bên ngoài
         core_ai_dir = "tests"
-        
-        coder_manifest_path = os.path.join(coder_dir, "coder_manifest.json")
-        if not os.path.exists(coder_manifest_path):
-            print(f"{Fore.YELLOW}Không tìm thấy code test nào. Bỏ qua Executor.{Style.RESET_ALL}")
-            return None
-            
-        runner = Runner()
-        report_file = os.path.join(executor_dir, "test_report.json")
-        
-        # Verify that there are generated spec files before running tests
         specs_path = Path(core_ai_dir)
         spec_files = list(specs_path.glob("*.spec.ts"))
 
         if not spec_files:
-            print(f"{Fore.YELLOW}Không có file spec nào để chạy. Bỏ qua Executor.{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}Không có file spec nào tại {core_ai_dir}. Bỏ qua Executor.{Style.RESET_ALL}")
             return None
         
+        executor_dir = self.dirs["6_executor"]
+        report_file = os.path.join(executor_dir, "test_report.json")
+        
+        # 3. TRUYỀN BIẾN MÔI TRƯỜNG: Bơm vị trí Workspace vào cho Playwright Config
+        os.environ["TARGET_WORKSPACE_DIR"] = target_root_path
+        os.environ["BASE_URL"] = base_url
+
+        runner = Runner()
+        print(f"{Fore.CYAN}  -> Đang kích hoạt Playwright từ hệ thống ngoài, nhắm vào: {target_root_path}{Style.RESET_ALL}")
+        
+        # Chạy Playwright với working_dir là thư mục HIỆN TẠI (ngoài workspace)
+        # Runner sẽ tự lấy file playwright.config.ts bên ngoài
         runner.run_specs(
-            specs_dir = spec_files,
+            specs_dir=spec_files,
             report_file=Path(report_file),
-            working_dir=self.workspace_dir,
+            working_dir=".",  # <--- Bắt buộc là "." để chạy ở ngoài cùng
             base_url=base_url
         )
         
-        print(f"{Fore.CYAN}  -> Đã chạy xong test. Lưu kết quả tại {report_file}{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}  -> Test hoàn tất! Kết quả được lưu tại {report_file}{Style.RESET_ALL}")
         return report_file
 
     def run_reporter(self, executor_json_path: str):
