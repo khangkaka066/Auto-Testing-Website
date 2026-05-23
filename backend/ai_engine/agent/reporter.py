@@ -117,11 +117,9 @@ class Reporter:
             text_format=ReporterOutput
         )
         
-        content = self._extract_json_object(response.output_parsed)
         try:
-            return ReporterOutput.model_validate_json(content)
+            return response.output_parsed
         except Exception as e:
-            # Retry hoặc fallback
             print(f"Lỗi parse JSON Reporter: {e}")
             return ReporterOutput(
                 health_score="0/100",

@@ -160,13 +160,19 @@ class Runner:
         skipped = sum(1 for t in test_cases if t["status"] == "skipped")
         timed_out = sum(1 for t in test_cases if t["status"] == "timedout")
 
+        playwright_stats = data.get("stats", {})
+        actual_duration = playwright_stats.get("duration")
+
+        if actual_duration is None:
+            actual_duration = sum(t["duration_ms"] for t in test_cases)
+
         summary["stats"] = {
             "total": total,
             "passed": passed,
             "failed": failed,
             "skipped": skipped,
             "timed_out": timed_out,
-            "duration_ms": sum(t["duration_ms"] for t in test_cases),
+            "duration_ms": int(actual_duration),
         }
         summary["test_cases"] = test_cases
         summary["raw_report_path"] = str(json_report_path)

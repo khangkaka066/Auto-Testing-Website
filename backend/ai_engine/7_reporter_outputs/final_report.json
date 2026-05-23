@@ -1,21 +1,336 @@
 {
-    "health_score": "low",
+    "health_score": "25/100",
     "summary": {
-        "passed": 0,
-        "failed": 1,
-        "total": 15,
-        "duration": "52,835 ms"
+        "passed": 66,
+        "failed": 195,
+        "total": 261,
+        "duration": "30 minutes 17.8 seconds"
     },
     "issues": [
         {
-            "page": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage",
-            "error": "element(s) not found",
+            "page": "Verify Search Input Functionality",
+            "error": "The search input field is missing from the page, preventing users from searching.",
             "severity": "High"
         },
         {
-            "page": "AdminCustomerManagementPage.spec.ts > AdminCustomerManagementPage",
-            "error": "expect(received).toBeTruthy() failed",
+            "page": "Verify Add Customer Button Behavior with Valid Input",
+            "error": "The 'Add Customer' button does not work when valid information is provided, blocking customer creation.",
+            "severity": "High"
+        },
+        {
+            "page": "P0_1 - Logout Button Test",
+            "error": "The logout button is not visible on the screen, so users cannot sign out from their account.",
+            "severity": "High"
+        },
+        {
+            "page": "P1_2 - AdminLayout Responsive Test",
+            "error": "The admin layout is not responding as expected on different screen sizes, risking poor experience for users on some devices.",
             "severity": "Medium"
+        },
+        {
+            "page": "P2_3 - AdminLayout Navigation Test",
+            "error": "Navigation did not reach the admin area; users are being sent to the sign-in page instead of the admin dashboard.",
+            "severity": "High"
+        },
+        {
+            "page": "1001 - Verify Sign Up Button",
+            "error": "The 'Sign up' button is missing from the interface, preventing new users from registering.",
+            "severity": "High"
+        },
+        {
+            "page": "1002 - Verify Log In Button",
+            "error": "The 'Log in' button is not visible, preventing users from accessing their accounts.",
+            "severity": "High"
+        },
+        {
+            "page": "TC_001 - Validate Modal Open Functionality",
+            "error": "The button to open the product category selector is not available, so users cannot choose products by category.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC_005 - Validate Disabled Clear All Button",
+            "error": "The 'Clear all selected items' control is not present, so users cannot quickly clear selections.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC_006 - Validate Disabled Add All Button",
+            "error": "The option to add all selected items to the cart is missing, forcing users to add items one by one.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC_UI_01 - CartPage Navigation Link Test",
+            "error": "The navigation link or button into the cart page is not visible, preventing users from reaching their cart.",
+            "severity": "High"
+        },
+        {
+            "page": "TC_UI_02 - CartPage Decrease Product Quantity Test",
+            "error": "The control to decrease a product's quantity in the cart is not available, preventing users from adjusting quantities.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC_UI_03 - CartPage Increase Product Quantity Test",
+            "error": "The control to increase a product's quantity in the cart is not available, preventing users from adjusting quantities.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC_UI_04 - CartPage Remove Product Test",
+            "error": "The cart shows zero items when some were expected, so users cannot remove items as intended.",
+            "severity": "High"
+        },
+        {
+            "page": "TC_UI_05 - CartPage Checkout Button Test",
+            "error": "The checkout button is not visible on the cart page, blocking users from starting payment.",
+            "severity": "Critical"
+        },
+        {
+            "page": "TC001 - Chat Bubble Toggle",
+            "error": "The chat toggle button is not visible, so users cannot open or close the chat assistant.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC002 - Chat Input and Submit",
+            "error": "The chat input or submit control is not available, so users cannot send messages through chat.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC003 - Chat Submit Timeout",
+            "error": "The chat response did not arrive in time, causing the messaging action to fail for users.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC004 - Chat Bubble Close After Submit",
+            "error": "The chat bubble did not close after sending a message, creating a confusing experience for users.",
+            "severity": "Low"
+        },
+        {
+            "page": "TC005 - Chat Bubble Reopen",
+            "error": "The chat does not reopen when toggled back on, preventing users from resuming conversations.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC006 - Chat Empty Input Validation",
+            "error": "Submitting an empty chat message does not behave as expected, leaving users without clear feedback.",
+            "severity": "Low"
+        },
+        {
+            "page": "UI-01 - Render UI Components",
+            "error": "The checkout heading is not present, indicating the checkout page did not render correctly for users.",
+            "severity": "High"
+        },
+        {
+            "page": "UI-02 - Check for Errors During Rendering",
+            "error": "Rendering produced visible errors on the page, which may confuse or disrupt users.",
+            "severity": "Medium"
+        },
+        {
+            "page": "UI-03 - Check Responsiveness",
+            "error": "The checkout section did not appear correctly on the screen, risking a poor experience on some devices.",
+            "severity": "Medium"
+        },
+        {
+            "page": "UI-04 - Test Payment Initiation",
+            "error": "Payment did not start or show confirmation, so users cannot complete purchases.",
+            "severity": "Critical"
+        },
+        {
+            "page": "P0_01 - Validate Product List Link",
+            "error": "The 'Product List' link is not visible, preventing users from browsing products.",
+            "severity": "High"
+        },
+        {
+            "page": "P0_02 - Validate Home Page Link",
+            "error": "The 'Home' link is missing, making navigation back to the main page difficult for users.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Navigation Link",
+            "error": "The navigation link to the home section is not present, reducing ease of navigation.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Search Functionality",
+            "error": "The site-wide search input is not available, preventing users from finding products or pages quickly.",
+            "severity": "High"
+        },
+        {
+            "page": "Check Button Visibility",
+            "error": "A primary action button expected on the page is not visible, blocking a key user action.",
+            "severity": "High"
+        },
+        {
+            "page": "Test Button Click Event",
+            "error": "The main action button is not available for clicking, so users cannot perform the intended action.",
+            "severity": "High"
+        },
+        {
+            "page": "Check Button Interactivity",
+            "error": "An expected interactive button is not present or usable, limiting user interactions.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Check Button Visibility with Dependencies",
+            "error": "A conditional action button is not shown when it should be, preventing expected workflows.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Check Button Visibility without Conditional Rendering",
+            "error": "A button expected without conditions is missing, interrupting a straightforward user path.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Test Go back button presence and clickability",
+            "error": "The 'Go back' button is not visible or clickable, preventing users from returning to the previous page.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Test Add to cart or contact for purchase button presence and clickability",
+            "error": "The action to add the product to cart or contact for purchase is not available, blocking conversions.",
+            "severity": "High"
+        },
+        {
+            "page": "Test navigation after clicking Go back button",
+            "error": "Navigation did not proceed after attempting to go back, so users cannot return to the expected page.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Test navigation after clicking Add to cart or contact for purchase button",
+            "error": "Clicking the add-to-cart or contact button does not move the user forward in the purchase flow.",
+            "severity": "High"
+        },
+        {
+            "page": "Display All Input Fields",
+            "error": "A required input field (name) is missing from the form, preventing users from entering their information.",
+            "severity": "High"
+        },
+        {
+            "page": "Submit Valid Data",
+            "error": "Form submission did not complete in time, so users were unable to submit valid data.",
+            "severity": "High"
+        },
+        {
+            "page": "Cancel Form Submission",
+            "error": "The form cancellation did not complete in time, so users could not reliably cancel actions.",
+            "severity": "Low"
+        },
+        {
+            "page": "Input Fields with Empty Values",
+            "error": "Testing for empty input handling did not finish in time, leaving uncertainty about validation behavior.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Input Fields with Invalid Data",
+            "error": "Form validation with invalid data did not complete in time, so invalid entries may not be handled properly.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Select Sort Criteria",
+            "error": "The sorting control is not visible, so users cannot change product order.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Add Product to Cart",
+            "error": "The add-to-cart controls are ambiguous or duplicated, making it unclear which button adds the product.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC002 - Test Delete Product Button Functionality",
+            "error": "The delete product button is not available, preventing users from removing products.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC003 - Test Edit Product Modal Opening",
+            "error": "The edit product modal did not appear after attempting to edit, so users cannot update product details.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC004 - Test Delete Product Confirmation Modal Opening",
+            "error": "The confirmation dialog for deleting a product did not appear, increasing the risk of accidental deletions.",
+            "severity": "Medium"
+        },
+        {
+            "page": "ProfileForm - Full Name Input Field",
+            "error": "The 'Full Name' input is not visible in the profile form, preventing users from updating their name.",
+            "severity": "High"
+        },
+        {
+            "page": "ProfileForm - Email Input Field",
+            "error": "The 'Email' input is missing from the profile form, preventing users from updating contact information.",
+            "severity": "High"
+        },
+        {
+            "page": "ProfileForm - Phone Input Field",
+            "error": "The 'Phone' input is not present, blocking users from updating their phone number.",
+            "severity": "Medium"
+        },
+        {
+            "page": "ProfileForm - Bio Textarea Field",
+            "error": "The bio field is missing from the profile form, preventing users from adding personal details.",
+            "severity": "Low"
+        },
+        {
+            "page": "ProfileForm - Save Changes Button",
+            "error": "The save changes control is not available, so users cannot save profile updates.",
+            "severity": "High"
+        },
+        {
+            "page": "P001 - ProfileSidebar Presence and Visibility",
+            "error": "The profile sidebar is not visible, making profile navigation difficult for users.",
+            "severity": "Medium"
+        },
+        {
+            "page": "P002 - ProfileForm Presence and Visibility",
+            "error": "The profile form section is missing, preventing users from editing their profile.",
+            "severity": "High"
+        },
+        {
+            "page": "P003 - Initial State of ProfileForm",
+            "error": "Profile form initial fields are not present, so the form cannot be filled out.",
+            "severity": "High"
+        },
+        {
+            "page": "P004 - Validation Messages for Required Fields",
+            "error": "Validation messages for required profile fields are not appearing as expected, possibly allowing incomplete submissions.",
+            "severity": "Medium"
+        },
+        {
+            "page": "P005 - Submit Valid Data in ProfileForm",
+            "error": "Submitting profile data did not complete in time, so updates could not be confirmed.",
+            "severity": "Medium"
+        },
+        {
+            "page": "Logout Button Visibility and Functionality Test",
+            "error": "Profile-related controls including logout are not visible, preventing users from signing out.",
+            "severity": "High"
+        },
+        {
+            "page": "Logout Button Confirmation Modal Test",
+            "error": "The confirmation modal for logout is not appearing, which can cause confusion when signing out.",
+            "severity": "Low"
+        },
+        {
+            "page": "Successful Logout Test",
+            "error": "The application did not complete the logout flow as expected, so users may remain signed in.",
+            "severity": "High"
+        },
+        {
+            "page": "Cancel Logout Test",
+            "error": "Canceling logout did not behave as expected, so users cannot reliably stay signed in when requested.",
+            "severity": "Low"
+        },
+        {
+            "page": "Submit Button Functionality",
+            "error": "Form submit actions did not complete in time, preventing users from submitting their data.",
+            "severity": "High"
+        },
+        {
+            "page": "Submit Button Disabled State",
+            "error": "A submit control is active when it should be disabled, which may allow invalid or premature submissions.",
+            "severity": "Medium"
+        },
+        {
+            "page": "TC006 - UI Testing: Verify Successful Submission",
+            "error": "A submission that should succeed did not complete, blocking the intended user flow.",
+            "severity": "High"
         }
     ]
 }
