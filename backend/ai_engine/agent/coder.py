@@ -174,7 +174,7 @@ class Coder:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         generated_manifest: List[Dict[str, Any]] = []
-        for item in tqdm(items[:5], desc="Loading filtered"):
+        for item in tqdm(items, desc="Loading filtered"):
             # Build a minimal prompt for this single component
             prompt_payload = {
                 "base_url": base_url,

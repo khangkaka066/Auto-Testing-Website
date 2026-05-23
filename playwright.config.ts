@@ -28,8 +28,8 @@ export default defineConfig({
   // THÔNG MINH: Tự động khởi động App của khách hàng dựa trên biến môi trường
   webServer: [
     {
-      command: 'npm install && npm run dev', 
-      cwd: process.env.TARGET_WORKSPACE_DIR || './', // Tự động trỏ vào workspace của khách!
+      command: "npm install && npm run dev", 
+      cwd: process.env.FRONTEND_DIR || './', // Tự động trỏ vào workspace của khách!
       url: process.env.BASE_URL || 'http://localhost:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

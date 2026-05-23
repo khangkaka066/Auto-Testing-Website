@@ -1,7 +1,9 @@
 import os
 import json
 from pathlib import Path
+import shutil
 from colorama import Fore, Style
+import time
 from tqdm import tqdm
 import subprocess
 
@@ -13,19 +15,36 @@ from ai_engine.agent.runner import Runner
 from ai_engine.agent.reporter import Reporter
 
 class AIPipelineOrchestrator:
-    def __init__(self, workspace_dir: str, base_output_dir: str = "backend/ai_engine"):
-        self.workspace_dir = workspace_dir
-        self.base_output_dir = base_output_dir
+    def __init__(self, user_id: str, project_id: str, source_code_path: str):
+        self.user_id = user_id
+        self.project_id = project_id
+        self.source_code_path = source_code_path
         
-        # Định nghĩa các thư mục output
+        # Tạo ID cho lần chạy này dựa trên Timestamp
+        self.run_id = f"run_{int(time.time())}"
+        
+        # Tạo đường dẫn Workspace Động (Dynamic Path)
+        base_workspace = os.getenv("WORKSPACE_BASE_PATH", "workspaces")
+        # self.run_workspace_dir = os.path.join(base_workspace, user_id, project_id, "runs", self.run_id)
+        
+        # Đường dẫn gốc (mã nguồn của user)
+        self.workspace_dir = source_code_path 
+        
+        # Thư mục lưu test script sinh ra
+        # self.core_ai_dir = os.path.join(self.run_workspace_dir, "tests")
+        self.core_ai_dir = os.path.join("workspaces/demo_user/demo_proj/runs/run_1779527374", "tests")
+        self.run_workspace_dir = "workspaces/demo_user/demo_proj/runs/run_1779527374"
+
+        # [MỚI] Thư mục output NẰM BÊN TRONG Run Workspace (Cô lập hoàn toàn)
         self.dirs = {
-            "1_detector": os.path.join(self.base_output_dir, "1_detector_outputs"),
-            "2_analyzer": os.path.join(self.base_output_dir, "2_analyzer_outputs"),
-            "3_planner": os.path.join(self.base_output_dir, "3_planner_outputs"),
-            "4_filter": os.path.join(self.base_output_dir, "4_filter_outputs"),
-            "5_coder": os.path.join(self.base_output_dir, "5_coder_outputs"),
-            "6_executor": os.path.join(self.base_output_dir, "6_executor_outputs"),
-            "7_reporter": os.path.join(self.base_output_dir, "7_reporter_outputs"),
+            "1_detector": os.path.join(self.run_workspace_dir, "1_detector"),
+            "2_analyzer": os.path.join(self.run_workspace_dir, "2_analyzer"),
+            "3_planner": os.path.join(self.run_workspace_dir, "3_planner"),
+            "4_filter": os.path.join(self.run_workspace_dir, "4_filter"),
+            "5_coder": os.path.join(self.run_workspace_dir, "5_coder"),
+            "5.5_validator": os.path.join(self.run_workspace_dir, "5.5_validator"),
+            "6_executor": os.path.join(self.run_workspace_dir, "6_executor"),
+            "7_reporter": os.path.join(self.run_workspace_dir, "7_reporter"),
         }
         
         self.setup_directories()
@@ -169,160 +188,74 @@ class AIPipelineOrchestrator:
     def run_coder(self, playwright_config_path="playwright.config.ts", base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 4] Lập trình kịch bản Test (Coder)...{Style.RESET_ALL}")
 
-        # 1. Cấu hình đường dẫn thư mục test (Nằm bên ngoài workspace)
-        core_ai_dir = "tests"
-        os.makedirs(core_ai_dir, exist_ok=True)
-
-        # 2. Kiểm tra file config duy nhất ở thư mục ngoài
-        if os.path.exists(playwright_config_path):
-            print(f"{Fore.GREEN}  -> Đã tìm thấy {playwright_config_path} bên ngoài workspace. Bỏ qua tiêm cấu hình.{Style.RESET_ALL}")
-        else:
-            print(f"{Fore.CYAN}  -> Không tìm thấy {playwright_config_path}. Đang tự động khôi phục từ template...{Style.RESET_ALL}")
-            
-            import shutil
-            template_path = "backend/utils/playwright_template.config.ts"
-            
-            # Kiểm tra xem có file template để copy không
-            if os.path.exists(template_path):
-                try:
-                    shutil.copy(template_path, playwright_config_path)
-                    print(f"{Fore.GREEN}  -> Đã tái tạo file {playwright_config_path} thành công!{Style.RESET_ALL}")
-                except Exception as e:
-                    print(f"{Fore.RED}  -> Lỗi khi copy template: {e}{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.YELLOW}  -> Cảnh báo: Không tìm thấy file mẫu tại {template_path}. Hệ thống có thể bị lỗi ở Stage Executor!{Style.RESET_ALL}")
-
-            # Cài đặt Playwright ngầm (Headless)
-            print(f"{Fore.CYAN}  -> Đang tiến hành cài đặt thư viện Playwright (Zero-interactive)...{Style.RESET_ALL}")
-            try:
-                subprocess.run(["npm", "install", "-D", "@playwright/test"], check=True, shell=(os.name == 'nt'))
-                subprocess.run(["npx", "playwright", "install", "chromium", "--with-deps"], check=True, shell=(os.name == 'nt'))
-            except subprocess.CalledProcessError as e:
-                print(f"{Fore.RED}Lỗi cài đặt Playwright: {e}{Style.RESET_ALL}")
-                return
-
-        # 3. Clean Slate: Dọn dẹp test cũ từ lần chạy trước ở bên ngoài
-        print(f"{Fore.CYAN}  -> Đang dọn dẹp các file test cũ trong thư mục {core_ai_dir}...{Style.RESET_ALL}")
-        import glob
-        for f in glob.glob(os.path.join(core_ai_dir, "*.spec.ts")):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
-
-        # 4. Sinh code kiểm thử
-        filter_dir = self.dirs["4_filter"]
-        coder_dir = self.dirs["5_coder"]
-        
-        if not os.path.exists(filter_dir) or not os.listdir(filter_dir):
-            print(f"{Fore.YELLOW}Không có file hợp lệ nào trong {filter_dir} để tạo code.{Style.RESET_ALL}")
-            return
+        dynamic_pw_config = os.path.join(self.run_workspace_dir, "playwright.config.ts")
+        template_path = "backend/utils/playwright_template.config.ts"
+        if os.path.exists(template_path):
+            shutil.copy(template_path, dynamic_pw_config)
             
         coder = Coder()
         manifest = coder.generate_from_filtered(
-            filtered_input=Path(filter_dir),
-            output_dir=Path(core_ai_dir),
+            filtered_input=Path(self.dirs["4_filter"]),
+            output_dir=Path(self.core_ai_dir), # [MỚI] Push test file vào Workspace động
             base_url=base_url
         )
         
-        coder_log_path = os.path.join(coder_dir, "coder_manifest.json")
-        with open(coder_log_path, 'w', encoding='utf-8') as f:
+        with open(os.path.join(self.dirs["5_coder"], "coder_manifest.json"), 'w', encoding='utf-8') as f:
             json.dump(manifest, f, ensure_ascii=False, indent=4)
-            
-        print(f"{Fore.CYAN}  -> Đã tạo {manifest.get('generated_count', 0)} file spec tại {core_ai_dir} (Ngoài Workspace){Style.RESET_ALL}")
 
     def run_validator(self):
         print(f"\n{Fore.GREEN}[STAGE 4.5] Kiểm tra mã nguồn (Validator)...{Style.RESET_ALL}")
-        core_ai_dir = "tests"
-        
-        if not os.path.exists(core_ai_dir):
-            print(f"{Fore.YELLOW}Không có thư mục {core_ai_dir} để kiểm tra. Bỏ qua Validator.{Style.RESET_ALL}")
+        import glob
+        # [MỚI] Lấy file spec từ thư mục Workspace động
+        spec_files = glob.glob(os.path.join(self.core_ai_dir, "*.spec.ts"))
+        if not spec_files: return False
+
+        check_cmd = [
+            "npx", "-y", "-p", "typescript", "tsc", 
+            "--noEmit", "--target", "es2022", "--moduleResolution", "bundler",
+            "--skipLibCheck", "--lib", "es2022,dom"
+        ] + spec_files
+
+        # [MỚI] Chạy tsc command TẠI THƯ MỤC LÀM VIỆC ĐỘNG để path không bị rối
+        result = subprocess.run(check_cmd, capture_output=True, text=True, shell=(os.name == 'nt'), cwd='.')
+        if result.returncode == 0:
+            return True
+        else:
+            error_log_path = os.path.join(self.dirs["5.5_validator"], "validator_errors.log")
+            with open(error_log_path, 'w', encoding='utf-8') as f: f.write(result.stdout)
             return False
 
-        print(f"{Fore.CYAN}  -> Đang chạy kiểm tra cú pháp tĩnh (Static Syntax Check)...{Style.RESET_ALL}")
-        try:
-            # 1. Lấy danh sách toàn bộ các file code test đã sinh ra
-            import glob
-            spec_files = glob.glob(f"tests/*.spec.ts")
-            
-            if not spec_files:
-                print(f"{Fore.YELLOW}  -> Không có file *.spec.ts nào để kiểm tra.{Style.RESET_ALL}")
-                return False
-
-            # 2. Gọi npx -p typescript tsc để đảm bảo có tsc, và kiểm tra trực tiếp các file
-            # Bổ sung cờ --target es2022 và --lib dom,es2022 để tsc hiểu được cú pháp hiện đại và DOM của Playwright
-            check_cmd = [
-                "npx", "-y", "-p", "typescript", "tsc", 
-                "--noEmit", 
-                "--target", "es2022", 
-                "--moduleResolution", "bundler",
-                "--skipLibCheck",       # Bỏ qua kiểm tra lỗi type bên trong thư viện (node_modules)
-                "--lib", "es2022,dom"   # Cung cấp các kiểu dữ liệu chuẩn của trình duyệt và ES mới nhất
-            ] + spec_files
-
-            result = subprocess.run(
-                check_cmd,
-                capture_output=True,
-                text=True,
-                shell=(os.name == 'nt')
-            )
-            
-            if result.returncode == 0:
-                print(f"{Fore.GREEN}  -> [PASS] Code hoàn toàn hợp lệ! Sẵn sàng cho Executor.{Style.RESET_ALL}")
-                return True
-            else:
-                print(f"{Fore.RED}  -> [FAIL] Validator phát hiện lỗi cú pháp tĩnh:{Style.RESET_ALL}")
-                print(f"{Fore.YELLOW}{result.stdout}{Style.RESET_ALL}")
-                
-                # Lưu log lỗi Validator
-                validator_dir = os.path.join(self.base_output_dir, "5.5_validator_outputs")
-                os.makedirs(validator_dir, exist_ok=True)
-                error_log_path = os.path.join(validator_dir, "validator_errors.log")
-                with open(error_log_path, 'w', encoding='utf-8') as f:
-                    f.write(result.stdout)
-                    
-                print(f"{Fore.CYAN}  -> Đã lưu log lỗi tại {error_log_path}. Cần gọi Debugger để sửa!{Style.RESET_ALL}")
-                return False
-                
-        except Exception as e:
-            print(f"{Fore.RED}Lỗi hệ thống khi chạy Validator: {e}{Style.RESET_ALL}")
-            return False
     def run_debugger(self):
         print(f"\n{Fore.MAGENTA}[STAGE 4.7] Tự động sửa lỗi mã nguồn (Smart Bug Fixer)...{Style.RESET_ALL}")
-        
-        validator_log_path = os.path.join(self.base_output_dir, "5.5_validator_outputs", "validator_errors.log")
-        if not os.path.exists(validator_log_path):
-            print(f"{Fore.YELLOW}  -> Không tìm thấy file log từ Validator. Bỏ qua Debugger.{Style.RESET_ALL}")
-            return
+        log_path = os.path.join(self.dirs["5.5_validator"], "validator_errors.log")
+        if not os.path.exists(log_path): return
             
-        with open(validator_log_path, 'r', encoding='utf-8') as f:
-            error_logs = f.read()
+        with open(log_path, 'r', encoding='utf-8') as f: error_logs = f.read()
 
         import re
-        failed_files = list(set(re.findall(r"(tests/[\w\-]+\.spec\.ts)", error_logs)))
-        if not failed_files:
-            return
+        # Tsc trả về log có chứa tên file. Regex này cần đảm bảo bắt được path.
+        failed_files = list(set(re.findall(r"([a-zA-Z0-9_\-\/\\]+\.spec\.ts)", error_logs)))
 
-        print(f"{Fore.CYAN}  -> Bác sĩ AI (Debugger) phát hiện {len(failed_files)} file cần cấp cứu.{Style.RESET_ALL}")
-        
-        # --- [MỚI] ĐỌC MANIFEST ĐỂ TÌM TEST PLAN TƯƠNG ỨNG ---
         coder_manifest_path = os.path.join(self.dirs["5_coder"], "coder_manifest.json")
         spec_to_plan_map = {}
         if os.path.exists(coder_manifest_path):
             with open(coder_manifest_path, 'r', encoding='utf-8') as mf:
                 manifest_data = json.load(mf)
+
                 # Map từ "tests/CheckoutPage.spec.ts" -> "client_src_pages_CheckoutPage_plan.json"
                 for item in manifest_data.get("generated", []):
-                    spec_to_plan_map[f"tests/{item['spec_file']}"] = item['source_file']
-        # -----------------------------------------------------
+                    spec_to_plan_map[f"{self.run_workspace_dir}/tests/{item['spec_file']}"] = item['source_file']
 
+        # print(spec_to_plan_map)
+        
         from ai_engine.agent.debugger import Debugger
         ai_debugger = Debugger()
         
-        for file_path in tqdm(failed_files, desc="Fixing failed files"):
-            file_specific_log = "\n".join([line for line in error_logs.split('\n') if file_path in line])
+        for file_path in tqdm(failed_files, desc="Fixing file"):
+            # File path lấy từ log tsc có thể là relative path từ run_workspace_dir
+            # full_target_path = os.path.join(self.run_workspace_dir, file_path) if not os.path.isabs(file_path) else file_path
             full_target_path = file_path
-            
+
             # --- [MỚI] LẤY NỘI DUNG TEST PLAN ---
             test_plan_content = "Không tìm thấy Test Plan."
             plan_filename = spec_to_plan_map.get(file_path)
@@ -336,58 +269,37 @@ class AIPipelineOrchestrator:
                             test_plan_content = json.dumps(test_cases_array, ensure_ascii=False, indent=2)
                         else:
                             test_plan_content = "File Plan không chứa test_cases nào."
-            # ------------------------------------
 
             if os.path.exists(full_target_path):
-                # Truyền thêm test_plan_content vào hàm fix_code
-                success = ai_debugger.fix_code(full_target_path, file_specific_log, test_plan_content)
-                if not success:
-                    print(f"{Fore.RED}  -> [THẤT BẠI] Debugger không thể sửa file {file_path}.{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.RED}  -> Lỗi: Không tìm thấy file {full_target_path} trên hệ thống để sửa.{Style.RESET_ALL}")
+                file_specific_log = "\n".join([line for line in error_logs.split('\n') if file_path in line])
+                ai_debugger.fix_code(full_target_path, file_specific_log, test_plan_content)
     
     def run_executor(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 5] Chạy test trong Sandbox (Executor)...{Style.RESET_ALL}")
         
-        # 1. Lấy đường dẫn đích (workspace chứa code) từ kết quả của Detector
-        detector_json_path = os.path.join(self.dirs["1_detector"], "detector_results.json")
-        target_root_path = self.workspace_dir
-        if os.path.exists(detector_json_path):
-            with open(detector_json_path, 'r', encoding='utf-8') as f:
-                detector_data = json.load(f)
-                projects = detector_data.get("infrastructure", {}).get("projects", [])
-                if projects:
-                    target_root_path = projects[0].get("root_path", self.workspace_dir)
+        report_file = os.path.join(self.dirs["6_executor"], "test_report.json")
+        spec_files = list(Path(self.core_ai_dir).glob("*.spec.ts"))
+        if not spec_files: return None
+        detector_file_path = os.path.join(self.dirs["1_detector"], "detector_results.json")
+        with open(detector_file_path, 'r', encoding='utf-8') as detect_file:
+            infrastructures = json.load(detect_file)['infrastructure']
 
-        # 2. Thư mục chứa code test ở bên ngoài
-        core_ai_dir = "tests"
-        specs_path = Path(core_ai_dir)
-        spec_files = list(specs_path.glob("*.spec.ts"))
-
-        if not spec_files:
-            print(f"{Fore.YELLOW}Không có file spec nào tại {core_ai_dir}. Bỏ qua Executor.{Style.RESET_ALL}")
-            return None
+        for project in infrastructures["projects"]:
+            if project["project_name"].lower() == "frontend" or project["root_path"].split('/')[-1].lower() in ['client', 'frontend']:
+                os.environ["FRONTEND_DIR"] = os.path.abspath(project.get("root_path"))
+                break
         
-        executor_dir = self.dirs["6_executor"]
-        report_file = os.path.join(executor_dir, "test_report.json")
-        
-        # 3. TRUYỀN BIẾN MÔI TRƯỜNG: Bơm vị trí Workspace vào cho Playwright Config
-        os.environ["TARGET_WORKSPACE_DIR"] = target_root_path
+        os.environ["TARGET_WORKSPACE_DIR"] = self.workspace_dir
         os.environ["BASE_URL"] = base_url
 
         runner = Runner()
-        print(f"{Fore.CYAN}  -> Đang kích hoạt Playwright từ hệ thống ngoài, nhắm vào: {target_root_path}{Style.RESET_ALL}")
-        
-        # Chạy Playwright với working_dir là thư mục HIỆN TẠI (ngoài workspace)
-        # Runner sẽ tự lấy file playwright.config.ts bên ngoài
+        # [MỚI] Chạy Playwright với working_dir trỏ thẳng vào Workspace Động
         runner.run_specs(
             specs_dir=spec_files,
             report_file=Path(report_file),
-            working_dir=".",  # <--- Bắt buộc là "." để chạy ở ngoài cùng
+            working_dir=self.run_workspace_dir, 
             base_url=base_url
         )
-        
-        print(f"{Fore.GREEN}  -> Test hoàn tất! Kết quả được lưu tại {report_file}{Style.RESET_ALL}")
         return report_file
 
     def run_reporter(self, executor_json_path: str):
@@ -412,11 +324,11 @@ class AIPipelineOrchestrator:
 
     def execute_pipeline(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}=== BẮT ĐẦU CHẠY AI PIPELINE ==={Style.RESET_ALL}")
-        # detector_out = self.run_detector()
-        # self.run_analyzer(detector_out)
-        # self.run_planner(test_type="UI Testing")
-        # self.run_filter()
-        # self.run_coder("playwright.config.ts", base_url)
+        detector_out = self.run_detector()
+        self.run_analyzer(detector_out)
+        self.run_planner(test_type="UI Testing")
+        self.run_filter()
+        self.run_coder("playwright.config.ts", base_url)
         # --- CƠ CHẾ AUTO-HEALING (TỐI ĐA 3 LẦN) ---
         MAX_RETRIES = 3
         attempt = 0
@@ -444,5 +356,5 @@ class AIPipelineOrchestrator:
 
 if __name__ == "__main__":
     src_code_path = "workspace/pc-store-ecommerce-website"
-    pipeline = AIPipelineOrchestrator(workspace_dir=src_code_path)
+    pipeline = AIPipelineOrchestrator(user_id="demo_user", project_id="demo_proj", source_code_path=src_code_path)
     pipeline.execute_pipeline()
