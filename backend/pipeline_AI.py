@@ -25,15 +25,13 @@ class AIPipelineOrchestrator:
         
         # Tạo đường dẫn Workspace Động (Dynamic Path)
         base_workspace = os.getenv("WORKSPACE_BASE_PATH", "workspaces")
-        # self.run_workspace_dir = os.path.join(base_workspace, user_id, project_id, "runs", self.run_id)
+        self.run_workspace_dir = os.path.join(base_workspace, user_id, project_id, "runs", self.run_id)
         
         # Đường dẫn gốc (mã nguồn của user)
         self.workspace_dir = source_code_path 
         
         # Thư mục lưu test script sinh ra
-        # self.core_ai_dir = os.path.join(self.run_workspace_dir, "tests")
-        self.core_ai_dir = os.path.join("workspaces/demo_user/demo_proj/runs/run_1779527374", "tests")
-        self.run_workspace_dir = "workspaces/demo_user/demo_proj/runs/run_1779527374"
+        self.core_ai_dir = os.path.join(self.run_workspace_dir, "tests")
 
         # [MỚI] Thư mục output NẰM BÊN TRONG Run Workspace (Cô lập hoàn toàn)
         self.dirs = {
