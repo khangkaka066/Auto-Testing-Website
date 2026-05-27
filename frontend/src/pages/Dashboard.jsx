@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
-import { Play, Settings, User, History, Shield, Activity, FileText } from "lucide-react"; // 🛠️ Đã thêm FileText
+import { Play, Settings,History, Shield, Activity, FileText } from "lucide-react"; // 🛠️ Đã thêm FileText
 import { toast } from "sonner";
 import axios from "axios"; // 🛠️ Đã thêm axios
 
