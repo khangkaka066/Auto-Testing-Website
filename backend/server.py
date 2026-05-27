@@ -90,6 +90,10 @@ class ProfileUpdateInput(BaseModel):
 class TestHistoryCreate(BaseModel):
     filename: str
 
+# 🛠️ THÊM MỚI: Model nhận token mã hóa của Google từ Frontend gửi lên
+class GoogleLoginInput(BaseModel):
+    token: str
+
 
 # ====================================================================
 # ROUTES (Định nghĩa các API Endpoints)
@@ -180,6 +184,63 @@ async def login(input_data: UserLoginInput):
             }
         }
     )
+
+# --- 🛠️ THÊM MỚI: API ĐĂNG NHẬP / TỰ ĐỘNG ĐĂNG KÝ BẰNG GOOGLE ---
+@api_router.post("/auth/google")
+async def google_login(input_data: GoogleLoginInput):
+    try:
+        import base64
+        import json
+        
+        token_parts = input_data.token.split('.')
+        if len(token_parts) < 2:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Mã xác thực Google không hợp lệ"})
+            
+        # Giải mã phần nội dung (Payload) nằm ở phân đoạn thứ 2 của chuỗi JWT
+        payload_b64 = token_parts[1]
+        payload_b64 += '=' * (4 - len(payload_b64) % 4)  # Bù khoảng trống để giải mã chuẩn
+        payload_json = base64.b64decode(payload_b64).decode('utf-8')
+        id_info = json.loads(payload_json)
+        
+        email = id_info.get('email')
+        name = id_info.get('name', email.split('@')[0] if email else "Google User")
+        
+        if not email:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Không thể lấy thông tin Email từ tài khoản Google này"})
+        
+        # Kiểm tra xem tài khoản Email này đã từng tồn tại trong bộ nhớ RAM chưa
+        if email not in USERS_DB:
+            user_id = str(uuid.uuid4())
+            USERS_DB[email] = {
+                "id": user_id,
+                "name": name,
+                "email": email,
+                "password_hash": generate_password_hash(str(uuid.uuid4()))  # Tạo mật khẩu ngẫu nhiên bảo mật
+            }
+        else:
+            user_id = USERS_DB[email]["id"]
+            
+        # Tạo phiên đăng nhập (Mock Token) đồng nhất với cơ chế hệ thống
+        mock_token = f"testpilot_mock_token_{user_id}_{str(uuid.uuid4())[:8]}"
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": "Đăng nhập thông qua tài khoản Google thành công!",
+                "token": mock_token,
+                "user": {
+                    "id": user_id,
+                    "name": USERS_DB[email]["name"],
+                    "email": email
+                }
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Lỗi hệ thống khi xác thực Google: {str(e)}"}
+        )
 
 # --- API LẤY THÔNG TIN CÁ NHÂN HIỆN TẠI ---
 @api_router.get("/auth/profile")
@@ -277,7 +338,7 @@ async def create_test_history(input_data: TestHistoryCreate, authorization: Opti
         "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
     
-    TEST_HISTORY_DB.insert(0, record) # Chèn vào đầu danh sách để lịch sử mới nhất hiện lên trên cùng
+    TEST_HISTORY_DB.insert(0, record)  # Chèn vào đầu danh sách để lịch sử mới nhất hiện lên trên cùng
     
     return {"success": True, "data": record}
 
