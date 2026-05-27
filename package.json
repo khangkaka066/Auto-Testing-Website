@@ -3,7 +3,8 @@
     "@babel/core": "^7.29.0",
     "@babel/generator": "^7.29.1",
     "@babel/parser": "^7.29.3",
-    "@babel/traverse": "^7.29.0"
+    "@babel/traverse": "^7.29.0",
+    "@trysound/sax": "^0.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
