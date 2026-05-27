@@ -19,8 +19,8 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # Sử dụng .get() có giá trị mặc định để tránh crash server khi chưa cấu hình MongoDB
-mongo_url = os.environ.get('MONGO_URL', 'mongodb+srv://knguyennht_db_user:khangbede066@mln.nnmysyn.mongodb.net/?retryWrites=true&w=majority&appName=MLN')
-db_name = os.environ.get('DB_NAME', 'testpilot_db')
+mongo_url = os.environ.get('MONGO_URL')
+db_name = os.environ.get('DB_NAME')
 
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
