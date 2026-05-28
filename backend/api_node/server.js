@@ -9,6 +9,10 @@ const { MongoClient } = require('mongodb');
 const axios = require('axios');
 require('dotenv').config();
 
+// 🛠️ TÍCH HỢP: Khởi tạo thư viện Google Auth Client từ code của bạn bạn
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // ====================================================================
 // KHỞI TẠO SERVER VÀ KẾT NỐI DATABASE
 // ====================================================================
@@ -171,27 +175,24 @@ router.post('/api/auth/login', async (req, res) => {
   router.handle(req, res);
 });
 
-
-// --- ĐĂNG NHẬP BẰNG GOOGLE ---
+// --- ĐĂNG NHẬP BẰNG GOOGLE (ĐÃ ĐƯỢC NÂNG CẤP BẢO MẬT BẰNG THƯ VIỆN GOOGLE CLIENT) ---
 router.post('/auth/google', async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token } = req.body; // Đây chính là idToken từ frontend gửi lên
     if (!token) {
       return res.status(400).json({ success: false, message: 'Mã xác thực Google không hợp lệ' });
     }
 
-    const tokenParts = token.split('.');
-    if (tokenParts.length < 2) {
-      return res.status(400).json({ success: false, message: 'Mã xác thực Google không hợp lệ' });
-    }
-
-    // Giải mã Payload (phần thứ 2) của JWT
-    const payloadB64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const payloadJson = Buffer.from(payloadB64, 'base64').toString('utf-8');
-    const idInfo = JSON.parse(payloadJson);
-
-    const email = idInfo.email;
-    const name = idInfo.name || (email ? email.split('@')[0] : 'Google User');
+    // TÍCH HỢP: Xác thực Token xịn bằng bộ thư viện OAuth2Client từ code của bạn bạn
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    const email = payload.email;
+    const name = payload.name || (email ? email.split('@')[0] : 'Google User');
+    const picture = payload.picture;
 
     if (!email) {
       return res.status(400).json({ success: false, message: 'Không thể lấy thông tin Email từ tài khoản Google này' });
@@ -205,9 +206,13 @@ router.post('/auth/google', async (req, res) => {
         name,
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10), // Mật khẩu ngẫu nhiên bảo mật
+        avatar: picture || null
       };
     } else {
       userId = USERS_DB[email].id;
+      if (picture && !USERS_DB[email].avatar) {
+        USERS_DB[email].avatar = picture; // Cập nhật avatar từ google nếu chưa có
+      }
     }
 
     const mockToken = `testpilot_mock_token_${userId}_${uuidv4().slice(0, 8)}`;
@@ -219,7 +224,10 @@ router.post('/auth/google', async (req, res) => {
       user: { id: userId, name: USERS_DB[email].name, email },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: `Lỗi hệ thống khi xác thực Google: ${err.message}` });
+    if (err.message?.includes('Token used too late')) {
+      return res.status(401).json({ success: false, message: 'Google token đã hết hạn, vui lòng đăng nhập lại' });
+    }
+    return res.status(500).json({ success: false, message: `Xác thực Google thất bại: ${err.message}` });
   }
 });
 
