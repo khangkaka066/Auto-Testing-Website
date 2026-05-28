@@ -9,6 +9,7 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
 
+
   // ⚠️ QUAN TRỌNG: Bạn cần thay chuỗi này bằng Client ID thật lấy từ Google Cloud Console
   const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
