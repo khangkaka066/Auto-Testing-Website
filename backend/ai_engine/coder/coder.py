@@ -25,7 +25,7 @@ class CoderBatchOutput(BaseModel):
     generated: List[GeneratedSpec] = Field(default_factory=list)
 
 class Coder:
-    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Coder.md") -> None:
+    def __init__(self, setting: str = "backend/ai_engine/coder/Coder.md") -> None:
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
@@ -114,15 +114,6 @@ class Coder:
         return items
 
     def _request_codegen_from_llm(self, prompt: str) -> str:
-        # response = self.model.respond(
-        #     {
-        #         "messages": [
-        #             {"role": "system", "content": self.system_prompt},
-        #             {"role": "user", "content": prompt},
-        #         ]
-        #     },
-        #     response_format=CoderBatchOutput,
-        # )
         response = self.client.responses.parse(
             model=self.model,
             input=[

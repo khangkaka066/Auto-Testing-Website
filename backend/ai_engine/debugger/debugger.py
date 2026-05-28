@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Debugger:
-    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Debugger.md") -> None:
+    def __init__(self, setting: str = "backend/ai_engine/debugger/Debugger.md") -> None:
         # Load API key tương tự coder.py (mặc dù LM Studio có thể chạy local)
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:

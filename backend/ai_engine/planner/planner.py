@@ -6,9 +6,8 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import frontmatter
 from dotenv import load_dotenv
-# from openrouter import OpenRouter
-import lmstudio as lms
-from pydantic import BaseModel, Field
+from openai import OpenAI
+from pydantic import BaseModel, Field, ConfigDict
 
 load_dotenv()
 
@@ -25,32 +24,37 @@ TestScope = Literal[
     "Integration Testing",
 ]
 
+class StrictBaseModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-class MockStrategy(BaseModel):
+class MockStrategy(StrictBaseModel):
     type: Literal["none", "route_intercept", "service_stub", "hybrid"] = "none"
     targets: List[str] = Field(default_factory=list)
     notes: str = ""
 
-
-class PassFailCriteria(BaseModel):
+class PassFailCriteria(StrictBaseModel):
     pass_when: List[str] = Field(default_factory=list)
     fail_when: List[str] = Field(default_factory=list)
 
+class TestDataItem(StrictBaseModel):
+    name: str
+    value: str
+    description: str = ""
 
-class PlannedTestCase(BaseModel):
+class PlannedTestCase(StrictBaseModel):
     case_id: str
     title: str
     priority: Priority
     scope: TestScope
     objective: str
     preconditions: List[str] = Field(default_factory=list)
-    test_data: Dict[str, Any] = Field(default_factory=dict)
+    test_data: List[TestDataItem] = Field(default_factory=list)
     steps: List[str] = Field(default_factory=list)
     mock_strategy: MockStrategy = Field(default_factory=MockStrategy)
     criteria: PassFailCriteria = Field(default_factory=PassFailCriteria)
 
 
-class PlannerOutput(BaseModel):
+class PlannerOutput(StrictBaseModel):
     planner_version: str = "1.3"
     component_name: str
     module_type: str
@@ -64,8 +68,8 @@ class PlannerOutput(BaseModel):
 
 
 class Planner:
-    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Planner.md"):
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+    def __init__(self, setting: str = "backend/ai_engine/planner/Planner.md"):
+        self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
 
@@ -75,7 +79,8 @@ class Planner:
         except Exception as exc:
             raise FileNotFoundError("File setting is not found. Please add file setting for PlannerAgent.") from exc
 
-        self.model = lms.llm(settings.get("model"))
+        self.model = settings.get('model')
+        self.client = OpenAI(api_key=self.api_key)
         self.system_prompt = settings.content
 
     def _resolve_applicable_types(
@@ -130,50 +135,37 @@ class Planner:
         return text
 
     def _request_plan_from_llm(self, user_prompt: str) -> str:
-        # with OpenRouter(api_key=self.api_key) as client:
-        #     response = client.chat.send(
-        #         model=self.model,
-        #         messages=[
-        #             {"role": "system", "content": self.system_prompt},
-        #             {"role": "user", "content": user_prompt},
-        #         ],
-        #         temperature=self.temperature,
-        #         max_tokens=self.max_tokens,
-        #         response_format={
-        #             "type": "json_schema",
-        #             "json_schema": {
-        #                 "name": "planner_output",
-        #                 "schema_": PlannerOutput.model_json_schema(),
-        #             },
-        #         },
-        #     )
-        response = self.model.respond({"messages": [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]}, response_format=PlannerOutput)
-        content = response.content
-
-        return content
+        response = self.client.responses.parse(
+            model=self.model,
+            input=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            text_format=PlannerOutput
+        )
+        return response.output_parsed
 
     def _parse_or_repair_output(self, content: str) -> PlannerOutput:
         candidate = self._extract_json_object(content)
         try:
             return PlannerOutput.model_validate_json(candidate)
         except Exception as first_error:
+            print("error")
+            pass
             # Retry once with a strict JSON-fix prompt.
-            repair_prompt = (
-                "Fix this invalid/truncated JSON and return ONLY valid JSON that matches schema.\n"
-                f"Broken JSON:\n{candidate}"
-            )
-            repaired = self._request_plan_from_llm(repair_prompt)
-            repaired_candidate = self._extract_json_object(repaired)
-            try:
-                return PlannerOutput.model_validate_json(repaired_candidate)
-            except Exception as second_error:
-                raise ValueError(
-                    "Planner received invalid JSON from LLM after one repair retry. "
-                    f"First parse error: {first_error}; Second parse error: {second_error}"
-                ) from second_error
+            # repair_prompt = (
+            #     "Fix this invalid/truncated JSON and return ONLY valid JSON that matches schema.\n"
+            #     f"Broken JSON:\n{candidate}"
+            # )
+            # repaired = self._request_plan_from_llm(repair_prompt)
+            # repaired_candidate = self._extract_json_object(repaired)
+            # try:
+            #     return PlannerOutput.model_validate_json(repaired_candidate)
+            # except Exception as second_error:
+            #     raise ValueError(
+            #         "Planner received invalid JSON from LLM after one repair retry. "
+            #         f"First parse error: {first_error}; Second parse error: {second_error}"
+            #     ) from second_error
 
     def _build_skip_output(
         self,
@@ -228,8 +220,8 @@ class Planner:
         metadata_json = json.dumps(payload, ensure_ascii=False, indent=2)
         user_prompt = f"Analyzer metadata JSON:\n{metadata_json}"
 
-        content = self._request_plan_from_llm(user_prompt)
-        output = self._parse_or_repair_output(content)
+        output = self._request_plan_from_llm(user_prompt)
+        # output = self._parse_or_repair_output(content)
 
         output.should_generate_plan = True
         output.skip_reason = ""

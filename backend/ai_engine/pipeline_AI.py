@@ -7,12 +7,12 @@ import time
 from tqdm import tqdm
 import subprocess
 
-from ai_engine.agent.detector import Detector
-from ai_engine.agent.analyzer import Analyzer
-from ai_engine.agent.planner import Planner
-from ai_engine.agent.coder import Coder
-from ai_engine.agent.runner import Runner
-from ai_engine.agent.reporter import Reporter
+from detector.detector import Detector
+from analyzer.analyzer import Analyzer
+from planner.planner import Planner
+from coder.coder import Coder
+from runner.runner import Runner
+from reporter.reporter import Reporter
 
 class AIPipelineOrchestrator:
     def __init__(self, user_id: str, project_id: str, source_code_path: str):
@@ -22,6 +22,7 @@ class AIPipelineOrchestrator:
         
         # Tạo ID cho lần chạy này dựa trên Timestamp
         self.run_id = f"run_{int(time.time())}"
+        # self.run_id = "run_1779898938"
         
         # Tạo đường dẫn Workspace Động (Dynamic Path)
         base_workspace = os.getenv("WORKSPACE_BASE_PATH", "workspaces")
@@ -187,7 +188,7 @@ class AIPipelineOrchestrator:
         print(f"\n{Fore.GREEN}[STAGE 4] Lập trình kịch bản Test (Coder)...{Style.RESET_ALL}")
 
         dynamic_pw_config = os.path.join(self.run_workspace_dir, "playwright.config.ts")
-        template_path = "backend/utils/playwright_template.config.ts"
+        template_path = "backend/ai_engine/coder/playwright_template.config.ts"
         if os.path.exists(template_path):
             shutil.copy(template_path, dynamic_pw_config)
             
@@ -246,7 +247,7 @@ class AIPipelineOrchestrator:
 
         # print(spec_to_plan_map)
         
-        from ai_engine.agent.debugger import Debugger
+        from debugger.debugger import Debugger
         ai_debugger = Debugger()
         
         for file_path in tqdm(failed_files, desc="Fixing file"):

@@ -31,7 +31,7 @@ class ReporterOutput(BaseModel):
     issues: List[Issue] = Field(default_factory=list)
 
 class Reporter:
-    def __init__(self, setting: str = "backend/ai_engine/system_prompt/Reporter.md"):
+    def __init__(self, setting: str = "backend/ai_engine/reporter/Reporter.md"):
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")

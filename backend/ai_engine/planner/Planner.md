@@ -1,5 +1,5 @@
 ---
-model: "qwen2.5-coder-7b-instruct"
+model: "gpt-5-mini"
 temperature: 0.1
 max_tokens: 2200
 ---

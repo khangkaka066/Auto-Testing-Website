@@ -423,7 +423,7 @@ class TestRunRequest(BaseModel):
 
 # 2. Tạo hàm chạy ngầm Pipeline để tránh timeout API
 def trigger_ai_pipeline(user_id: str, project_id: str, source_path: str):
-    from pipeline_AI import AIPipelineOrchestrator
+    from backend.ai_engine.pipeline_AI import AIPipelineOrchestrator
     
     # Khởi tạo Pipeline với kiến trúc Dynamic Workspace
     pipeline = AIPipelineOrchestrator(

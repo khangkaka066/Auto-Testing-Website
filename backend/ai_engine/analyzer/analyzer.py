@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import frontmatter
 # from openrouter import OpenRouter
-import lmstudio as lms
+# import lmstudio as lms
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,20 +31,22 @@ class TechnicalAnalysisOutput(BaseModel):
     has_conditional_rendering: bool = Field(default=False, description="True if the code contains conditional display logic (e.g., v-if, v-show, ternary operators for error tracking).")
 
 class Analyzer:
-    def __init__(self, setting="backend/ai_engine/system_prompt/Analyzer.md"):
-        # self.api_key = os.getenv('OPENROUTER_API_KEY')
-        # if self.api_key is None:
-        #     raise ValueError("API key is not found. Please import API key in file .env")
+    def __init__(self, setting="backend/ai_engine/analyzer/Analyzer.md"):
+        self.api_key = os.getenv('OPENAI_API_KEY')
+        if self.api_key is None:
+            raise ValueError("API key is not found. Please import API key in file .env")
         
         try:
             with open(setting, 'r', encoding="utf-8") as f:
                 settings = frontmatter.load(f)
         except Exception:
             raise FileNotFoundError("File setting is not found. Please add file setting for AnalyzerAgent.")
-        self.model = lms.llm(settings.get("model"))
+        # self.model = lms.llm(settings.get("model"))
+        self.model = settings.get("model")
+        self.client = OpenAI(api_key=self.api_key)
         self.system_prompt = settings.content
 
-    def preprocess_code(self, raw_code: str, ast_script_path="backend/utils/ast_parser.js") -> str:
+    def preprocess_code(self, raw_code: str, ast_script_path="backend/ai_engine/analyzer/ast_parser.js") -> str:
         """Gửi code sang Node.js để lọc AST và nhận lại code sạch."""
         try:
             process = subprocess.Popen(
@@ -73,38 +76,15 @@ class Analyzer:
             f"Source Code:\n```\n{code_context}\n```"
         )
 
-        # with OpenRouter(api_key=self.api_key) as client:
-        #     response = client.chat.send(
-        #         model=self.model,
-        #         messages=[
-        #             {"role": "system", "content": self.system_prompt},
-        #             {"role": "user", "content": user_prompt}
-        #         ],
-                # response_format={
-                #     "type": "json_schema",
-                #     "json_schema": {
-                #         "name": "technical_analysis_output",
-                #         "schema_": TechnicalAnalysisOutput.model_json_schema()
-                #     }
-                # }
-        #     )
-        
-        # content = response.choices[0].message.content
-
-        response = self.model.respond({"messages": [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]},
-        response_format=TechnicalAnalysisOutput)
-
-        content = response.content
-
-        try:
-            structure_data = TechnicalAnalysisOutput.model_validate_json(content)
-            return structure_data
-        except Exception as e:
-            print(f"Lỗi parse JSON: {e}")
-            return content
+        response = self.client.responses.parse(
+            model=self.model,
+            input=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            text_format=TechnicalAnalysisOutput
+        )
+        return response.output_parsed
         
 if __name__ == "__main__":
     # Test thử nghiệm với đoạn mã Vue.js chứa cả UI và API Logic ngầm
