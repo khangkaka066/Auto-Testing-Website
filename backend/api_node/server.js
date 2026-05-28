@@ -195,7 +195,6 @@ router.get('/', (req, res) => {
 // ====================================================================
 // AUTH ENDPOINTS
 // ====================================================================
-
 // --- ĐĂNG KÝ ---
 router.post('/auth/register', async (req, res) => {
   const { email, password, name } = req.body;
