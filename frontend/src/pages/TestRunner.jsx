@@ -9,10 +9,22 @@ export default function TestRunner() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
-  // State quản lý file được chọn và hiệu ứng kéo thả
-  const [file, setFile] = useState(null);
+  // State quản lý file zip source code được chọn và hiệu ứng kéo thả
+  const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+
+  const isZipFile = (file) => file && file.name.toLowerCase().endsWith(".zip");
+
+  const setSelectedZip = (file) => {
+    if (!isZipFile(file)) {
+      toast.error("Vui lòng chọn file source code dạng .zip");
+      return;
+    }
+
+    setZipFile(file);
+    toast.success(`Đã chọn file: ${file.name}`);
+  };
 
   // --- XỬ LÝ SỰ KIỆN KÉO THẢ FILE ---
   const handleDragOver = (e) => {
@@ -30,54 +42,86 @@ export default function TestRunner() {
     setIsDragging(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      setFile(droppedFile);
-      toast.success(`Đã nhận file: ${droppedFile.name}`);
+      setSelectedZip(e.dataTransfer.files[0]);
     }
   };
 
   // --- XỬ LÝ SỰ KIỆN CHỌN FILE BẰNG NÚT BẤM ---
   const handleFileSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      toast.success(`Đã chọn file: ${selectedFile.name}`);
+      setSelectedZip(e.target.files[0]);
     }
   };
 
   const removeFile = () => {
-    setFile(null);
+    setZipFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // --- XỬ LÝ NÚT BẤM TEST (ĐÃ CẬP NHẬT GỌI API) ---
   const handleStartTest = async () => {
-    if (!file) {
-      toast.error("Vui lòng tải lên một file kịch bản để bắt đầu!");
+    if (!zipFile) {
+      toast.error("Vui lòng tải lên file source code dạng .zip để bắt đầu!");
       return;
     }
     
     setIsTesting(true);
     const token = localStorage.getItem("token");
+    const formData = new FormData();
+    formData.append("sourceZip", zipFile);
 
     try {
-      // Gọi API lưu lịch sử tên file
+      // Upload file zip source code, backend sẽ lưu và giải nén vào workspace/<user_id>
+      const uploadRes = await axios.post(
+        "http://localhost:5000/api/test/upload-source",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      const uploadedSource = uploadRes.data.data;
+
+      // Gọi API lưu lịch sử source vừa upload
       await axios.post(
         "http://localhost:5000/api/test/history",
-        { filename: file.name },
+        { filename: zipFile.name },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Giả lập thời gian hệ thống đang chạy Test
-      setTimeout(() => {
-        setIsTesting(false);
-        toast.success("Đã chạy Test thành công và lưu vào lịch sử!");
-        navigate("/dashboard"); // Chạy xong tự động quay về Dashboard xem kết quả
-      }, 2000);
+      // Kích hoạt pipeline AI với folder source vừa giải nén
+      await axios.post(
+        "http://localhost:5000/api/run-test",
+        {
+          user_id: uploadedSource.user_id,
+          project_id: uploadedSource.project_id,
+          source_path: uploadedSource.source_path,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setIsTesting(false);
+      toast.success("Đã bắt đầu pipeline test!");
+      sessionStorage.setItem(
+        "latest_test_progress",
+        JSON.stringify({
+          projectId: uploadedSource.project_id,
+          sourcePath: uploadedSource.source_path,
+        })
+      );
+      navigate(`/test-progress/${uploadedSource.project_id}`, {
+        replace: true,
+        state: {
+          projectId: uploadedSource.project_id,
+          sourcePath: uploadedSource.source_path,
+        },
+      });
       
     } catch (err) {
       setIsTesting(false);
-      toast.error("Có lỗi xảy ra khi lưu lịch sử test");
+      toast.error(err.response?.data?.message || "Có lỗi xảy ra khi upload source code");
     }
   };
 
@@ -100,7 +144,7 @@ export default function TestRunner() {
             Khởi chạy Auto Test
           </h1>
           <p className="text-slate-500 mt-2">
-            Tải lên file kịch bản kiểm thử của bạn (VD: .js, .py, .json) để hệ thống bắt đầu phân tích và thực thi.
+            Tải lên file .zip chứa source code để hệ thống lưu vào workspace, giải nén và chuẩn bị phân tích kiểm thử.
           </p>
         </div>
 
@@ -111,9 +155,9 @@ export default function TestRunner() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => !file && fileInputRef.current.click()}
+            onClick={() => !zipFile && fileInputRef.current.click()}
             className={`relative border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center text-center transition-all ${
-              file ? "border-slate-200 bg-slate-50 cursor-default" : 
+              zipFile ? "border-slate-200 bg-slate-50 cursor-default" :
               isDragging ? "border-orange-500 bg-orange-50 cursor-pointer" : "border-slate-300 hover:border-orange-400 hover:bg-slate-50 cursor-pointer"
             }`}
           >
@@ -122,17 +166,20 @@ export default function TestRunner() {
               type="file" 
               ref={fileInputRef} 
               className="hidden" 
+              accept=".zip,application/zip,application/x-zip-compressed"
               onChange={handleFileSelect} 
             />
 
-            {file ? (
+            {zipFile ? (
               // Trạng thái đã có file
               <div className="flex flex-col items-center w-full">
                 <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
                   <FileText className="h-8 w-8" />
                 </div>
-                <h3 className="font-semibold text-slate-900 truncate max-w-xs">{file.name}</h3>
-                <p className="text-xs text-slate-500 mt-1">{(file.size / 1024).toFixed(2)} KB</p>
+                <h3 className="font-semibold text-slate-900 truncate max-w-xs">{zipFile.name}</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {(zipFile.size / 1024).toFixed(2)} KB
+                </p>
                 
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeFile(); }}
@@ -149,13 +196,13 @@ export default function TestRunner() {
                   <UploadCloud className="h-8 w-8" />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-700 mb-1">
-                  Kéo thả file vào đây
+                  Kéo thả file .zip source code vào đây
                 </h3>
                 <p className="text-sm text-slate-500 mb-4">
-                  hoặc bấm vào để chọn file từ máy tính
+                  hoặc bấm vào để chọn file zip từ máy tính
                 </p>
                 <span className="text-xs font-medium text-slate-400 bg-white px-3 py-1 border border-slate-200 rounded-full shadow-sm">
-                  Hỗ trợ: .js, .ts, .py, .json
+                  Hỗ trợ: .zip
                 </span>
               </>
             )}
@@ -165,9 +212,9 @@ export default function TestRunner() {
           <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
             <button
               onClick={handleStartTest}
-              disabled={!file || isTesting}
+              disabled={!zipFile || isTesting}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white shadow-sm transition-all ${
-                !file ? "bg-slate-300 cursor-not-allowed" : 
+                !zipFile ? "bg-slate-300 cursor-not-allowed" :
                 isTesting ? "bg-orange-500 cursor-wait opacity-80" : "bg-orange-600 hover:bg-orange-700 hover:shadow-md"
               }`}
             >

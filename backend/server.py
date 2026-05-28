@@ -8,6 +8,9 @@ import os
 import logging
 import uuid
 import shutil
+import zipfile
+import sys
+import time
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -29,6 +32,12 @@ db = client[db_name]
 UPLOAD_DIR = Path(__file__).parent / "static" / "avatars"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Cấu hình thư mục lưu source code người dùng upload
+SOURCE_WORKSPACE_DIR = ROOT_DIR.parent / "workspace"
+os.makedirs(SOURCE_WORKSPACE_DIR, exist_ok=True)
+
+PIPELINE_DRY_RUN = os.environ.get("PIPELINE_DRY_RUN", "true").lower() == "true"
+
 # Create the main app without a prefix
 app = FastAPI()
 
@@ -44,6 +53,9 @@ USERS_DB = {}
 # 🛠️ THÊM MỚI: MOCK DATABASE lưu lịch sử Test
 TEST_HISTORY_DB = []
 
+# MOCK DATABASE lưu trạng thái chạy pipeline theo user/project
+TEST_RUNS_DB = {}
+
 # Hàm bổ trợ giải mã lấy user_id từ Mock Token để tìm thông tin User trong RAM DB
 def get_user_by_token(token: str):
     if not token or not token.startswith("testpilot_mock_token_"):
@@ -56,6 +68,34 @@ def get_user_by_token(token: str):
         if user["id"] == user_id:
             return user
     return None
+
+
+def validate_zip_entries(zip_file_path: Path):
+    extracted_files = []
+
+    with zipfile.ZipFile(zip_file_path, "r") as source_zip:
+        for info in source_zip.infolist():
+            entry_path = Path(info.filename)
+            if entry_path.is_absolute() or ".." in entry_path.parts:
+                raise ValueError(f"File zip chứa đường dẫn không hợp lệ: {info.filename}")
+
+            if not info.is_dir():
+                extracted_files.append(info.filename)
+
+    return extracted_files
+
+
+def build_unique_project_source_dir(source_root_dir: Path, zip_filename: str):
+    project_name = Path(zip_filename).stem.replace(" ", "_")
+    project_name = "".join(char if char.isalnum() or char in "._-" else "_" for char in project_name).strip("._-")
+    if not project_name:
+        project_name = "source_project"
+
+    project_source_dir = source_root_dir / project_name
+    if project_source_dir.exists():
+        project_source_dir = source_root_dir / f"{project_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    return project_source_dir
 
 
 # ====================================================================
@@ -319,6 +359,62 @@ async def upload_avatar(file: UploadFile = File(...), authorization: Optional[st
         "avatar_url": avatar_url
     }
 
+# --- API UPLOAD FILE ZIP SOURCE CODE VÀ GIẢI NÉN VÀO WORKSPACE ---
+@api_router.post("/test/upload-source")
+async def upload_source_zip(sourceZip: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
+
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không hợp lệ"})
+
+    if not sourceZip.filename or Path(sourceZip.filename).suffix.lower() != ".zip":
+        return JSONResponse(status_code=400, content={"success": False, "message": "Vui lòng chọn file source code dạng .zip"})
+
+    user_workspace_dir = SOURCE_WORKSPACE_DIR / user["id"]
+    upload_dir = user_workspace_dir / "uploads"
+    source_root_dir = user_workspace_dir / "source"
+    source_dir = build_unique_project_source_dir(source_root_dir, sourceZip.filename)
+    os.makedirs(upload_dir, exist_ok=True)
+    os.makedirs(source_dir, exist_ok=True)
+
+    safe_filename = Path(sourceZip.filename).name.replace(" ", "_")
+    zip_file_path = upload_dir / f"{uuid.uuid4()}-{safe_filename}"
+
+    try:
+        with open(zip_file_path, "wb") as buffer:
+            shutil.copyfileobj(sourceZip.file, buffer)
+
+        extracted_files = validate_zip_entries(zip_file_path)
+
+        with zipfile.ZipFile(zip_file_path, "r") as source_zip:
+            source_zip.extractall(source_dir)
+
+        return {
+            "success": True,
+            "message": "Upload và giải nén source code thành công",
+            "data": {
+                "user_id": user["id"],
+                "project_id": source_dir.name,
+                "workspace_path": str(user_workspace_dir),
+                "source_path": str(source_dir),
+                "extracted_count": len(extracted_files),
+                "extracted_files": extracted_files,
+                "uploads_deleted": True
+            }
+        }
+    except zipfile.BadZipFile:
+        return JSONResponse(status_code=400, content={"success": False, "message": "File zip không hợp lệ hoặc bị lỗi"})
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"success": False, "message": str(e)})
+    except Exception as e:
+        logger.error(f"Lỗi upload source zip: {e}")
+        return JSONResponse(status_code=500, content={"success": False, "message": f"Lỗi hệ thống khi upload source code: {str(e)}"})
+    finally:
+        shutil.rmtree(upload_dir, ignore_errors=True)
+
 # --- 🛠️ THÊM MỚI: API LƯU LỊCH SỬ CHẠY TEST ---
 @api_router.post("/test/history")
 async def create_test_history(input_data: TestHistoryCreate, authorization: Optional[str] = Header(None)):
@@ -390,9 +486,6 @@ async def get_status_checks():
 # Cấu hình cho phép trình duyệt truy cập thư mục static để xem ảnh trực tiếp
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
-# Include the router in the main app
-app.include_router(api_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -423,30 +516,144 @@ class TestRunRequest(BaseModel):
 
 # 2. Tạo hàm chạy ngầm Pipeline để tránh timeout API
 def trigger_ai_pipeline(user_id: str, project_id: str, source_path: str):
-    from backend.ai_engine.pipeline_AI import AIPipelineOrchestrator
-    
-    # Khởi tạo Pipeline với kiến trúc Dynamic Workspace
-    pipeline = AIPipelineOrchestrator(
-        user_id=user_id, 
-        project_id=project_id, 
-        source_code_path=source_path
-    )
-    # Chạy pipeline
-    pipeline.execute_pipeline()
+    run_key = f"{user_id}:{project_id}"
+    TEST_RUNS_DB[run_key] = {
+        **TEST_RUNS_DB.get(run_key, {}),
+        "status": "running",
+        "message": "Pipeline đang phân tích source code.",
+        "stage": "starting",
+        "progress_percent": 20,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    try:
+        ai_engine_dir = str(ROOT_DIR / "ai_engine")
+        if ai_engine_dir not in sys.path:
+            sys.path.insert(0, ai_engine_dir)
+
+        from backend.ai_engine.pipeline_AI import AIPipelineOrchestrator
+
+        # Khởi tạo Pipeline với kiến trúc Dynamic Workspace
+        pipeline = AIPipelineOrchestrator(
+            user_id=user_id,
+            project_id=project_id,
+            source_code_path=source_path
+        )
+        TEST_RUNS_DB[run_key].update({
+            "run_workspace_path": pipeline.run_workspace_dir,
+            "message": "Pipeline đã khởi tạo workspace chạy test.",
+            "stage": "workspace",
+            "progress_percent": 30,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        })
+
+        if PIPELINE_DRY_RUN:
+            mock_stages = [
+                ("detector", "Đang quét source code và phân loại file.", 40),
+                ("analyzer", "Đang phân tích cấu trúc kỹ thuật.", 55),
+                ("planner", "Đang lập kế hoạch test case.", 68),
+                ("coder", "Đang sinh Playwright test spec.", 80),
+                ("runner", "Đang giả lập bước chạy test.", 92),
+                ("reporter", "Đang tổng hợp báo cáo giả lập.", 98),
+            ]
+
+            for stage, message, progress_percent in mock_stages:
+                time.sleep(1.5)
+                TEST_RUNS_DB[run_key].update({
+                    "stage": stage,
+                    "message": message,
+                    "progress_percent": progress_percent,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                })
+        else:
+            pipeline.execute_pipeline()
+
+        report_path = Path(pipeline.dirs["7_reporter"]) / "final_report.json"
+        TEST_RUNS_DB[run_key].update({
+            "status": "completed",
+            "message": "Pipeline giả lập đã hoàn tất." if PIPELINE_DRY_RUN else "Pipeline đã hoàn tất.",
+            "stage": "completed",
+            "progress_percent": 100,
+            "report_path": str(report_path) if report_path.exists() else "",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logger.exception("Pipeline thất bại")
+        TEST_RUNS_DB[run_key].update({
+            "status": "failed",
+            "message": f"Pipeline thất bại: {str(e)}",
+            "stage": "failed",
+            "progress_percent": 100,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        })
 
 # 3. Tạo Endpoint kích hoạt test
 @api_router.post("/run-test")
-async def run_test_pipeline(request: TestRunRequest, background_tasks: BackgroundTasks):
+async def run_test_pipeline(request: TestRunRequest, background_tasks: BackgroundTasks, authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
+
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không hợp lệ"})
+
+    source_path = Path(request.source_path)
+    if not source_path.exists() or not source_path.is_dir():
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "source_path không tồn tại hoặc không phải thư mục"}
+        )
+
+    user_id = user["id"]
+    run_key = f"{user_id}:{request.project_id}"
+    TEST_RUNS_DB[run_key] = {
+        "status": "queued",
+        "message": "Đã nhận yêu cầu chạy test, đang đưa vào hàng đợi.",
+        "stage": "queued",
+        "progress_percent": 10,
+        "dry_run": PIPELINE_DRY_RUN,
+        "user_id": user_id,
+        "project_id": request.project_id,
+        "source_path": str(source_path),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+
     # Đẩy tác vụ chạy AI vào background task
     background_tasks.add_task(
-        trigger_ai_pipeline, 
-        request.user_id, 
-        request.project_id, 
+        trigger_ai_pipeline,
+        user_id,
+        request.project_id,
         request.source_path
     )
     
     return {
+        "success": True,
         "status": "success",
-        "message": f"Pipeline đã được kích hoạt cho user {request.user_id}, project {request.project_id}",
+        "message": f"Pipeline đã được kích hoạt cho user {user_id}, project {request.project_id}",
+        "data": TEST_RUNS_DB[run_key],
         "action": "Vui lòng poll API (hoặc dùng WebSocket) để nhận kết quả."
     }
+
+
+@api_router.get("/run-test/{project_id}")
+async def get_run_test_status(project_id: str, authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Bạn chưa đăng nhập"})
+
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"success": False, "message": "Tài khoản không hợp lệ"})
+
+    run_key = f"{user['id']}:{project_id}"
+    run_state = TEST_RUNS_DB.get(run_key)
+    if not run_state:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Không tìm thấy tiến trình test"})
+
+    return {"success": True, "data": run_state}
+
+
+# Include the router after all routes are declared.
+app.include_router(api_router)
