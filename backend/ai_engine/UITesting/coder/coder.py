@@ -20,6 +20,7 @@ except ImportError:
     from backend.ai_engine.utils.ai_runtime import get_max_workers, read_cache, retry_call, stable_hash, write_cache
 
 load_dotenv()
+AGENT_DIR = Path(__file__).resolve().parents[1]
 
 class GeneratedSpec(BaseModel):
     spec_file: str = Field(description="Spec filename, e.g. LoginForm.spec.ts")
@@ -50,7 +51,8 @@ FORBIDDEN_CODE_PATTERNS = [
 
 
 class Coder:
-    def __init__(self, setting: str = "backend/ai_engine/coder/Coder.md") -> None:
+    def __init__(self, setting: str | None = None) -> None:
+        setting = setting or str(AGENT_DIR / "coder" / "Coder.md")
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")

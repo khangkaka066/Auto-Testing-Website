@@ -238,7 +238,7 @@ class AIPipelineOrchestrator:
         print(f"\n{Fore.GREEN}[STAGE 4] Lập trình kịch bản Test (Coder)...{Style.RESET_ALL}")
 
         dynamic_pw_config = os.path.join(self.run_workspace_dir, "playwright.config.ts")
-        template_path = "backend/ai_engine/coder/playwright_template.config.ts"
+        template_path = Path(__file__).resolve().parent / "coder" / "playwright_template.config.ts"
         if os.path.exists(template_path):
             shutil.copy(template_path, dynamic_pw_config)
             

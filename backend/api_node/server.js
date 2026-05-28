@@ -9,26 +9,31 @@ const bcrypt = require('bcrypt');
 const { MongoClient } = require('mongodb');
 const axios = require('axios');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '.env'), override: true });
 
 // ====================================================================
 // KHỞI TẠO SERVER VÀ KẾT NỐI DATABASE
 // ====================================================================
 const app = express();
-const PORT = process.env.PORT;
-const AI_PYTHON_URL = process.env.AI_PYTHON_URL;
+const PORT = process.env.PORT || 5000;
+const AI_PYTHON_URL = process.env.AI_PYTHON_URL || 'http://127.0.0.1:8001';
 
 const mongoUrl = process.env.MONGO_URL;
 const dbName = process.env.DB_NAME;
 
 let db;
-MongoClient.connect(mongoUrl)
-  .then(client => {
-    db = client.db(dbName);
-    console.log('Kết nối MongoDB thành công');
-  })
-  .catch(err => {
-    console.error('Lỗi kết nối MongoDB:', err.message);
-  });
+if (mongoUrl) {
+  MongoClient.connect(mongoUrl)
+    .then(client => {
+      db = client.db(dbName);
+      console.log('Kết nối MongoDB thành công');
+    })
+    .catch(err => {
+      console.error('Lỗi kết nối MongoDB:', err.message);
+    });
+} else {
+  console.warn('MONGO_URL chưa được cấu hình, server sẽ dùng mock database trên RAM');
+}
 
 // Cấu hình thư mục chứa ảnh đại diện
 const UPLOAD_DIR = path.join(__dirname, 'static', 'avatars');
@@ -200,7 +205,7 @@ router.get('/', (req, res) => {
 router.post('/auth/register', async (req, res) => {
   const { email, password, name } = req.body;
 
-  if (!email?.trim() || !password) {
+  if (!email || !email.trim() || !password) {
     return res.status(400).json({ success: false, message: 'Email và mật khẩu không được để trống' });
   }
   if (USERS_DB[email]) {
@@ -231,7 +236,7 @@ router.post('/auth/register', async (req, res) => {
 router.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email?.trim() || !password) {
+  if (!email || !email.trim() || !password) {
     return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ cả Email và Mật khẩu' });
   }
 
@@ -322,13 +327,13 @@ router.put('/auth/profile', authMiddleware, async (req, res) => {
   const { name, password } = req.body;
   const user = req.user;
 
-  if (!name?.trim()) {
+  if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: 'Tên không được để trống' });
   }
 
   user.name = name.trim();
 
-  if (password?.trim()) {
+  if (password && password.trim()) {
     user.password_hash = await bcrypt.hash(password, 10);
   }
 

@@ -14,6 +14,7 @@ except ImportError:
     from backend.ai_engine.utils.ai_runtime import retry_call
 
 load_dotenv()
+AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class UIElement(BaseModel):
     element_type: str = Field(description="The HTML tag or UI element type (e.g., 'input', 'button', 'form', 'text')")
@@ -36,7 +37,8 @@ class TechnicalAnalysisOutput(BaseModel):
     has_conditional_rendering: bool = Field(default=False, description="True if the code contains conditional display logic (e.g., v-if, v-show, ternary operators for error tracking).")
 
 class Analyzer:
-    def __init__(self, setting="backend/ai_engine/analyzer/Analyzer.md"):
+    def __init__(self, setting=None):
+        setting = setting or os.path.join(AGENT_DIR, "analyzer", "Analyzer.md")
         self.api_key = os.getenv('OPENAI_API_KEY')
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
@@ -51,8 +53,9 @@ class Analyzer:
         self.client = OpenAI(api_key=self.api_key)
         self.system_prompt = settings.content
 
-    def preprocess_code(self, raw_code: str, ast_script_path="backend/ai_engine/analyzer/ast_parser.js") -> str:
+    def preprocess_code(self, raw_code: str, ast_script_path=None) -> str:
         """Gửi code sang Node.js để lọc AST và nhận lại code sạch."""
+        ast_script_path = ast_script_path or os.path.join(AGENT_DIR, "analyzer", "ast_parser.js")
         try:
             process = subprocess.Popen(
                 ["node", ast_script_path],

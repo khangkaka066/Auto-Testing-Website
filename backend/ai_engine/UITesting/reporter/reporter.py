@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 load_dotenv()
+AGENT_DIR = Path(__file__).resolve().parents[1]
 
 class Issue(BaseModel):
     page: str = Field(description="Đường dẫn hoặc tên component bị lỗi")
@@ -31,7 +32,8 @@ class ReporterOutput(BaseModel):
     issues: List[Issue] = Field(default_factory=list)
 
 class Reporter:
-    def __init__(self, setting: str = "backend/ai_engine/reporter/Reporter.md"):
+    def __init__(self, setting: str | None = None):
+        setting = setting or str(AGENT_DIR / "reporter" / "Reporter.md")
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")

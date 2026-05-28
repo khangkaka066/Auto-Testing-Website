@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import frontmatter
 # import lmstudio as lms
 from openai import OpenAI
@@ -8,7 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Debugger:
-    def __init__(self, setting: str = "backend/ai_engine/debugger/Debugger.md") -> None:
+    def __init__(self, setting: str | None = None) -> None:
+        setting = setting or str(Path(__file__).resolve().parents[1] / "debugger" / "Debugger.md")
         # Load API key tương tự coder.py (mặc dù LM Studio có thể chạy local)
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:

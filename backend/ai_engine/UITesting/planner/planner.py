@@ -15,6 +15,7 @@ except ImportError:
     from backend.ai_engine.utils.ai_runtime import retry_call
 
 load_dotenv()
+AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 Priority = Literal["P0", "P1", "P2"]
 TestScope = Literal[
@@ -73,7 +74,8 @@ class PlannerOutput(StrictBaseModel):
 
 
 class Planner:
-    def __init__(self, setting: str = "backend/ai_engine/planner/Planner.md"):
+    def __init__(self, setting: str | None = None):
+        setting = setting or os.path.join(AGENT_DIR, "planner", "Planner.md")
         self.api_key = os.getenv("OPENAI_API_KEY")
         if self.api_key is None:
             raise ValueError("API key is not found. Please import API key in file .env")
