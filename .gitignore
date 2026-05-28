@@ -55,6 +55,7 @@ __pycache__/
 venv/
 .venv/
 backend/.env
+backend/api_node/.env
 
 # Development tools
 chainlit.md
@@ -98,3 +99,19 @@ node_modules
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local env files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# VS Code / local history
+.history/
+frontend/.env
+backend/api_node/.env
+
+
+test_project

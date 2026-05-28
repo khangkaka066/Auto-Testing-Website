@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests', // Code sinh ra sẽ nằm ở thư mục tests/ bên ngoài
+  outputDir: './test-results',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
@@ -29,7 +30,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm install && npm run dev', 
-      cwd: process.env.TARGET_WORKSPACE_DIR || './', // Tự động trỏ vào workspace của khách!
+      cwd: process.env.FRONTEND_DIR || './', // Tự động trỏ vào workspace của khách!
       url: process.env.BASE_URL || 'http://localhost:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
