@@ -196,7 +196,6 @@ router.get('/', (req, res) => {
 // ====================================================================
 // AUTH ENDPOINTS
 // ====================================================================
-
 // --- ĐĂNG KÝ ---
 router.post('/auth/register', async (req, res) => {
   const { email, password, name } = req.body;
@@ -283,6 +282,7 @@ router.post('/auth/google', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Không thể lấy thông tin Email từ tài khoản Google này' });
     }
 
+    
     let userId;
     if (!USERS_DB[email]) {
       userId = uuidv4();
