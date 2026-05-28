@@ -28,8 +28,8 @@ class AIPipelineOrchestrator:
         self.source_code_path = source_code_path
         
         # Tạo ID cho lần chạy này dựa trên Timestamp
-        # self.run_id = f"run_{int(time.time())}"
-        self.run_id = "run_1779939165"
+        self.run_id = f"run_{int(time.time())}"
+        # self.run_id = "run_1779946239"
         
         # Tạo đường dẫn Workspace Động (Dynamic Path)
         base_workspace = os.getenv("WORKSPACE_BASE_PATH", "workspaces")
@@ -382,15 +382,13 @@ class AIPipelineOrchestrator:
 
         # print(spec_to_plan_map)
         
-        from debugger.debugger import Debugger
-        ai_debugger = Debugger()
-        
-        for file_path in tqdm(failed_files, desc="Fixing file"):
-            # File path lấy từ log tsc có thể là relative path từ run_workspace_dir
-            # full_target_path = os.path.join(self.run_workspace_dir, file_path) if not os.path.isabs(file_path) else file_path
-            full_target_path = file_path
+        if not failed_files:
+            print(f"{Fore.YELLOW}  -> Không tìm thấy file spec lỗi cần sửa.{Style.RESET_ALL}")
+            return
 
-            # --- [MỚI] LẤY NỘI DUNG TEST PLAN ---
+        error_lines = error_logs.splitlines()
+
+        def load_test_plan_for_spec(file_path: str) -> str:
             test_plan_content = "Không tìm thấy Test Plan."
             plan_filename = spec_to_plan_map.get(file_path)
             if plan_filename:
@@ -403,10 +401,60 @@ class AIPipelineOrchestrator:
                             test_plan_content = json.dumps(test_cases_array, ensure_ascii=False, indent=2)
                         else:
                             test_plan_content = "File Plan không chứa test_cases nào."
+            return test_plan_content
 
-            if os.path.exists(full_target_path):
-                file_specific_log = "\n".join([line for line in error_logs.split('\n') if file_path in line])
-                ai_debugger.fix_code(full_target_path, file_specific_log, test_plan_content)
+        def extract_file_specific_log(file_path: str) -> str:
+            file_name = Path(file_path).name
+            matching_lines = [
+                line for line in error_lines
+                if file_path in line or file_name in line
+            ]
+            return "\n".join(matching_lines) or error_logs
+
+        def fix_one_file(file_path: str):
+            from debugger.debugger import Debugger
+
+            full_target_path = file_path
+            if not os.path.exists(full_target_path):
+                return {
+                    "file_path": file_path,
+                    "status": "skipped",
+                    "reason": "File không tồn tại.",
+                }
+
+            try:
+                ai_debugger = Debugger()
+                test_plan_content = load_test_plan_for_spec(file_path)
+                file_specific_log = extract_file_specific_log(file_path)
+                result = ai_debugger.fix_code(full_target_path, file_specific_log, test_plan_content)
+                return {
+                    "file_path": file_path,
+                    "status": "fixed" if result else "failed",
+                    "reason": "",
+                }
+            except Exception as exc:
+                return {
+                    "file_path": file_path,
+                    "status": "failed",
+                    "reason": str(exc),
+                }
+
+        max_workers = min(get_max_workers(), len(failed_files))
+        results = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(fix_one_file, file_path) for file_path in failed_files]
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Fixing file"):
+                result = future.result()
+                results.append(result)
+                if result["status"] == "failed":
+                    print(f"{Fore.RED}  -> Fix thất bại {result['file_path']}: {result['reason']}{Style.RESET_ALL}")
+                elif result["status"] == "skipped":
+                    print(f"{Fore.YELLOW}  -> Bỏ qua {result['file_path']}: {result['reason']}{Style.RESET_ALL}")
+
+        debugger_report_path = os.path.join(self.dirs["5.5_validator"], "debugger_results.json")
+        with open(debugger_report_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=4)
+        print(f"{Fore.CYAN}  -> Đã lưu kết quả debugger tại: {debugger_report_path}{Style.RESET_ALL}")
     
     def run_executor(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}[STAGE 5] Chạy test trong Sandbox (Executor)...{Style.RESET_ALL}")
@@ -459,45 +507,45 @@ class AIPipelineOrchestrator:
 
     def execute_pipeline(self, base_url="http://localhost:5173"):
         print(f"\n{Fore.GREEN}=== BẮT ĐẦU CHẠY AI PIPELINE ==={Style.RESET_ALL}")
-        # detector_out = self.run_detector()
-        # self.run_analyzer(detector_out)
-        # self.run_planner(test_type="UI Testing")
-        # self.run_filter()
-        # self.run_coder("playwright.config.ts", base_url)
-        test = self.run_executor(base_url)
+        detector_out = self.run_detector()
+        self.run_analyzer(detector_out)
+        self.run_planner(test_type="UI Testing")
+        self.run_filter()
+        self.run_coder("playwright.config.ts", base_url)
+
         # --- CƠ CHẾ AUTO-HEALING (TỐI ĐA 3 LẦN) ---
-        # MAX_RETRIES = 3
-        # is_valid = self.run_validator()
+        MAX_RETRIES = 3
+        is_valid = self.run_validator()
 
-        # attempt = 0
-        # while attempt < MAX_RETRIES and not is_valid:
-        #     attempt += 1
-        #     print(f"\n{Fore.YELLOW}--- Tiến hành phẫu thuật mã nguồn (Lần {attempt}/{MAX_RETRIES}) ---{Style.RESET_ALL}")
-        #     self.run_debugger() # Gọi bác sĩ AI để sửa code
-        #     is_valid = self.run_validator()
+        attempt = 0
+        while attempt < MAX_RETRIES and not is_valid:
+            attempt += 1
+            print(f"\n{Fore.YELLOW}--- Tiến hành phẫu thuật mã nguồn (Lần {attempt}/{MAX_RETRIES}) ---{Style.RESET_ALL}")
+            self.run_debugger() # Gọi bác sĩ AI để sửa code
+            is_valid = self.run_validator()
 
-        # if not is_valid:
-        #     print(f"\n{Fore.YELLOW}[FALLBACK] Vẫn còn spec lỗi sau {MAX_RETRIES} lần sửa. Đang xoá các spec lỗi và tiếp tục với phần còn lại...{Style.RESET_ALL}")
-        #     removed_files = self.remove_failed_spec_files_after_debugging()
-        #     if removed_files:
-        #         is_valid = True
+        if not is_valid:
+            print(f"\n{Fore.YELLOW}[FALLBACK] Vẫn còn spec lỗi sau {MAX_RETRIES} lần sửa. Đang xoá các spec lỗi và tiếp tục với phần còn lại...{Style.RESET_ALL}")
+            removed_files = self.remove_failed_spec_files_after_debugging()
+            if removed_files:
+                is_valid = True
 
-        # if is_valid:
-        #     remaining_specs = list(Path(self.core_ai_dir).glob("*.spec.ts"))
-        #     if not remaining_specs:
-        #         print(f"\n{Fore.RED}[FAILED] Không còn file spec hợp lệ nào để chạy sau bước cleanup.{Style.RESET_ALL}")
-        #         print(f"\n{Fore.GREEN}=== HOÀN TẤT PIPELINE ==={Style.RESET_ALL}")
-        #         return
+        if is_valid:
+            remaining_specs = list(Path(self.core_ai_dir).glob("*.spec.ts"))
+            if not remaining_specs:
+                print(f"\n{Fore.RED}[FAILED] Không còn file spec hợp lệ nào để chạy sau bước cleanup.{Style.RESET_ALL}")
+                print(f"\n{Fore.GREEN}=== HOÀN TẤT PIPELINE ==={Style.RESET_ALL}")
+                return
 
-        #     print(f"\n{Fore.GREEN}[SUCCESS] Các spec còn lại đã sạch. Đang đẩy vào Sandbox (Docker)...{Style.RESET_ALL}")
-        #     executor_out = self.run_executor(base_url)
-        #     self.run_reporter(executor_out)
-        # else:
-        #     print(f"\n{Fore.RED}[FAILED] Pipeline thất bại. Không thể xác định/xoá hết các spec lỗi sau {MAX_RETRIES} lần sửa.{Style.RESET_ALL}")
+            print(f"\n{Fore.GREEN}[SUCCESS] Các spec còn lại đã sạch. Đang đẩy vào Sandbox (Docker)...{Style.RESET_ALL}")
+            executor_out = self.run_executor(base_url)
+            self.run_reporter(executor_out)
+        else:
+            print(f"\n{Fore.RED}[FAILED] Pipeline thất bại. Không thể xác định/xoá hết các spec lỗi sau {MAX_RETRIES} lần sửa.{Style.RESET_ALL}")
             
         print(f"\n{Fore.GREEN}=== HOÀN TẤT PIPELINE ==={Style.RESET_ALL}")
 
 if __name__ == "__main__":
     src_code_path = "workspace/pc-store-ecommerce-website"
-    pipeline = AIPipelineOrchestrator(user_id="demo_user", project_id="demo_proj", source_code_path=src_code_path)
+    pipeline = AIPipelineOrchestrator(user_id="demo_user1", project_id="demo_proj", source_code_path=src_code_path)
     pipeline.execute_pipeline()
