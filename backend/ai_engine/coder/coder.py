@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import frontmatter
 # import lmstudio as lms
@@ -12,6 +13,11 @@ from openai import OpenAI
 from tqdm import tqdm
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+
+try:
+    from utils.ai_runtime import get_max_workers, read_cache, retry_call, stable_hash, write_cache
+except ImportError:
+    from backend.ai_engine.utils.ai_runtime import get_max_workers, read_cache, retry_call, stable_hash, write_cache
 
 load_dotenv()
 
@@ -23,6 +29,25 @@ class GeneratedSpec(BaseModel):
 
 class CoderBatchOutput(BaseModel):
     generated: List[GeneratedSpec] = Field(default_factory=list)
+
+
+FORBIDDEN_CODE_PATTERNS = [
+    "document.body.innerHTML",
+    "addEventListener(",
+    "page.$$eval(",
+    ".evaluateAll(",
+    "MouseEvent",
+    "KeyboardEvent",
+    "EventListener",
+    "jest.",
+    "sinon.",
+    "vi.",
+    "mount(",
+    "render(",
+    "screen.",
+    "as any",
+]
+
 
 class Coder:
     def __init__(self, setting: str = "backend/ai_engine/coder/Coder.md") -> None:
@@ -114,15 +139,54 @@ class Coder:
         return items
 
     def _request_codegen_from_llm(self, prompt: str) -> str:
-        response = self.client.responses.parse(
-            model=self.model,
-            input=[
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            text_format=CoderBatchOutput
+        response = retry_call(
+            lambda: self.client.responses.parse(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                text_format=CoderBatchOutput
+            )
         )
         return response.output_parsed
+
+    def _validate_generated_output(self, output: CoderBatchOutput) -> List[str]:
+        violations: List[str] = []
+        if len(output.generated) != 1:
+            violations.append("Output must contain exactly one generated spec file.")
+
+        for gen in output.generated:
+            if not gen.content.strip():
+                violations.append(f"{gen.spec_file}: content is empty.")
+            for pattern in FORBIDDEN_CODE_PATTERNS:
+                if pattern in gen.content:
+                    violations.append(f"{gen.spec_file}: forbidden pattern `{pattern}` found.")
+        return violations
+
+    def _repair_policy_violations(
+        self,
+        output: CoderBatchOutput,
+        original_prompt: str,
+        violations: List[str],
+    ) -> CoderBatchOutput:
+        repair_payload = {
+            "violations": violations,
+            "original_prompt": original_prompt,
+            "generated_output": output.model_dump(),
+        }
+        repair_prompt = (
+            "Rewrite the generated Playwright spec to fix every violation below. "
+            "Return ONLY JSON matching the CoderBatchOutput schema. "
+            "Do not use fake DOM, component mounting, browser event listeners, implicit any, or forbidden patterns.\n"
+            f"{json.dumps(repair_payload, ensure_ascii=False, indent=2)}"
+        )
+        repaired = self._request_codegen_from_llm(repair_prompt)
+        repaired_output = self._parse_or_repair_output(repaired, repair_prompt)
+        remaining_violations = self._validate_generated_output(repaired_output)
+        if remaining_violations:
+            raise ValueError("Coder repair still violates policy: " + "; ".join(remaining_violations))
+        return repaired_output
 
     def _parse_or_repair_output(self, content: Any, prompt: str) -> CoderBatchOutput:
         # 1. Nếu LLM đã trả về chuẩn Object Pydantic -> Thành công, không cần sửa, trả về luôn!
@@ -156,7 +220,13 @@ class Coder:
                     f"First parse error: {first_error}; Second parse error: {second_error}"
                 ) from second_error
 
-    def generate_from_filtered(self, filtered_input: Path, output_dir: Path, base_url: str) -> Dict[str, Any]:
+    def generate_from_filtered(
+        self,
+        filtered_input: Path,
+        output_dir: Path,
+        base_url: str,
+        cache_dir: Path | None = None,
+    ) -> Dict[str, Any]:
         """Generate Playwright spec files **one per filtered plan file**.
         This method now loads each planner JSON individually, builds a tiny prompt containing only the relevant test cases
         and calls the LLM for each component. The result is written to `output_dir` and a manifest is returned.
@@ -164,31 +234,78 @@ class Coder:
         items = self._load_input_items(filtered_input)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        generated_manifest: List[Dict[str, Any]] = []
-        for item in tqdm(items, desc="Loading filtered"):
-            # Build a minimal prompt for this single component
+        cache_path = cache_dir or (output_dir / ".cache")
+
+        def generate_one(index: int, item: Dict[str, Any]) -> Tuple[int, Dict[str, Any], CoderBatchOutput]:
+            planner_output = item.get("planner_output", {})
             prompt_payload = {
                 "base_url": base_url,
                 "component": {
                     "name": item["component_name"],
+                    "source_file": planner_output.get("file_path", ""),
+                    "module_type": planner_output.get("module_type", ""),
+                    "impact_level": planner_output.get("impact_level", ""),
+                    "generation_notes": planner_output.get("generation_notes", []),
                     "test_cases": item["test_cases"],
                 },
                 "constraints": {
                     "framework": "@playwright/test",
                     "language": "TypeScript",
                     "include_real_actions": True,
+                    "compile_first": True,
+                    "no_fake_dom": True,
                 },
             }
-            prompt = f"Generate a Playwright spec file (TypeScript) for the component below using the given test cases. Return ONLY JSON matching the CoderBatchOutput schema.\n{json.dumps(prompt_payload, ensure_ascii=False, indent=2)}"
-            # Call LLM for this component
-            content = self._request_codegen_from_llm(prompt)
-            output = self._parse_or_repair_output(content, prompt)
+            prompt = (
+                "Generate one conservative Playwright E2E spec file (TypeScript) for the component below. "
+                "Prioritize TypeScript compilation and real app interactions over complex behavior. "
+                "Return ONLY JSON matching the CoderBatchOutput schema.\n"
+                f"{json.dumps(prompt_payload, ensure_ascii=False, indent=2)}"
+            )
 
+            cache_key = stable_hash({
+                "stage": "coder",
+                "model": self.model,
+                "system_prompt": self.system_prompt,
+                "base_url": base_url,
+                "item": item,
+            })
+            cached = read_cache(cache_path, cache_key)
+            if cached:
+                return index, item, CoderBatchOutput.model_validate(cached)
+
+            try:
+                content = self._request_codegen_from_llm(prompt)
+                output = self._parse_or_repair_output(content, prompt)
+                violations = self._validate_generated_output(output)
+                if violations:
+                    output = self._repair_policy_violations(output, prompt, violations)
+                write_cache(cache_path, cache_key, output.model_dump())
+                return index, item, output
+            except Exception as exc:
+                print(f"[Coder] Lỗi khi sinh spec cho {item['source_file']}: {exc}")
+                return index, item, CoderBatchOutput(generated=[])
+
+        generated_outputs: List[Tuple[int, Dict[str, Any], CoderBatchOutput]] = []
+        max_workers = min(get_max_workers(), len(items))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(generate_one, index, item) for index, item in enumerate(items)]
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Generating specs"):
+                generated_outputs.append(future.result())
+        generated_outputs.sort(key=lambda output_item: output_item[0])
+
+        generated_manifest: List[Dict[str, Any]] = []
+        used_spec_names: set[str] = set()
+        for _, item, output in generated_outputs:
             # Write each generated spec file
             for gen in output.generated:
                 spec_name = gen.spec_file
                 if not spec_name.endswith(".spec.ts"):
                     spec_name = f"{self._sanitize_name(spec_name)}.spec.ts"
+                if spec_name in used_spec_names:
+                    source_stem = self._sanitize_name(Path(item["source_file"]).stem)
+                    spec_name = f"{source_stem}_{spec_name}"
+                used_spec_names.add(spec_name)
                 spec_path = output_dir / spec_name
                 spec_path.write_text(gen.content.rstrip() + "\n", encoding="utf-8")
                 generated_manifest.append({

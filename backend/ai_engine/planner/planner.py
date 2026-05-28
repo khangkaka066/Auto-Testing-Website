@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field, ConfigDict
 
+try:
+    from utils.ai_runtime import retry_call
+except ImportError:
+    from backend.ai_engine.utils.ai_runtime import retry_call
+
 load_dotenv()
 
 Priority = Literal["P0", "P1", "P2"]
@@ -135,13 +140,15 @@ class Planner:
         return text
 
     def _request_plan_from_llm(self, user_prompt: str) -> str:
-        response = self.client.responses.parse(
-            model=self.model,
-            input=[
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            text_format=PlannerOutput
+        response = retry_call(
+            lambda: self.client.responses.parse(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                text_format=PlannerOutput
+            )
         )
         return response.output_parsed
 

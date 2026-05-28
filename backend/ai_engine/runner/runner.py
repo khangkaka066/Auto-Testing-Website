@@ -21,7 +21,7 @@ class Runner:
         # if not specs_dir.exists() or not specs_dir.is_dir():
         #     raise FileNotFoundError(f"Specs directory not found: {specs_dir}")
 
-        run_dir = Path.cwd()
+        run_dir = Path(working_dir).resolve() if working_dir else Path.cwd()
         report_file.parent.mkdir(parents=True, exist_ok=True)
 
         json_report_path = (report_file.parent / "playwright-report.json").resolve()
@@ -36,10 +36,6 @@ class Runner:
         env = {**dict(**__import__("os").environ)}
         if base_url:
             env["BASE_URL"] = base_url
-
-        if working_dir:
-            env["USER_PROJECT_PATH"] = str(Path(working_dir).resolve())
-
 
         result = subprocess.run(
             cmd,

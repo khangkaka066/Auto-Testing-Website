@@ -8,6 +8,11 @@ import frontmatter
 from openai import OpenAI
 from dotenv import load_dotenv
 
+try:
+    from utils.ai_runtime import retry_call
+except ImportError:
+    from backend.ai_engine.utils.ai_runtime import retry_call
+
 load_dotenv()
 
 class UIElement(BaseModel):
@@ -76,13 +81,15 @@ class Analyzer:
             f"Source Code:\n```\n{code_context}\n```"
         )
 
-        response = self.client.responses.parse(
-            model=self.model,
-            input=[
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            text_format=TechnicalAnalysisOutput
+        response = retry_call(
+            lambda: self.client.responses.parse(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                text_format=TechnicalAnalysisOutput
+            )
         )
         return response.output_parsed
         
