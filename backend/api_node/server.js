@@ -3,11 +3,12 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const { MongoClient } = require('mongodb');
 const axios = require('axios');
-require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 // ====================================================================
 // KHỞI TẠO SERVER VÀ KẾT NỐI DATABASE
@@ -50,6 +51,91 @@ const upload = multer({
     cb(null, true);
   },
 });
+
+// Cấu hình lưu source code người dùng upload vào workspace/<user_id>
+const SOURCE_WORKSPACE_DIR = path.resolve(__dirname, '..', '..', 'workspace');
+fs.mkdirSync(SOURCE_WORKSPACE_DIR, { recursive: true });
+
+const sourceZipStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const userUploadDir = path.join(SOURCE_WORKSPACE_DIR, req.user.id, 'uploads');
+    fs.mkdirSync(userUploadDir, { recursive: true });
+    cb(null, userUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${uuidv4()}-${safeName}`);
+  },
+});
+
+const sourceUpload = multer({
+  storage: sourceZipStorage,
+  limits: {
+    files: 1,
+    fileSize: 200 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (path.extname(file.originalname).toLowerCase() !== '.zip') {
+      return cb(new Error('Vui lòng tải lên file source code dạng .zip'));
+    }
+    cb(null, true);
+  },
+});
+
+function safeRelativePath(inputPath) {
+  const normalized = path
+    .normalize(inputPath || '')
+    .replace(/^(\.\.(\/|\\|$))+/, '')
+    .replace(/^[/\\]+/, '');
+
+  if (!normalized || path.isAbsolute(normalized) || normalized.split(path.sep).includes('..')) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function validateZipEntries(zipPath) {
+  const output = execFileSync('unzip', ['-Z', '-1', zipPath], {
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
+
+  return output
+    .split('\n')
+    .map(entry => entry.trim())
+    .filter(Boolean)
+    .map(entry => {
+      const safePath = safeRelativePath(entry);
+      if (!safePath) {
+        throw new Error(`File zip chứa đường dẫn không hợp lệ: ${entry}`);
+      }
+      return safePath;
+    });
+}
+
+function removeUserUploads(userId) {
+  fs.rmSync(path.join(SOURCE_WORKSPACE_DIR, userId, 'uploads'), {
+    recursive: true,
+    force: true,
+  });
+}
+
+function buildUniqueProjectSourceDir(sourceRootDir, zipFilename) {
+  const rawName = path.basename(zipFilename, path.extname(zipFilename));
+  const projectName = rawName
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/^[._-]+|[._-]+$/g, '') || 'source_project';
+
+  let projectSourceDir = path.join(sourceRootDir, projectName);
+  if (fs.existsSync(projectSourceDir)) {
+    const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+    projectSourceDir = path.join(sourceRootDir, `${projectName}_${timestamp}`);
+  }
+
+  return projectSourceDir;
+}
 
 // ====================================================================
 // MIDDLEWARE
@@ -277,6 +363,61 @@ router.post('/auth/avatar', authMiddleware, (req, res) => {
 // ====================================================================
 // TEST HISTORY ENDPOINTS
 // ====================================================================
+
+// --- UPLOAD FILE ZIP SOURCE CODE, LƯU VÀ GIẢI NÉN VÀO WORKSPACE CỦA USER ---
+router.post('/test/upload-source', authMiddleware, (req, res) => {
+  sourceUpload.single('sourceZip')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn file source code dạng .zip' });
+    }
+
+    const userWorkspaceDir = path.join(SOURCE_WORKSPACE_DIR, req.user.id);
+    const sourceRootDir = path.join(userWorkspaceDir, 'source');
+    const extractDir = buildUniqueProjectSourceDir(sourceRootDir, req.file.originalname);
+    fs.mkdirSync(extractDir, { recursive: true });
+
+    try {
+      const zipEntries = validateZipEntries(req.file.path);
+
+      try {
+        execFileSync('unzip', ['-q', '-o', req.file.path, '-d', extractDir], {
+          stdio: 'pipe',
+          maxBuffer: 10 * 1024 * 1024,
+        });
+      } catch (unzipError) {
+        return res.status(400).json({
+          success: false,
+          message: `Không thể giải nén file zip: ${unzipError.message}`,
+        });
+      } finally {
+        removeUserUploads(req.user.id);
+      }
+
+      return res.json({
+        success: true,
+        message: 'Upload và giải nén source code thành công',
+        data: {
+          user_id: req.user.id,
+          workspace_path: userWorkspaceDir,
+          source_path: extractDir,
+          extracted_count: zipEntries.length,
+          extracted_files: zipEntries,
+          uploads_deleted: true,
+        },
+      });
+    } catch (validationError) {
+      removeUserUploads(req.user.id);
+      return res.status(400).json({
+        success: false,
+        message: validationError.message,
+      });
+    }
+  });
+});
 
 // --- LƯU LỊCH SỬ CHẠY TEST ---
 router.post('/test/history', authMiddleware, (req, res) => {

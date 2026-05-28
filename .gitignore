@@ -112,3 +112,6 @@ node_modules
 .history/
 frontend/.env
 backend/api_node/.env
+
+
+test_project
