@@ -80,6 +80,7 @@ const sourceUpload = multer({
     files: 1,
     fileSize: 200 * 1024 * 1024,
   },
+  
   fileFilter: (req, file, cb) => {
     if (path.extname(file.originalname).toLowerCase() !== '.zip') {
       return cb(new Error('Vui lòng tải lên file source code dạng .zip'));
@@ -202,7 +203,6 @@ router.get('/', (req, res) => {
 // ====================================================================
 // AUTH ENDPOINTS
 // ====================================================================
-
 // --- ĐĂNG KÝ ---
 router.post('/auth/register', async (req, res) => {
   const { email, password, name } = req.body;
@@ -289,6 +289,7 @@ router.post('/auth/google', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Không thể lấy thông tin Email từ tài khoản Google này' });
     }
 
+    
     let userId;
     if (!USERS_DB[email]) {
       userId = uuidv4();
