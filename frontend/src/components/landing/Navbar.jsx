@@ -68,7 +68,6 @@ export default function Navbar() {
   const links = [
     { label: "Features", href: "#features" },
     { label: "How it works", href: "#how" },
-    { label: "Pricing", href: "#pricing" },
     { label: "FAQ", href: "#faq" },
   ];
 
@@ -76,12 +75,12 @@ export default function Navbar() {
     <header data-testid="site-navbar" className="sticky top-0 z-50 backdrop-blur-xl bg-white/75 border-b border-slate-200/70">
       <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
         
-        <Link to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900">
+        <a href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white">
             <Plane className="h-4 w-4 -rotate-45" />
           </span>
           TestPilot
-        </Link>
+        </a>
 
         <nav className="hidden md:flex items-center gap-8">
           {links.map((l) => (
@@ -89,6 +88,19 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
+          <Link
+            to="/pricing"
+            className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
+            to="/story"
+            className="text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors flex items-center gap-1.5"
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+            Our Story
+          </Link>
         </nav>
 
         <div className="hidden md:flex items-center gap-3 relative" ref={dropdownRef}>
@@ -153,6 +165,7 @@ export default function Navbar() {
             {links.map((l) => (
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{l.label}</a>
             ))}
+            <Link to="/pricing" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">Pricing</Link>
             <div className="h-px bg-slate-100 my-1"></div>
             {isLoggedIn ? (
               <>

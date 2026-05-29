@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: testpilot-ai-engine
+    runtime: docker
+    dockerfilePath: ./backend/ai_engine/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: AI_DEBUG
+        value: "false"
+      - key: AI_MAX_WORKERS
+        value: "2"
+      - key: AI_CACHE_ENABLED
+        value: "true"

@@ -261,7 +261,7 @@ class AIPipelineOrchestrator:
         if not spec_files: return False
 
         check_cmd = [
-            "npx", "-y", "-p", "typescript", "tsc", 
+            "npx", "tsc",
             "--noEmit", "--target", "es2022", "--moduleResolution", "bundler",
             "--skipLibCheck", "--lib", "es2022,dom"
         ] + spec_files

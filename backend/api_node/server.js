@@ -3,11 +3,11 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { execFileSync } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const { MongoClient } = require('mongodb');
 const axios = require('axios');
+const FormData = require('form-data');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '.env'), override: true });
 
@@ -59,7 +59,9 @@ const upload = multer({
 
 // Cấu hình lưu source code người dùng upload vào workspace/<user_id>
 const SOURCE_WORKSPACE_DIR = path.resolve(__dirname, '..', '..', 'workspace');
+const SOURCE_ARCHIVE_DIR = path.join(SOURCE_WORKSPACE_DIR, '_archives');
 fs.mkdirSync(SOURCE_WORKSPACE_DIR, { recursive: true });
+fs.mkdirSync(SOURCE_ARCHIVE_DIR, { recursive: true });
 
 const sourceZipStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -88,38 +90,6 @@ const sourceUpload = multer({
   },
 });
 
-function safeRelativePath(inputPath) {
-  const normalized = path
-    .normalize(inputPath || '')
-    .replace(/^(\.\.(\/|\\|$))+/, '')
-    .replace(/^[/\\]+/, '');
-
-  if (!normalized || path.isAbsolute(normalized) || normalized.split(path.sep).includes('..')) {
-    return null;
-  }
-
-  return normalized;
-}
-
-function validateZipEntries(zipPath) {
-  const output = execFileSync('unzip', ['-Z', '-1', zipPath], {
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
-  });
-
-  return output
-    .split('\n')
-    .map(entry => entry.trim())
-    .filter(Boolean)
-    .map(entry => {
-      const safePath = safeRelativePath(entry);
-      if (!safePath) {
-        throw new Error(`File zip chứa đường dẫn không hợp lệ: ${entry}`);
-      }
-      return safePath;
-    });
-}
-
 function removeUserUploads(userId) {
   fs.rmSync(path.join(SOURCE_WORKSPACE_DIR, userId, 'uploads'), {
     recursive: true,
@@ -141,6 +111,13 @@ function buildUniqueProjectSourceDir(sourceRootDir, zipFilename) {
   }
 
   return projectSourceDir;
+}
+
+function isPathInside(parentDir, candidatePath) {
+  const parent = path.resolve(parentDir);
+  const candidate = path.resolve(candidatePath);
+  const relative = path.relative(parent, candidate);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 // ====================================================================
@@ -370,7 +347,7 @@ router.post('/auth/avatar', authMiddleware, (req, res) => {
 // TEST HISTORY ENDPOINTS
 // ====================================================================
 
-// --- UPLOAD FILE ZIP SOURCE CODE, LƯU VÀ GIẢI NÉN VÀO WORKSPACE CỦA USER ---
+// --- UPLOAD FILE ZIP SOURCE CODE, LƯU ARCHIVE ĐỂ AI SERVICE GIẢI NÉN ---
 router.post('/test/upload-source', authMiddleware, (req, res) => {
   sourceUpload.single('sourceZip')(req, res, (err) => {
     if (err) {
@@ -383,35 +360,26 @@ router.post('/test/upload-source', authMiddleware, (req, res) => {
 
     const userWorkspaceDir = path.join(SOURCE_WORKSPACE_DIR, req.user.id);
     const sourceRootDir = path.join(userWorkspaceDir, 'source');
+    const projectId = uuidv4();
     const extractDir = buildUniqueProjectSourceDir(sourceRootDir, req.file.originalname);
+    const archiveDir = path.join(SOURCE_ARCHIVE_DIR, req.user.id);
+    const archivePath = path.join(archiveDir, `${projectId}-${path.basename(req.file.filename)}`);
     fs.mkdirSync(extractDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
 
     try {
-      const zipEntries = validateZipEntries(req.file.path);
-
-      try {
-        execFileSync('unzip', ['-q', '-o', req.file.path, '-d', extractDir], {
-          stdio: 'pipe',
-          maxBuffer: 10 * 1024 * 1024,
-        });
-      } catch (unzipError) {
-        return res.status(400).json({
-          success: false,
-          message: `Không thể giải nén file zip: ${unzipError.message}`,
-        });
-      } finally {
-        removeUserUploads(req.user.id);
-      }
+      fs.copyFileSync(req.file.path, archivePath);
+      removeUserUploads(req.user.id);
 
       return res.json({
         success: true,
-        message: 'Upload và giải nén source code thành công',
+        message: 'Upload source code thành công',
         data: {
           user_id: req.user.id,
+          project_id: projectId,
           workspace_path: userWorkspaceDir,
           source_path: extractDir,
-          extracted_count: zipEntries.length,
-          extracted_files: zipEntries,
+          source_archive_path: archivePath,
           uploads_deleted: true,
         },
       });
@@ -499,26 +467,53 @@ router.get('/status', async (req, res) => {
 // ====================================================================
 
 router.post('/run-test', authMiddleware, async (req, res) => {
-  const { user_id, project_id, source_path } = req.body;
+  const { user_id, project_id, source_path, source_archive_path, base_url } = req.body;
 
-  if (!user_id || !project_id || !source_path) {
-    return res.status(400).json({ success: false, message: 'Thiếu thông tin: user_id, project_id, source_path' });
+  if (!user_id || !project_id || (!source_path && !source_archive_path)) {
+    return res.status(400).json({ success: false, message: 'Thiếu thông tin: user_id, project_id và source_path/source_archive_path' });
   }
 
   try {
-    // Forward request sang AI Python service
-    const response = await axios.post(
-      `${AI_PYTHON_URL}/api/run-test`,
-      { user_id, project_id, source_path },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          // Truyền token xác thực sang Python nếu cần
-          'Authorization': req.headers['authorization'] || '',
-        },
-        timeout: 30000, // Timeout 30 giây
+    let response;
+
+    if (source_archive_path) {
+      const archivePath = path.resolve(source_archive_path);
+      if (!isPathInside(SOURCE_WORKSPACE_DIR, archivePath) || !fs.existsSync(archivePath)) {
+        return res.status(400).json({ success: false, message: 'source_archive_path không hợp lệ hoặc không tồn tại' });
       }
-    );
+
+      const form = new FormData();
+      form.append('user_id', user_id);
+      form.append('project_id', project_id);
+      if (base_url) form.append('base_url', base_url);
+      form.append('sourceZip', fs.createReadStream(archivePath), path.basename(archivePath));
+
+      response = await axios.post(
+        `${AI_PYTHON_URL}/api/run-test/upload`,
+        form,
+        {
+          headers: {
+            ...form.getHeaders(),
+            'Authorization': req.headers['authorization'] || '',
+          },
+          timeout: 120000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        }
+      );
+    } else {
+      response = await axios.post(
+        `${AI_PYTHON_URL}/api/run-test`,
+        { user_id, project_id, source_path, base_url },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers['authorization'] || '',
+          },
+          timeout: 30000,
+        }
+      );
+    }
 
     return res.json(response.data);
   } catch (err) {

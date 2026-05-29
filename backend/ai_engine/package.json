@@ -1,0 +1,10 @@
+{
+  "name": "testpilot-ai-engine-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@playwright/test": "^1.60.0",
+    "playwright": "^1.60.0",
+    "typescript": "^5.9.3"
+  }
+}

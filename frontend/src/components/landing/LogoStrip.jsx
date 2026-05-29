@@ -29,7 +29,7 @@ export default function LogoStrip() {
   return (
     <section
       data-testid="logo-strip"
-      className="py-14 md:py-16 border-b border-slate-200 bg-white"
+      className="py-14 md:py-16 border-b border-slate-200 bg-white/85 backdrop-blur-sm"
     >
       <div className="max-w-7xl mx-auto px-6 md:px-8">
         <p className="text-center text-xs font-mono uppercase tracking-[0.2em] text-slate-400 mb-8">

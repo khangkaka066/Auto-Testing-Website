@@ -1,5 +1,7 @@
 import React from "react";
 import { ArrowRight, Check, Play } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Root, Parallax } from "@bsmnt/scrollytelling";
 
 export default function Hero() {
   return (
@@ -7,12 +9,15 @@ export default function Hero() {
       data-testid="hero-section"
       className="relative overflow-hidden border-b border-slate-200"
     >
-      <div className="absolute inset-0 bg-grid pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+<div className="absolute inset-0 bg-grid pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
 
       <div className="relative max-w-7xl mx-auto px-6 md:px-8 pt-20 pb-24 md:pt-28 md:pb-32">
         <div className="grid lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-200 bg-orange-50">
+            <div
+              className="hero-fade-in inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-200 bg-orange-50"
+              style={{ animationDelay: "0ms" }}
+            >
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75 animate-ping"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
@@ -24,7 +29,8 @@ export default function Hero() {
 
             <h1
               data-testid="hero-heading"
-              className="font-display mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]"
+              className="hero-fade-in font-display mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]"
+              style={{ animationDelay: "140ms" }}
             >
               Ship faster.<br />
               With <span className="relative inline-block">
@@ -33,20 +39,26 @@ export default function Hero() {
               </span>.
             </h1>
 
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+            <p
+              className="hero-fade-in mt-6 max-w-xl text-lg leading-relaxed text-slate-600"
+              style={{ animationDelay: "260ms" }}
+            >
               TestPilot is the autonomous QA platform that writes, runs, and maintains your
               end-to-end tests. Catch regressions across every browser before they hit production.
             </p>
 
-            <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <a
-                href="#pricing"
+            <div
+              className="hero-fade-in mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+              style={{ animationDelay: "370ms" }}
+            >
+              <Link
+                to="/pricing"
                 data-testid="hero-primary-cta"
                 className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-6 py-3.5 rounded-md transition-all shadow-sm hover:shadow-md"
               >
-                Start free testing
+                Start testing
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </a>
+              </Link>
               <a
                 href="#how"
                 data-testid="hero-secondary-cta"
@@ -59,7 +71,10 @@ export default function Hero() {
               </a>
             </div>
 
-            <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
+            <ul
+              className="hero-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600"
+              style={{ animationDelay: "480ms" }}
+            >
               {["No credit card", "14-day free trial", "Cancel anytime"].map((t) => (
                 <li key={t} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-orange-500" />
@@ -70,6 +85,8 @@ export default function Hero() {
           </div>
 
           <div className="lg:col-span-5 relative">
+            <Root start="top top" end="bottom top">
+            <Parallax tween={{ start: 0, end: 100, movementY: { value: -55, unit: "px" } }}>
             <div className="relative">
               <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-orange-100 via-white to-slate-100 blur-2xl opacity-70" />
               <div className="relative rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/5 overflow-hidden animate-float">
@@ -142,6 +159,8 @@ export default function Hero() {
                 </div>
               </div>
             </div>
+            </Parallax>
+            </Root>
           </div>
         </div>
       </div>

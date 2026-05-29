@@ -98,6 +98,7 @@ export default function TestRunner() {
           user_id: uploadedSource.user_id,
           project_id: uploadedSource.project_id,
           source_path: uploadedSource.source_path,
+          source_archive_path: uploadedSource.source_archive_path,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
