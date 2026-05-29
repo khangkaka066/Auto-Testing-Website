@@ -228,6 +228,7 @@ class Coder:
         output_dir: Path,
         base_url: str,
         cache_dir: Path | None = None,
+        progress_callback=None,
     ) -> Dict[str, Any]:
         """Generate Playwright spec files **one per filtered plan file**.
         This method now loads each planner JSON individually, builds a tiny prompt containing only the relevant test cases
@@ -237,6 +238,15 @@ class Coder:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         cache_path = cache_dir or (output_dir / ".cache")
+        if not items:
+            manifest = {
+                "input": str(filtered_input),
+                "output_dir": str(output_dir),
+                "generated_count": 0,
+                "generated": [],
+            }
+            (output_dir / "index.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            return manifest
 
         def generate_one(index: int, item: Dict[str, Any]) -> Tuple[int, Dict[str, Any], CoderBatchOutput]:
             planner_output = item.get("planner_output", {})
@@ -292,8 +302,15 @@ class Coder:
         max_workers = min(get_max_workers(), len(items))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(generate_one, index, item) for index, item in enumerate(items)]
+            completed = 0
+            if progress_callback:
+                progress_callback(completed, len(futures))
             for future in tqdm(as_completed(futures), total=len(futures), desc="Generating specs"):
-                generated_outputs.append(future.result())
+                result = future.result()
+                generated_outputs.append(result)
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, len(futures), result[1].get("source_file", ""))
         generated_outputs.sort(key=lambda output_item: output_item[0])
 
         generated_manifest: List[Dict[str, Any]] = []

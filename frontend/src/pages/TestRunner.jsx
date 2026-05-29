@@ -71,7 +71,7 @@ export default function TestRunner() {
     formData.append("sourceZip", zipFile);
 
     try {
-      // Upload file zip source code, backend sẽ lưu và giải nén vào workspace/<user_id>
+      // Upload file zip source code, backend sẽ lưu và giải nén vào workspaces/<user_id>
       const uploadRes = await axios.post(
         "http://localhost:5000/api/test/upload-source",
         formData,
@@ -83,13 +83,6 @@ export default function TestRunner() {
         }
       );
       const uploadedSource = uploadRes.data.data;
-
-      // Gọi API lưu lịch sử source vừa upload
-      await axios.post(
-        "http://localhost:5000/api/test/history",
-        { filename: zipFile.name },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
 
       // Kích hoạt pipeline AI với folder source vừa giải nén
       const runRes = await axios.post(
@@ -106,7 +99,7 @@ export default function TestRunner() {
       }
 
       setIsTesting(false);
-      toast.success(runRes.data.message || "Pipeline test đã hoàn tất!");
+      toast.success(runRes.data.message || "Pipeline test đã bắt đầu!");
       sessionStorage.setItem(
         "latest_test_progress",
         JSON.stringify({
@@ -147,7 +140,7 @@ export default function TestRunner() {
             Khởi chạy Auto Test
           </h1>
           <p className="text-slate-500 mt-2">
-            Tải lên file .zip chứa source code để hệ thống lưu vào workspace, giải nén và chuẩn bị phân tích kiểm thử.
+            Tải lên file .zip chứa source code để hệ thống lưu vào workspaces, giải nén và chuẩn bị phân tích kiểm thử.
           </p>
         </div>
 

@@ -57,6 +57,9 @@ class JobStore:
             "run_id": None,
             "status": "queued",
             "message": "AI pipeline đã được đưa vào hàng đợi",
+            "stage": "queued",
+            "progress_percent": 10,
+            "sub_progress": None,
             "user_id": payload.user_id,
             "project_id": payload.project_id,
             "source_path": str(source_path),
@@ -150,8 +153,9 @@ def build_client_state(job: Dict[str, Any]) -> Dict[str, Any]:
         "run_id": job.get("run_id"),
         "status": job.get("status"),
         "message": job.get("message"),
-        "progress_percent": progress_by_status.get(job.get("status"), 0),
-        "stage": job.get("status"),
+        "progress_percent": job.get("progress_percent", progress_by_status.get(job.get("status"), 0)),
+        "sub_progress": job.get("sub_progress"),
+        "stage": job.get("stage") or job.get("status"),
         "user_id": job.get("user_id"),
         "project_id": job.get("project_id"),
         "source_path": job.get("source_path"),
@@ -178,12 +182,29 @@ def run_pipeline_job(job_id: str, payload: RunTestRequest, source_path: Path) ->
     jobs.update(
         job_id,
         status="running",
-        message="AI pipeline đang chạy",
+        stage="initializing",
+        progress_percent=12,
+        message="AI pipeline đang khởi tạo",
         started_at=JobStore._now(),
     )
 
     try:
         from UITesting.UI_testing import AIPipelineOrchestrator
+
+        def report_stage(
+            stage: str,
+            progress_percent: int,
+            message: str,
+            sub_progress: Optional[Dict[str, Any]] = None,
+        ) -> None:
+            jobs.update(
+                job_id,
+                status="running",
+                stage=stage,
+                progress_percent=progress_percent,
+                message=message,
+                sub_progress=sub_progress,
+            )
 
         base_url = payload.base_url or os.getenv("TARGET_BASE_URL", "http://localhost:5173")
         pipeline = AIPipelineOrchestrator(
@@ -193,11 +214,14 @@ def run_pipeline_job(job_id: str, payload: RunTestRequest, source_path: Path) ->
         )
         jobs.update(job_id, run_id=pipeline.run_id, run_workspace_dir=pipeline.run_workspace_dir)
 
-        pipeline.execute_pipeline(base_url=base_url)
+        pipeline.execute_pipeline(base_url=base_url, progress_callback=report_stage)
         result = load_final_report(pipeline.run_workspace_dir)
         jobs.update(
             job_id,
             status="completed",
+            stage="completed",
+            progress_percent=100,
+            sub_progress=None,
             message="AI pipeline đã hoàn tất",
             finished_at=JobStore._now(),
             result=result,
@@ -214,6 +238,9 @@ def run_pipeline_job(job_id: str, payload: RunTestRequest, source_path: Path) ->
             job_id,
             success=False,
             status="failed",
+            stage="failed",
+            progress_percent=100,
+            sub_progress=None,
             message="AI pipeline chạy thất bại",
             finished_at=JobStore._now(),
             error=error,
@@ -239,8 +266,13 @@ def health() -> Dict[str, str]:
 def run_test(payload: RunTestRequest) -> Dict[str, Any]:
     source_path = resolve_source_path(payload.source_path)
     job = jobs.create(payload, source_path)
-    finished_job = run_pipeline_job(job["job_id"], payload, source_path)
-    return response_from_job(finished_job)
+    worker = threading.Thread(
+        target=run_pipeline_job,
+        args=(job["job_id"], payload, source_path),
+        daemon=True,
+    )
+    worker.start()
+    return response_from_job(job)
 
 
 @app.get("/api/run-test/{project_id}")

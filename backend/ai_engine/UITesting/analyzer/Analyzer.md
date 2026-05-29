@@ -1,5 +1,5 @@
 ---
-model: "gpt-5-mini"
+model: "gpt-5-nano"
 temperature: 0.1
 max_tokens: 2000
 ---

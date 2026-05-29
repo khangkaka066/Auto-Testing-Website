@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile"; 
 import TestRunner from "./pages/TestRunner"; // 1. Import trang TestRunner
 import TestProgress from "./pages/TestProgress";
+import TestReport from "./pages/TestReport";
 import { Toaster } from "./components/ui/sonner";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="/profile" element={<Profile />} /> 
           <Route path="/run-test" element={<TestRunner />} /> {/* 2. Khai báo route */}
           <Route path="/test-progress/:projectId" element={<TestProgress />} />
+          <Route path="/test-report/:historyId" element={<TestReport />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-right" />

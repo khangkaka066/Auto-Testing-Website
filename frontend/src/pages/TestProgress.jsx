@@ -28,6 +28,22 @@ const STATUS_META = {
   },
 };
 
+const STAGE_LABELS = {
+  queued: "Đang chờ",
+  initializing: "Khởi tạo",
+  detector: "Dò cấu trúc",
+  analyzer: "Phân tích source",
+  planner: "Lập kế hoạch",
+  filter: "Lọc test case",
+  coder: "Sinh test",
+  validator: "Kiểm tra test",
+  debugger: "Tự sửa test",
+  executor: "Chạy test",
+  reporter: "Tổng hợp báo cáo",
+  completed: "Hoàn tất",
+  failed: "Thất bại",
+};
+
 export default function TestProgress() {
   const { projectId } = useParams();
   const location = useLocation();
@@ -50,6 +66,12 @@ export default function TestProgress() {
   const meta = useMemo(() => STATUS_META[runState.status] || STATUS_META.queued, [runState.status]);
   const StatusIcon = meta.icon;
   const progressPercent = Math.max(0, Math.min(100, runState.progress_percent || 0));
+  const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "-";
+  const subProgress = runState.sub_progress;
+  const showSubProgress = subProgress && Number(subProgress.total) > 0;
+  const subProgressPercent = showSubProgress
+    ? Math.max(0, Math.min(100, subProgress.percent ?? Math.round((subProgress.completed / subProgress.total) * 100)))
+    : 0;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -60,6 +82,7 @@ export default function TestProgress() {
     }
 
     let isMounted = true;
+    let intervalId;
 
     const fetchStatus = async () => {
       try {
@@ -69,6 +92,9 @@ export default function TestProgress() {
 
         if (!isMounted || !res.data.success) return;
         setRunState(res.data.data);
+        if (res.data.data.status === "completed" || res.data.data.status === "failed") {
+          if (intervalId) clearInterval(intervalId);
+        }
       } catch (err) {
         if (!isMounted) return;
         setRunState((current) => ({
@@ -80,7 +106,7 @@ export default function TestProgress() {
     };
 
     fetchStatus();
-    const intervalId = setInterval(fetchStatus, 2000);
+    intervalId = setInterval(fetchStatus, 2000);
 
     return () => {
       isMounted = false;
@@ -119,12 +145,24 @@ export default function TestProgress() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500">Trạng thái</p>
-              <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
+                {!isFinished ? (
+                  <span className="text-sm font-semibold text-orange-600 animate-pulse">Loading...</span>
+                ) : null}
+              </div>
             </div>
           </div>
 
           <div className="mt-8">
-            <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div className="mb-3 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Stage hiện tại</p>
+                <p className="text-lg font-bold text-slate-900">{stageLabel}</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{progressPercent}%</p>
+            </div>
+            <div className="h-4 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   runState.status === "failed" ? "bg-red-500" : "bg-orange-600"
@@ -134,9 +172,31 @@ export default function TestProgress() {
             </div>
             <div className="mt-3 flex justify-between text-sm text-slate-500">
               <span>{runState.message}</span>
-              <span>{progressPercent}%</span>
+              {!isFinished ? <span className="animate-pulse">Loading...</span> : <span>{meta.label}</span>}
             </div>
           </div>
+
+          {showSubProgress ? (
+            <div className="mt-6 rounded-lg border border-orange-100 bg-orange-50 p-4">
+              <div className="mb-3 flex items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-orange-800">{subProgress.label}</p>
+                  {subProgress.current_item ? (
+                    <p className="mt-1 font-mono text-xs text-orange-700 truncate">{subProgress.current_item}</p>
+                  ) : null}
+                </div>
+                <p className="text-sm font-bold text-orange-800 tabular-nums">
+                  {subProgress.completed}/{subProgress.total} file
+                </p>
+              </div>
+              <div className="h-3 w-full rounded-full bg-white overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-orange-500 transition-all duration-500"
+                  style={{ width: `${subProgressPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-8 grid grid-cols-1 gap-4 text-sm">
             <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
@@ -159,7 +219,15 @@ export default function TestProgress() {
           ) : null}
 
           {isFinished ? (
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex flex-wrap justify-end gap-3">
+              {runState.status === "completed" && (runState.job_id || runState.run_id) ? (
+                <button
+                  onClick={() => navigate(`/test-report/${runState.job_id || runState.run_id}`)}
+                  className="bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  Xem báo cáo
+                </button>
+              ) : null}
               <button
                 onClick={() => navigate("/dashboard")}
                 className="bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"

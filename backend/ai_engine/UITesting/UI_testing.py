@@ -3,11 +3,11 @@ import json
 from pathlib import Path
 import shutil
 from colorama import Fore, Style
-import time
 from tqdm import tqdm
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
+from datetime import datetime
 
 from detector.detector import Detector
 from analyzer.analyzer import Analyzer
@@ -26,15 +26,20 @@ class AIPipelineOrchestrator:
         self.user_id = user_id
         self.project_id = project_id
         self.source_code_path = source_code_path
+        self.progress_callback = None
+        self._current_stage = "initializing"
+        self._current_percent = 12
+        self._current_message = "AI pipeline đang khởi tạo"
         
         # Tạo ID cho lần chạy này dựa trên Timestamp
-        self.run_id = f"run_{int(time.time())}"
+        source_name = self._sanitize_path_name(Path(source_code_path).resolve().name)
+        self.run_id = f"run_{datetime.now().strftime('%H-%M-%S_%d-%m-%Y')}_{source_name}"
         # self.run_id = "run_1779946239"
         
         # Tạo đường dẫn Workspace Động (Dynamic Path)
-        base_workspace = os.getenv("WORKSPACE_BASE_PATH", "workspaces")
-        self.run_workspace_dir = os.path.join(base_workspace, user_id, project_id, "runs", self.run_id)
-        self.cache_dir = os.path.join(base_workspace, user_id, project_id, ".ai_cache")
+        base_workspace = self._resolve_workspace_base_path()
+        self.run_workspace_dir = self._build_unique_run_workspace_dir(base_workspace, user_id, self.run_id)
+        self.cache_dir = os.path.join(base_workspace, user_id, ".ai_cache")
         
         # Đường dẫn gốc (mã nguồn của user)
         self.workspace_dir = source_code_path 
@@ -55,6 +60,51 @@ class AIPipelineOrchestrator:
         }
         
         self.setup_directories()
+
+    def _report_sub_progress(self, label: str, completed: int, total: int, current_item: str = ""):
+        if not self.progress_callback or total <= 0:
+            return
+
+        self.progress_callback(
+            self._current_stage,
+            self._current_percent,
+            self._current_message,
+            {
+                "label": label,
+                "completed": completed,
+                "total": total,
+                "current_item": current_item,
+                "percent": round((completed / total) * 100),
+            },
+        )
+
+    @staticmethod
+    def _sanitize_path_name(value: str) -> str:
+        sanitized = re.sub(r"\s+", "_", value or "source_project")
+        sanitized = re.sub(r"[^a-zA-Z0-9._-]", "_", sanitized)
+        sanitized = sanitized.strip("._-")
+        return sanitized or "source_project"
+
+    @staticmethod
+    def _resolve_workspace_base_path() -> str:
+        configured_path = os.getenv("WORKSPACE_BASE_PATH")
+        if configured_path:
+            workspace_path = Path(configured_path).expanduser()
+            if not workspace_path.is_absolute():
+                workspace_path = Path(__file__).resolve().parents[3] / workspace_path
+            return str(workspace_path.resolve())
+
+        return str((Path(__file__).resolve().parents[3] / "workspaces").resolve())
+
+    @staticmethod
+    def _build_unique_run_workspace_dir(base_workspace: str, user_id: str, run_id: str) -> str:
+        runs_dir = Path(base_workspace) / user_id / "runs"
+        run_workspace_dir = runs_dir / run_id
+        duplicate_index = 2
+        while run_workspace_dir.exists():
+            run_workspace_dir = runs_dir / f"{run_id}_{duplicate_index}"
+            duplicate_index += 1
+        return str(run_workspace_dir)
 
     def setup_directories(self):
         print(f"{Fore.CYAN}[SETUP] Đang khởi tạo các thư mục lưu trữ I/O...{Style.RESET_ALL}")
@@ -142,8 +192,17 @@ class AIPipelineOrchestrator:
         max_workers = min(get_max_workers(), len(files_to_analyze)) if files_to_analyze else 1
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(analyze_one, info_file) for info_file in files_to_analyze]
+            completed = 0
+            self._report_sub_progress("Đang phân tích file", completed, len(futures))
             for future in tqdm(as_completed(futures), total=len(futures), desc="Đang phân tích cấu trúc"):
-                future.result()
+                result_path = future.result()
+                completed += 1
+                self._report_sub_progress(
+                    "Đang phân tích file",
+                    completed,
+                    len(futures),
+                    Path(result_path).name if result_path else "",
+                )
 
     def run_planner(self, test_type: str = "UI Testing"):
         print(f"\n{Fore.GREEN}[STAGE 3] Lên kế hoạch test case (Planner)...{Style.RESET_ALL}")
@@ -198,8 +257,17 @@ class AIPipelineOrchestrator:
         max_workers = min(get_max_workers(), len(analyzer_files)) if analyzer_files else 1
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(plan_one, filename) for filename in analyzer_files]
+            completed = 0
+            self._report_sub_progress("Đang lập kế hoạch cho file", completed, len(futures))
             for future in tqdm(as_completed(futures), total=len(futures), desc=f"Đang lên kế hoạch cho {test_type}"):
-                future.result()
+                result_path = future.result()
+                completed += 1
+                self._report_sub_progress(
+                    "Đang lập kế hoạch cho file",
+                    completed,
+                    len(futures),
+                    Path(result_path).name if result_path else "",
+                )
 
     def run_filter(self):
         print(f"\n{Fore.GREEN}[STAGE 3.5] Lọc các file không có test case (Filter)...{Style.RESET_ALL}")
@@ -248,6 +316,12 @@ class AIPipelineOrchestrator:
             output_dir=Path(self.core_ai_dir), # [MỚI] Push test file vào Workspace động
             base_url=base_url,
             cache_dir=Path(self.cache_dir) / "coder",
+            progress_callback=lambda completed, total, current_item="": self._report_sub_progress(
+                "Đang sinh spec",
+                completed,
+                total,
+                current_item,
+            ),
         )
         
         with open(os.path.join(self.dirs["5_coder"], "coder_manifest.json"), 'w', encoding='utf-8') as f:
@@ -443,9 +517,18 @@ class AIPipelineOrchestrator:
         results = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(fix_one_file, file_path) for file_path in failed_files]
+            completed = 0
+            self._report_sub_progress("Đang sửa spec lỗi", completed, len(futures))
             for future in tqdm(as_completed(futures), total=len(futures), desc="Fixing file"):
                 result = future.result()
                 results.append(result)
+                completed += 1
+                self._report_sub_progress(
+                    "Đang sửa spec lỗi",
+                    completed,
+                    len(futures),
+                    Path(result.get("file_path", "")).name,
+                )
                 if result["status"] == "failed":
                     print(f"{Fore.RED}  -> Fix thất bại {result['file_path']}: {result['reason']}{Style.RESET_ALL}")
                 elif result["status"] == "skipped":
@@ -505,23 +588,40 @@ class AIPipelineOrchestrator:
         print(f"{Fore.CYAN}  -> Điểm số (Health Score): {report_output.health_score}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}  -> Đã lưu báo cáo chung tại: {final_report_path}{Style.RESET_ALL}")
 
-    def execute_pipeline(self, base_url="http://localhost:5173"):
+    def execute_pipeline(self, base_url="http://localhost:5173", progress_callback=None):
+        self.progress_callback = progress_callback
+
+        def report(stage: str, percent: int, message: str):
+            self._current_stage = stage
+            self._current_percent = percent
+            self._current_message = message
+            if progress_callback:
+                progress_callback(stage, percent, message, None)
+
         print(f"\n{Fore.GREEN}=== BẮT ĐẦU CHẠY AI PIPELINE ==={Style.RESET_ALL}")
+        report("detector", 15, "Đang dò cấu trúc source code")
         detector_out = self.run_detector()
+        report("analyzer", 25, "Đang phân tích source code")
         self.run_analyzer(detector_out)
+        report("planner", 40, "Đang lập kế hoạch test")
         self.run_planner(test_type="UI Testing")
+        report("filter", 50, "Đang lọc test case phù hợp")
         self.run_filter()
+        report("coder", 65, "Đang sinh test Playwright")
         self.run_coder("playwright.config.ts", base_url)
 
         # --- CƠ CHẾ AUTO-HEALING (TỐI ĐA 3 LẦN) ---
         MAX_RETRIES = 3
+        report("validator", 75, "Đang kiểm tra test vừa sinh")
         is_valid = self.run_validator()
 
         attempt = 0
         while attempt < MAX_RETRIES and not is_valid:
             attempt += 1
             print(f"\n{Fore.YELLOW}--- Tiến hành phẫu thuật mã nguồn (Lần {attempt}/{MAX_RETRIES}) ---{Style.RESET_ALL}")
+            report("debugger", 78 + attempt * 3, f"Đang tự sửa test lỗi lần {attempt}/{MAX_RETRIES}")
             self.run_debugger() # Gọi bác sĩ AI để sửa code
+            report("validator", 80 + attempt * 3, f"Đang kiểm tra lại test sau lần sửa {attempt}/{MAX_RETRIES}")
             is_valid = self.run_validator()
 
         if not is_valid:
@@ -538,7 +638,9 @@ class AIPipelineOrchestrator:
                 return
 
             print(f"\n{Fore.GREEN}[SUCCESS] Các spec còn lại đã sạch. Đang đẩy vào Sandbox (Docker)...{Style.RESET_ALL}")
+            report("executor", 90, "Đang chạy test trong sandbox")
             executor_out = self.run_executor(base_url)
+            report("reporter", 96, "Đang tổng hợp báo cáo")
             self.run_reporter(executor_out)
         else:
             print(f"\n{Fore.RED}[FAILED] Pipeline thất bại. Không thể xác định/xoá hết các spec lỗi sau {MAX_RETRIES} lần sửa.{Style.RESET_ALL}")

@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:all": "node scripts/start-all.js",
+    "start:ai": "cd ../ai_engine && python3 -m uvicorn app:app --host 127.0.0.1 --port 8001",
     "dev": "nodemon server.js",
     "lint": "eslint server.js"
   },
