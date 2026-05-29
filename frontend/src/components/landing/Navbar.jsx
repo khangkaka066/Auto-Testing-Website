@@ -68,24 +68,36 @@ export default function Navbar() {
     <header data-testid="site-navbar" className="sticky top-0 z-50 backdrop-blur-xl bg-white/75 border-b border-slate-200/70">
       <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
 
-        <a href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white">
-            <Plane className="h-4 w-4 -rotate-45" />
+        {/* ── Logo ── */}
+        <a
+          href={isLoggedIn ? "/dashboard" : "/"}
+          className="group flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900"
+        >
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white transition-all duration-300 group-hover:bg-orange-500 group-hover:scale-110 group-hover:rotate-3">
+            <Plane className="h-4 w-4 -rotate-45 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </span>
-          TestPilot
+          <span className="transition-colors duration-300 group-hover:text-orange-500">TestPilot</span>
         </a>
 
+        {/* ── Nav links ── */}
         <nav className="hidden md:flex items-center gap-8">
-          {links.map((l) => (
-            <a key={l.href} href={l.href} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+          {links.map((l, i) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
               {l.label}
+              <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
             </a>
           ))}
           <Link
             to="/pricing"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1"
           >
             Pricing
+            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
           </Link>
         </nav>
 
@@ -133,8 +145,29 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Sign in</Link>
-              <Link to="/register" className="text-sm font-medium bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-md transition-colors">Start free</Link>
+              {/* Sign in — underline + arrow */}
+              <Link
+                to="/login"
+                className="group/si relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 flex items-center gap-1 py-1"
+              >
+                Sign in
+                <svg
+                  className="h-3.5 w-3.5 translate-x-0 opacity-0 transition-all duration-200 group-hover/si:translate-x-0.5 group-hover/si:opacity-100"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+                <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-slate-400 transition-all duration-300 group-hover/si:w-full" />
+              </Link>
+
+              {/* Start free — shimmer sweep */}
+              <Link
+                to="/register"
+                className="group/sf relative overflow-hidden text-sm font-medium bg-slate-900 text-white px-4 py-2 rounded-md transition-all duration-200 hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-900/20 hover:scale-[1.03] active:scale-100"
+              >
+                <span className="relative z-10">Start free</span>
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-500 ease-in-out group-hover/sf:translate-x-full" />
+              </Link>
             </>
           )}
         </div>
