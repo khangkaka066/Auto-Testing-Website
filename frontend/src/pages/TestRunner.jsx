@@ -92,7 +92,7 @@ export default function TestRunner() {
       );
 
       // Kích hoạt pipeline AI với folder source vừa giải nén
-      await axios.post(
+      const runRes = await axios.post(
         "http://localhost:5000/api/run-test",
         {
           user_id: uploadedSource.user_id,
@@ -101,9 +101,12 @@ export default function TestRunner() {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      if (!runRes.data.success) {
+        throw new Error(runRes.data.message || "Pipeline AI chạy thất bại");
+      }
 
       setIsTesting(false);
-      toast.success("Đã bắt đầu pipeline test!");
+      toast.success(runRes.data.message || "Pipeline test đã hoàn tất!");
       sessionStorage.setItem(
         "latest_test_progress",
         JSON.stringify({
@@ -121,7 +124,7 @@ export default function TestRunner() {
       
     } catch (err) {
       setIsTesting(false);
-      toast.error(err.response?.data?.message || "Có lỗi xảy ra khi upload source code");
+      toast.error(err.response?.data?.message || err.message || "Có lỗi xảy ra khi upload source code");
     }
   };
 

@@ -17,6 +17,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env'), override: true
 const app = express();
 const PORT = process.env.PORT || 5000;
 const AI_PYTHON_URL = process.env.AI_PYTHON_URL || 'http://127.0.0.1:8001';
+const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 30 * 60 * 1000);
 
 const mongoUrl = process.env.MONGO_URL;
 const dbName = process.env.DB_NAME;
@@ -149,9 +150,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',')
-  : '*';
+const configuredCorsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
+  : ['*'];
+const corsOrigins = configuredCorsOrigins.includes('*') ? true : configuredCorsOrigins;
 app.use(cors({
   origin: corsOrigins,
   credentials: true,
@@ -407,6 +409,7 @@ router.post('/test/upload-source', authMiddleware, (req, res) => {
         message: 'Upload và giải nén source code thành công',
         data: {
           user_id: req.user.id,
+          project_id: path.basename(extractDir),
           workspace_path: userWorkspaceDir,
           source_path: extractDir,
           extracted_count: zipEntries.length,
@@ -515,7 +518,7 @@ router.post('/run-test', authMiddleware, async (req, res) => {
           // Truyền token xác thực sang Python nếu cần
           'Authorization': req.headers['authorization'] || '',
         },
-        timeout: 30000, // Timeout 30 giây
+        timeout: AI_REQUEST_TIMEOUT_MS,
       }
     );
 

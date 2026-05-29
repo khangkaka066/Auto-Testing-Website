@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,7 @@ AI_ENGINE_DIR = BACKEND_DIR / "ai_engine"
 UI_TESTING_DIR = AI_ENGINE_DIR / "UITesting"
 
 load_dotenv(BACKEND_DIR / ".env")
+load_dotenv(AI_ENGINE_DIR / ".env", override=True)
 
 if str(UI_TESTING_DIR) not in sys.path:
     sys.path.insert(0, str(UI_TESTING_DIR))
@@ -76,6 +77,11 @@ class JobStore:
             if job_id in self._jobs:
                 self._jobs[job_id].update(changes)
 
+    def get(self, job_id: str) -> Optional[Dict[str, Any]]:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            return job.copy() if job else None
+
     def get_by_project(self, project_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
             job_id = self._latest_by_project.get(project_id)
@@ -127,7 +133,48 @@ def load_final_report(run_workspace_dir: str) -> Dict[str, Any]:
     return result
 
 
-def run_pipeline_job(job_id: str, payload: RunTestRequest, source_path: Path) -> None:
+def build_client_state(job: Dict[str, Any]) -> Dict[str, Any]:
+    progress_by_status = {
+        "queued": 10,
+        "running": 50,
+        "completed": 100,
+        "failed": 100,
+    }
+    result = job.get("result") or {}
+    final_report_path = result.get("final_report_path")
+    executor_report_path = result.get("executor_report_path")
+
+    return {
+        "success": job.get("success", False),
+        "job_id": job.get("job_id"),
+        "run_id": job.get("run_id"),
+        "status": job.get("status"),
+        "message": job.get("message"),
+        "progress_percent": progress_by_status.get(job.get("status"), 0),
+        "stage": job.get("status"),
+        "user_id": job.get("user_id"),
+        "project_id": job.get("project_id"),
+        "source_path": job.get("source_path"),
+        "base_url": job.get("base_url"),
+        "run_workspace_dir": job.get("run_workspace_dir"),
+        "report_path": final_report_path or executor_report_path,
+        "result": result or None,
+        "error": job.get("error"),
+        "created_at": job.get("created_at"),
+        "started_at": job.get("started_at"),
+        "finished_at": job.get("finished_at"),
+    }
+
+
+def response_from_job(job: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "success": bool(job.get("success")),
+        "message": job.get("message") or "",
+        "data": build_client_state(job),
+    }
+
+
+def run_pipeline_job(job_id: str, payload: RunTestRequest, source_path: Path) -> Dict[str, Any]:
     jobs.update(
         job_id,
         status="running",
@@ -172,6 +219,11 @@ def run_pipeline_job(job_id: str, payload: RunTestRequest, source_path: Path) ->
             error=error,
         )
 
+    job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=500, detail="Không thể đọc trạng thái job sau khi chạy pipeline")
+    return job
+
 
 @app.get("/")
 def root() -> Dict[str, str]:
@@ -184,11 +236,11 @@ def health() -> Dict[str, str]:
 
 
 @app.post("/api/run-test")
-def run_test(payload: RunTestRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
+def run_test(payload: RunTestRequest) -> Dict[str, Any]:
     source_path = resolve_source_path(payload.source_path)
     job = jobs.create(payload, source_path)
-    background_tasks.add_task(run_pipeline_job, job["job_id"], payload, source_path)
-    return job
+    finished_job = run_pipeline_job(job["job_id"], payload, source_path)
+    return response_from_job(finished_job)
 
 
 @app.get("/api/run-test/{project_id}")
@@ -196,4 +248,4 @@ def get_run_test(project_id: str) -> Dict[str, Any]:
     job = jobs.get_by_project(project_id)
     if not job:
         raise HTTPException(status_code=404, detail="Không tìm thấy job test cho project_id này")
-    return job
+    return response_from_job(job)
