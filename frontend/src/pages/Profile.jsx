@@ -1,27 +1,26 @@
-import React, { useState, useEffect, useRef } from "react"; // 🛠️ Đã thêm useRef
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
-import { User, Mail, Lock, ArrowLeft, Camera } from "lucide-react"; // 🛠️ Đã thêm Camera
+import { User, Mail, Lock, ArrowLeft, Camera } from "lucide-react";
 
 export default function Profile() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
-  const [avatar, setAvatar] = useState(""); // 🛠️ THÊM STATE: Lưu URL ảnh đại diện hiển thị
+  const [avatar, setAvatar] = useState("");
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false); // 🛠️ THÊM STATE: Trạng thái đang upload file
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
-  const fileInputRef = useRef(null); // 🛠️ THÊM REF: Điều khiển thẻ input file ẩn
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Vui lòng đăng nhập để thực hiện chức năng này");
+      toast.error("Please sign in to use this feature");
       navigate("/login");
       return;
     }
 
-    // Tự động gọi API Backend để lấy dữ liệu cũ đổ vào form khi vừa vào trang
     axios
       .get("http://localhost:5000/api/auth/profile", {
         headers: { Authorization: `Bearer ${token}` },
@@ -31,11 +30,9 @@ export default function Profile() {
           setFormData({
             name: res.data.user.name,
             email: res.data.user.email,
-            password: "", // Không hiện mật khẩu cũ vì lý do bảo mật
+            password: "",
           });
-          setAvatar(res.data.user.avatar || ""); // Nạp ảnh đại diện nếu có từ server
-          
-          // Đồng bộ thông tin chuẩn vào bộ nhớ đệm ban đầu
+          setAvatar(res.data.user.avatar || "");
           localStorage.setItem("user_avatar", res.data.user.avatar || "");
           localStorage.setItem("user_name", res.data.user.name || "");
           window.dispatchEvent(new Event("userUpdate"));
@@ -43,24 +40,23 @@ export default function Profile() {
         setLoading(false);
       })
       .catch((err) => {
-        toast.error(err.response?.data?.message || "Không thể tải thông tin");
+        toast.error(err.response?.data?.message || "Failed to load profile");
         setLoading(false);
       });
   }, [navigate]);
 
-  // 🛠️ THÊM MỚI: Hàm xử lý tải ảnh đại diện lên Backend
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Vui lòng chỉ chọn file hình ảnh!");
+      toast.error("Please select an image file only!");
       return;
     }
 
     const token = localStorage.getItem("token");
     const data = new FormData();
-    data.append("file", file); // Đóng gói file tệp tin
+    data.append("file", file);
 
     try {
       setUploading(true);
@@ -72,15 +68,12 @@ export default function Profile() {
       });
       if (res.data.avatar_url) {
         setAvatar(res.data.avatar_url);
-        
-        // Cập nhật bộ nhớ đệm và phát tín hiệu thay đổi ảnh lập tức lên Navbar
         localStorage.setItem("user_avatar", res.data.avatar_url);
         window.dispatchEvent(new Event("userUpdate"));
-        
-        toast.success("Cập nhật ảnh đại diện thành công!");
+        toast.success("Profile photo updated successfully!");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Không thể tải ảnh lên");
+      toast.error(err.response?.data?.message || "Failed to upload photo");
     } finally {
       setUploading(false);
     }
@@ -96,22 +89,20 @@ export default function Profile() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.data.success) {
-        // Lưu lại họ tên mới và cập nhật ký tự chữ cái đầu trên Navbar
         localStorage.setItem("user_name", formData.name);
         window.dispatchEvent(new Event("userUpdate"));
-
         toast.success(res.data.message);
-        navigate("/dashboard"); // Lưu xong trả về trang Dashboard chính
+        navigate("/dashboard");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Cập nhật thông tin thất bại");
+      toast.error(err.response?.data?.message || "Failed to update profile");
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-500 animate-pulse font-medium">Đang tải thông tin tài khoản...</p>
+        <p className="text-slate-500 animate-pulse font-medium">Loading account information...</p>
       </div>
     );
   }
@@ -120,22 +111,21 @@ export default function Profile() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
       <main className="max-w-xl mx-auto px-6 py-12">
-        
+
         <button
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lại Dashboard
+          Back to Dashboard
         </button>
 
         <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-900 text-left mb-1">Thông tin cá nhân</h2>
-          <p className="text-slate-500 text-sm text-left mb-6">Cập nhật thông tin hiển thị và hình ảnh đại diện của bạn.</p>
+          <h2 className="text-2xl font-bold text-slate-900 text-left mb-1">Profile</h2>
+          <p className="text-slate-500 text-sm text-left mb-6">Update your display name and profile photo.</p>
 
-          {/* 🛠️ THÊM MỚI: KHUNG TRÒN HIỂN THỊ VÀ CLICK CHỌN AVATAR */}
           <div className="flex flex-col items-center mb-6 relative">
-            <div 
+            <div
               onClick={() => !uploading && fileInputRef.current.click()}
               className="h-24 w-24 rounded-full bg-orange-600 border-4 border-slate-100 shadow-sm flex items-center justify-center text-white font-bold text-3xl cursor-pointer relative group overflow-hidden select-none"
             >
@@ -144,29 +134,26 @@ export default function Profile() {
               ) : (
                 formData.name ? formData.name.charAt(0).toUpperCase() : "U"
               )}
-              
-              {/* Lớp phủ mờ mượt mà hiện icon camera khi hover */}
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="h-5 w-5 text-white" />
               </div>
             </div>
-            
-            {/* Input file bị ẩn dưới hậu trường */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleAvatarChange} 
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleAvatarChange}
             />
-            
-            <button 
+
+            <button
               type="button"
               onClick={() => fileInputRef.current.click()}
               className="text-xs font-semibold text-orange-600 mt-2 hover:underline disabled:opacity-50"
               disabled={uploading}
             >
-              {uploading ? "Đang tải ảnh lên..." : "Thay đổi ảnh đại diện"}
+              {uploading ? "Uploading..." : "Change profile photo"}
             </button>
           </div>
 
@@ -174,7 +161,7 @@ export default function Profile() {
             <div>
               <label className="block text-sm font-medium text-slate-700 text-left flex items-center gap-1.5">
                 <User className="h-4 w-4 text-slate-400" />
-                Họ và tên
+                Full name
               </label>
               <input
                 type="text"
@@ -188,7 +175,7 @@ export default function Profile() {
             <div>
               <label className="block text-sm font-medium text-slate-400 text-left flex items-center gap-1.5 select-none">
                 <Mail className="h-4 w-4 text-slate-300" />
-                Địa chỉ Email (Không thể chỉnh sửa)
+                Email address (read-only)
               </label>
               <input
                 type="email"
@@ -201,7 +188,7 @@ export default function Profile() {
             <div>
               <label className="block text-sm font-medium text-slate-700 text-left flex items-center gap-1.5">
                 <Lock className="h-4 w-4 text-slate-400" />
-                Mật khẩu mới (Để trống nếu muốn giữ nguyên mật khẩu cũ)
+                New password (leave blank to keep current)
               </label>
               <input
                 type="password"
@@ -216,7 +203,7 @@ export default function Profile() {
               type="submit"
               className="w-full mt-6 rounded-md bg-orange-600 py-2.5 font-semibold text-white hover:bg-orange-700 transition-colors shadow-sm"
             >
-              Lưu thay đổi
+              Save changes
             </button>
           </form>
         </div>

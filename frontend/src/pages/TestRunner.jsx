@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
 import { ArrowLeft, UploadCloud, FileText, Play, X } from "lucide-react";
 import { toast } from "sonner";
-import axios from "axios"
+import axios from "axios";
 
 export default function TestRunner() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  
-  // State quản lý file zip source code được chọn và hiệu ứng kéo thả
+
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -18,15 +17,13 @@ export default function TestRunner() {
 
   const setSelectedZip = (file) => {
     if (!isZipFile(file)) {
-      toast.error("Vui lòng chọn file source code dạng .zip");
+      toast.error("Please select a .zip source code file");
       return;
     }
-
     setZipFile(file);
-    toast.success(`Đã chọn file: ${file.name}`);
+    toast.success(`File selected: ${file.name}`);
   };
 
-  // --- XỬ LÝ SỰ KIỆN KÉO THẢ FILE ---
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -40,13 +37,11 @@ export default function TestRunner() {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setSelectedZip(e.dataTransfer.files[0]);
     }
   };
 
-  // --- XỬ LÝ SỰ KIỆN CHỌN FILE BẰNG NÚT BẤM ---
   const handleFileSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedZip(e.target.files[0]);
@@ -58,20 +53,18 @@ export default function TestRunner() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- XỬ LÝ NÚT BẤM TEST (ĐÃ CẬP NHẬT GỌI API) ---
   const handleStartTest = async () => {
     if (!zipFile) {
-      toast.error("Vui lòng tải lên file source code dạng .zip để bắt đầu!");
+      toast.error("Please upload a .zip source code file to get started!");
       return;
     }
-    
+
     setIsTesting(true);
     const token = localStorage.getItem("token");
     const formData = new FormData();
     formData.append("sourceZip", zipFile);
 
     try {
-      // Upload file zip source code, backend sẽ lưu và giải nén vào workspace/<user_id>
       const uploadRes = await axios.post(
         "http://localhost:5000/api/test/upload-source",
         formData,
@@ -84,14 +77,12 @@ export default function TestRunner() {
       );
       const uploadedSource = uploadRes.data.data;
 
-      // Gọi API lưu lịch sử source vừa upload
       await axios.post(
         "http://localhost:5000/api/test/history",
         { filename: zipFile.name },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Kích hoạt pipeline AI với folder source vừa giải nén
       await axios.post(
         "http://localhost:5000/api/run-test",
         {
@@ -104,7 +95,7 @@ export default function TestRunner() {
       );
 
       setIsTesting(false);
-      toast.success("Đã bắt đầu pipeline test!");
+      toast.success("Test pipeline started!");
       sessionStorage.setItem(
         "latest_test_progress",
         JSON.stringify({
@@ -119,40 +110,38 @@ export default function TestRunner() {
           sourcePath: uploadedSource.source_path,
         },
       });
-      
     } catch (err) {
       setIsTesting(false);
-      toast.error(err.response?.data?.message || "Có lỗi xảy ra khi upload source code");
+      toast.error(err.response?.data?.message || "An error occurred while uploading source code");
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
-      
+
       <main className="max-w-4xl mx-auto px-6 py-10">
-        {/* Nút quay lại */}
         <button
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lại Workspace
+          Back to Workspace
         </button>
 
         <div className="mb-8 text-left">
           <h1 className="text-3xl font-bold font-display tracking-tight text-slate-900">
-            Khởi chạy Auto Test
+            Launch Auto Test
           </h1>
           <p className="text-slate-500 mt-2">
-            Tải lên file .zip chứa source code để hệ thống lưu vào workspace, giải nén và chuẩn bị phân tích kiểm thử.
+            Upload a .zip file containing your source code. The system will store it in your workspace, extract it, and prepare it for automated analysis.
           </p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-          
-          {/* KHU VỰC KÉO THẢ FILE */}
-          <div 
+
+          {/* Drop zone */}
+          <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -162,17 +151,15 @@ export default function TestRunner() {
               isDragging ? "border-orange-500 bg-orange-50 cursor-pointer" : "border-slate-300 hover:border-orange-400 hover:bg-slate-50 cursor-pointer"
             }`}
           >
-            {/* Input file bị ẩn */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
               accept=".zip,application/zip,application/x-zip-compressed"
-              onChange={handleFileSelect} 
+              onChange={handleFileSelect}
             />
 
             {zipFile ? (
-              // Trạng thái đã có file
               <div className="flex flex-col items-center w-full">
                 <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
                   <FileText className="h-8 w-8" />
@@ -181,35 +168,33 @@ export default function TestRunner() {
                 <p className="text-xs text-slate-500 mt-1">
                   {(zipFile.size / 1024).toFixed(2)} KB
                 </p>
-                
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); removeFile(); }}
                   className="mt-4 flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-md transition-colors"
                 >
                   <X className="h-4 w-4" />
-                  Xóa file này
+                  Remove file
                 </button>
               </div>
             ) : (
-              // Trạng thái chưa có file chờ kéo thả
               <>
                 <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mb-4 transition-colors ${isDragging ? "bg-orange-200 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
                   <UploadCloud className="h-8 w-8" />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-700 mb-1">
-                  Kéo thả file .zip source code vào đây
+                  Drag & drop your .zip source code here
                 </h3>
                 <p className="text-sm text-slate-500 mb-4">
-                  hoặc bấm vào để chọn file zip từ máy tính
+                  or click to browse from your computer
                 </p>
                 <span className="text-xs font-medium text-slate-400 bg-white px-3 py-1 border border-slate-200 rounded-full shadow-sm">
-                  Hỗ trợ: .zip
+                  Supported: .zip
                 </span>
               </>
             )}
           </div>
 
-          {/* NÚT BẤM BẮT ĐẦU TEST */}
+          {/* Start button */}
           <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
             <button
               onClick={handleStartTest}
@@ -225,12 +210,12 @@ export default function TestRunner() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Đang khởi động...
+                  Starting...
                 </>
               ) : (
                 <>
                   <Play className="h-5 w-5 fill-current" />
-                  Bắt đầu Test
+                  Start Test
                 </>
               )}
             </button>
