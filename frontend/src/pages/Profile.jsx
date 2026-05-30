@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import API_BASE_URL from "../config";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +23,7 @@ export default function Profile() {
     }
 
     axios
-      .get("http://localhost:5000/api/auth/profile", {
+      .get(`${API_BASE_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -60,7 +61,7 @@ export default function Profile() {
 
     try {
       setUploading(true);
-      const res = await axios.post("http://localhost:5000/api/auth/avatar", data, {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/avatar`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -84,7 +85,7 @@ export default function Profile() {
     const token = localStorage.getItem("token");
     try {
       const res = await axios.put(
-        "http://localhost:5000/api/auth/profile",
+        `${API_BASE_URL}/api/auth/profile`,
         { name: formData.name, password: formData.password },
         { headers: { Authorization: `Bearer ${token}` } }
       );

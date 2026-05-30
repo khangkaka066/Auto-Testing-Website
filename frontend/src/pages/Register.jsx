@@ -1,4 +1,5 @@
 import React from "react";
+import API_BASE_URL from "../config";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +10,7 @@ export default function Register() {
 
   const handleSignUp = async (name, email, password) => {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/register`, {
         name,
         email,
         password,
@@ -17,7 +18,8 @@ export default function Register() {
       if (res.data.success) {
         toast.success(res.data.message);
         localStorage.setItem("token", res.data.token);
-        navigate("/");
+        if (res.data.user?.name) localStorage.setItem("user_name", res.data.user.name);
+        navigate("/dashboard");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Registration failed");

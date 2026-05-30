@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import API_BASE_URL from "../../config";
 import { Menu, X, Plane, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -19,7 +20,7 @@ export default function Navbar() {
     if (token) {
       setIsLoggedIn(true);
       axios
-        .get("http://localhost:5000/api/auth/profile", {
+        .get(`${API_BASE_URL}/api/auth/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {

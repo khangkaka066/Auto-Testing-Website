@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import API_BASE_URL from "../config";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
 import { Play, Settings, History, Shield, Activity, FileText } from "lucide-react";
@@ -21,7 +22,7 @@ export default function Dashboard() {
     setUser({ name: localStorage.getItem("user_name") || "Developer", email: "" });
 
     axios
-      .get("http://localhost:5000/api/test/history", {
+      .get(`${API_BASE_URL}/api/test/history`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {

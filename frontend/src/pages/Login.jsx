@@ -1,4 +1,5 @@
 import React from "react";
+import API_BASE_URL from "../config";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -12,13 +13,14 @@ function LoginContent() {
 
   const handleSignIn = async (email, password) => {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
         password,
       });
       if (res.data.success) {
         toast.success(res.data.message);
         localStorage.setItem("token", res.data.token);
+        if (res.data.user?.name) localStorage.setItem("user_name", res.data.user.name);
         navigate("/dashboard");
       }
     } catch (err) {
@@ -29,7 +31,7 @@ function LoginContent() {
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
-        const res = await axios.post("http://localhost:5000/api/auth/google", {
+        const res = await axios.post(`${API_BASE_URL}/api/auth/google`, {
           token: tokenResponse.access_token,
         });
         if (res.data.success) {

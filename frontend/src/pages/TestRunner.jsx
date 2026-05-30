@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import API_BASE_URL from "../config";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
 import { ArrowLeft, UploadCloud, FileText, Play, X } from "lucide-react";
@@ -66,7 +67,7 @@ export default function TestRunner() {
 
     try {
       const uploadRes = await axios.post(
-        "http://localhost:5000/api/test/upload-source",
+        `${API_BASE_URL}/api/test/upload-source`,
         formData,
         {
           headers: {
@@ -78,13 +79,13 @@ export default function TestRunner() {
       const uploadedSource = uploadRes.data.data;
 
       await axios.post(
-        "http://localhost:5000/api/test/history",
+        `${API_BASE_URL}/api/test/history`,
         { filename: zipFile.name },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       await axios.post(
-        "http://localhost:5000/api/run-test",
+        `${API_BASE_URL}/api/test/run`,
         {
           user_id: uploadedSource.user_id,
           project_id: uploadedSource.project_id,

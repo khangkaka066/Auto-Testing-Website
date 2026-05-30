@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import API_BASE_URL from "../config";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
@@ -63,7 +64,7 @@ export default function TestProgress() {
 
     const fetchStatus = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/run-test/${projectId}`, {
+        const res = await axios.get(`${API_BASE_URL}/api/test/run/${projectId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!isMounted || !res.data.success) return;

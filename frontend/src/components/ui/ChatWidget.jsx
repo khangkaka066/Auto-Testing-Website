@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import API_BASE_URL from "../../config";
 import {
   MessageCircle,
   X,
@@ -231,7 +232,7 @@ export default function ChatWidget() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        "http://localhost:5000/api/chat",
+        `${API_BASE_URL}/api/chat`,
         { message: text },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );

@@ -1,0 +1,87 @@
+const { spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+function parsePlaywrightOutput(stdout, stderr, returnCode) {
+  const summary = {
+    runner_version: '1.0',
+    generated_at: new Date().toISOString(),
+    status: returnCode === 0 ? 'passed' : 'failed',
+    return_code: returnCode,
+    stats: { total: 0, passed: 0, failed: 0, skipped: 0, timed_out: 0, duration_ms: 0 },
+    test_cases: [],
+    stderr: (stderr || '').trim(),
+  };
+
+  if (!stdout || !stdout.trim()) return summary;
+
+  // Find JSON in stdout
+  const match = stdout.match(/\{\n\s*"config":/);
+  const jsonStart = match ? stdout.indexOf(match[0]) : (stdout.trim().startsWith('{') ? 0 : -1);
+  if (jsonStart === -1) return summary;
+
+  let data;
+  try {
+    data = JSON.parse(stdout.slice(jsonStart));
+  } catch {
+    return summary;
+  }
+
+  const testCases = [];
+
+  function walkSuite(suite, parentTitle = '') {
+    const currentTitle = [parentTitle, suite.title].filter(Boolean).join(' > ');
+    for (const spec of (suite.specs || [])) {
+      const specTitle = [currentTitle, spec.title].filter(Boolean).join(' > ');
+      for (const test of (spec.tests || [])) {
+        const outcome = (test.outcome || 'unknown').toLowerCase();
+        const durationMs = (test.results || []).reduce((s, r) => s + (r.duration || 0), 0);
+        const errors = (test.results || [])
+          .map(r => r.error?.message)
+          .filter(Boolean)
+          .map(m => m.trim());
+        testCases.push({ title: specTitle, status: outcome, duration_ms: durationMs, errors });
+      }
+    }
+    for (const child of (suite.suites || [])) walkSuite(child, currentTitle);
+  }
+
+  for (const s of (data.suites || [])) walkSuite(s);
+
+  const total = testCases.length;
+  const failed = testCases.filter(t => t.errors.length > 0).length;
+  const skipped = testCases.filter(t => t.status === 'skipped').length;
+  const timedOut = testCases.filter(t => t.status === 'timedout').length;
+  const durationMs = (data.stats?.duration) ?? testCases.reduce((s, t) => s + t.duration_ms, 0);
+
+  summary.stats = { total, passed: total - failed, failed, skipped, timed_out: timedOut, duration_ms: Math.round(durationMs) };
+  summary.test_cases = testCases;
+  return summary;
+}
+
+function run(specsDir, reportFile, workingDir, baseUrl) {
+  fs.mkdirSync(path.dirname(reportFile), { recursive: true });
+
+  const env = { ...process.env };
+  if (baseUrl) env.BASE_URL = baseUrl;
+
+  const result = spawnSync(
+    'npx',
+    ['playwright', 'test', '--reporter=json'],
+    {
+      cwd: workingDir,
+      env,
+      encoding: 'utf-8',
+      shell: process.platform === 'win32',
+      maxBuffer: 50 * 1024 * 1024,
+    }
+  );
+
+  const summary = parsePlaywrightOutput(result.stdout, result.stderr, result.status ?? 1);
+  summary.specs_dir = specsDir;
+
+  fs.writeFileSync(reportFile, JSON.stringify(summary, null, 2), 'utf-8');
+  return summary;
+}
+
+module.exports = { run };

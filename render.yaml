@@ -1,18 +1,30 @@
 services:
   - type: web
-    name: testpilot-ai-engine
+    name: testpilot-backend
     runtime: docker
-    dockerfilePath: ./backend/ai_engine/Dockerfile
-    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     healthCheckPath: /health
     envVars:
+      - key: PORT
+        value: "5000"
       - key: OPENAI_API_KEY
         sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: testpilot_db
       - key: CORS_ORIGINS
         value: "*"
       - key: AI_DEBUG
         value: "false"
       - key: AI_MAX_WORKERS
-        value: "2"
+        value: "4"
       - key: AI_CACHE_ENABLED
         value: "true"
+      - key: WORKSPACE_BASE_PATH
+        value: workspaces
+      - key: SOURCE_WORKSPACE_BASE_PATH
+        value: uploaded_sources
+      - key: UPLOAD_ARCHIVE_BASE_PATH
+        value: uploaded_archives
