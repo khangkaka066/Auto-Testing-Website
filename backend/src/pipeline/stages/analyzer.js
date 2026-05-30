@@ -5,6 +5,7 @@ const { loadPrompt, parseStructured } = require('../../lib/openai');
 const { stableHash, readCache, writeCache } = require('../../lib/cache');
 const { optimizeCodeForLLM } = require('../../lib/astParser');
 const { AI_MAX_WORKERS } = require('../../config/env');
+const { mapConcurrent } = require('../../lib/concurrency');
 
 const UIElementSchema = z.object({
   element_type: z.string(),
@@ -86,19 +87,7 @@ async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
   return data;
 }
 
-async function pLimit(items, maxConcurrent, fn) {
-  const results = [];
-  for (let i = 0; i < items.length; i += maxConcurrent) {
-    const batch = items.slice(i, i + maxConcurrent);
-    const batchResults = await Promise.allSettled(batch.map(fn));
-    for (const r of batchResults) {
-      results.push(r.status === 'fulfilled' ? r.value : null);
-    }
-  }
-  return results;
-}
-
-async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir) {
+async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir, options = {}) {
   const detectorData = JSON.parse(fs.readFileSync(detectorResultsPath, 'utf-8'));
   const filesToAnalyze = detectorData.source_files || [];
   if (filesToAnalyze.length === 0) return;
@@ -108,14 +97,14 @@ async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir) {
 
   const maxWorkers = Math.min(AI_MAX_WORKERS, filesToAnalyze.length) || 1;
 
-  const results = await pLimit(filesToAnalyze, maxWorkers, async (fileInfo) => {
+  const results = await mapConcurrent(filesToAnalyze, maxWorkers, async (fileInfo) => {
     try {
       return await analyzeFile(workspaceDir, fileInfo, prompt, analyzerCacheDir);
     } catch (err) {
       console.error(`[Analyzer] Error processing ${fileInfo.file_path}: ${err.message}`);
       return null;
     }
-  });
+  }, { onProgress: options.onProgress });
 
   for (const data of results) {
     if (!data) continue;

@@ -4,6 +4,7 @@ const { z } = require('zod');
 const { loadPrompt, parseStructured } = require('../../lib/openai');
 const { stableHash, readCache, writeCache } = require('../../lib/cache');
 const { AI_MAX_WORKERS } = require('../../config/env');
+const { mapConcurrent } = require('../../lib/concurrency');
 
 const GeneratedSpecSchema = z.object({
   spec_file: z.string(),
@@ -126,18 +127,6 @@ async function generateOne(item, prompt, baseUrl, cacheDir) {
   return output;
 }
 
-async function pLimit(items, maxConcurrent, fn) {
-  const results = new Array(items.length).fill(null);
-  for (let i = 0; i < items.length; i += maxConcurrent) {
-    const batch = items.slice(i, i + maxConcurrent);
-    const batchResults = await Promise.allSettled(batch.map((item, j) => fn(item, i + j)));
-    batchResults.forEach((r, j) => {
-      results[i + j] = r.status === 'fulfilled' ? r.value : null;
-    });
-  }
-  return results;
-}
-
 function loadItems(filteredDir) {
   return fs.readdirSync(filteredDir)
     .filter(f => f.endsWith('.json'))
@@ -152,7 +141,7 @@ function loadItems(filteredDir) {
     });
 }
 
-async function run(filteredDir, outputDir, baseUrl, cacheDir) {
+async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
   const items = loadItems(filteredDir);
   if (items.length === 0) return { generated_count: 0, generated: [] };
 
@@ -162,14 +151,14 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir) {
 
   const maxWorkers = Math.min(AI_MAX_WORKERS, items.length) || 1;
 
-  const outputs = await pLimit(items, maxWorkers, async (item) => {
+  const outputs = await mapConcurrent(items, maxWorkers, async (item) => {
     try {
       return await generateOne(item, prompt, baseUrl, coderCacheDir);
     } catch (err) {
       console.error(`[Coder] Error generating spec for ${item.source_file}: ${err.message}`);
       return { generated: [] };
     }
-  });
+  }, { onProgress: options.onProgress });
 
   const manifest = [];
   const usedNames = new Set();

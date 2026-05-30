@@ -13,7 +13,7 @@
     "@babel/traverse": "^7.24.0",
     "adm-zip": "^0.5.16",
     "axios": "^1.16.1",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -21,7 +21,7 @@
     "mongodb": "^6.7.0",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.67.0",
-    "uuid": "^10.0.0",
+    "uuid": "^14.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

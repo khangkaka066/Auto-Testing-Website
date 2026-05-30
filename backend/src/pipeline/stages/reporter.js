@@ -15,6 +15,7 @@ const ReporterOutputSchema = z.object({
   }),
   issues: z.array(z.object({
     page: z.string(),
+    file: z.string().optional(),
     error: z.string(),
     severity: z.enum(['Critical', 'High', 'Medium', 'Low']),
   })),
@@ -33,6 +34,7 @@ function normalizeReporterOutput(result) {
     issues: Array.isArray(result.issues)
       ? result.issues.map(issue => ({
         page: issue.page || 'Unknown page',
+        file: issue.file || issue.page || 'Unknown file',
         error: issue.error || 'No issue details were provided.',
         severity: ['Critical', 'High', 'Medium', 'Low'].includes(issue.severity) ? issue.severity : 'Low',
       }))
@@ -43,6 +45,16 @@ function normalizeReporterOutput(result) {
 function optimizeReportForLLM(rawReport) {
   const optimized = { summary: rawReport.stats || {}, failed_tests: [] };
   const seen = new Set();
+
+  for (const err of (rawReport.errors || [])) {
+    const message = (err.message || err.stack || '').replace(ANSI_RE, '').trim();
+    if (!message) continue;
+    optimized.failed_tests.push({
+      title: 'Playwright runner error',
+      file: 'playwright.config.ts',
+      error_summary: message,
+    });
+  }
 
   for (const tc of (rawReport.test_cases || [])) {
     const title = (tc.title || '').split(' > ').pop();
@@ -55,7 +67,11 @@ function optimizeReportForLLM(rawReport) {
       if (line.includes('Call log:')) break;
       if (line.trim() && !line.includes('Error: expect')) coreLines.push(line.trim());
     }
-    optimized.failed_tests.push({ title, error_summary: coreLines.join('\n') });
+    optimized.failed_tests.push({
+      title,
+      file: tc.file || 'Unknown file',
+      error_summary: coreLines.join('\n'),
+    });
   }
 
   return optimized;

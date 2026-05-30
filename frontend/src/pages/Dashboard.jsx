@@ -425,37 +425,12 @@ export default function Dashboard() {
               <h3 className="font-bold text-lg">Test History</h3>
             </div>
             <div className="overflow-y-auto flex-1 pr-2 space-y-3">
-<<<<<<< HEAD
-              {historyList.length > 0 ? (
-                historyList.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => item.report || item.final_report_path ? navigate(`/test-report/${item.id}`) : toast.info("Báo cáo của lần chạy này chưa sẵn sàng")}
-                    className="border border-slate-100 bg-slate-50 p-3 rounded-lg flex items-center gap-3 hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    <FileText className="h-5 w-5 text-slate-400 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-bold text-slate-900 truncate">{item.source_name || item.project_id || item.filename}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Bắt đầu: {item.started_at_display || "-"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Kết thúc: {item.finished_at_display || (item.status === "completed" ? "-" : "Đang chạy")}
-                      </p>
-                    </div>
-                    <div className={`h-12 w-12 rounded-full border-4 flex items-center justify-center shrink-0 ${scoreColor(item.health_score)}`}>
-                      <span className="text-sm font-black tabular-nums">
-                        {item.health_score ?? "--"}
-                      </span>
-                    </div>
-=======
               {historyList.length > 0 ? historyList.map((item) => (
                 <div key={item.id} className="border border-slate-100 bg-slate-50 p-3 rounded-lg flex items-start gap-3 hover:bg-slate-100 transition-colors">
                   <FileText className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-800 truncate">{item.filename}</p>
                     <p className="text-xs text-slate-500 mt-1">{item.timestamp}</p>
->>>>>>> b876666ed3a6dade5494b6e9a98ff6ae1668d454
                   </div>
                 </div>
               )) : (

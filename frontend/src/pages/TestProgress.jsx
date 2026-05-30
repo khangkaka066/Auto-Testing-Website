@@ -60,13 +60,7 @@ export default function TestProgress() {
     status: "queued",
     message: "Initializing test pipeline.",
     stage: "queued",
-    sub_progress: {
-      label: "Waiting for a worker",
-      completed: 0,
-      total: 9,
-      percent: 0,
-      current_item: "Queued",
-    },
+    sub_progress: null,
     progress_percent: 10,
     project_id: projectId,
     source_path: location.state?.sourcePath || latestProgress.sourcePath || "",
@@ -77,10 +71,12 @@ export default function TestProgress() {
   const progressPercent = Math.max(0, Math.min(100, runState.progress_percent || 0));
   const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "Queued";
   const subProgress = runState.sub_progress;
-  const showSubProgress = subProgress && Number(subProgress.total) > 0;
+  const showSubProgress = runState.status === "running" && subProgress && Number(subProgress.total) > 0;
   const subProgressPercent = showSubProgress
     ? Math.max(0, Math.min(100, subProgress.percent ?? Math.round((subProgress.completed / subProgress.total) * 100)))
     : 0;
+  const subProgressCompleted = showSubProgress ? Math.max(0, Number(subProgress.completed) || 0) : 0;
+  const subProgressTotal = showSubProgress ? Math.max(0, Number(subProgress.total) || 0) : 0;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -99,11 +95,6 @@ export default function TestProgress() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!isMounted || !res.data.success) return;
-<<<<<<< HEAD
-        setRunState(res.data.data);
-        if (res.data.data.status === "completed" || res.data.data.status === "failed") {
-          if (intervalId) clearInterval(intervalId);
-=======
         const data = res.data.data;
         setRunState(data);
 
@@ -112,13 +103,13 @@ export default function TestProgress() {
           const report = data.result.final_report;
           localStorage.setItem("last_test_result", JSON.stringify({
             project_id:   data.project_id,
+            job_id:       data.job_id,
             run_id:       data.run_id,
             finished_at:  data.finished_at,
             health_score: report.health_score,
             summary:      report.summary,
             issues:       report.issues || [],
           }));
->>>>>>> b876666ed3a6dade5494b6e9a98ff6ae1668d454
         }
       } catch (err) {
         if (!isMounted) return;
@@ -190,33 +181,27 @@ export default function TestProgress() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+            {showSubProgress ? (
+              <div className="mt-4">
+                <div className="mb-2 flex items-end justify-between gap-4 text-sm">
+                  <p className="font-semibold text-orange-800">{subProgress.label}</p>
+                  <p className="font-bold text-orange-800 tabular-nums">
+                    {subProgressCompleted}/{subProgressTotal}
+                  </p>
+                </div>
+                <div className="h-3 w-full rounded-full bg-orange-50 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-orange-500 transition-all duration-500"
+                    style={{ width: `${subProgressPercent}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="mt-3 flex justify-between text-sm text-slate-500">
               <span>{runState.message}</span>
               {!isFinished ? <span className="animate-pulse">Loading...</span> : <span>{meta.label}</span>}
             </div>
           </div>
-
-          {showSubProgress ? (
-            <div className="mt-6 rounded-lg border border-orange-100 bg-orange-50 p-4">
-              <div className="mb-3 flex items-end justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-orange-800">{subProgress.label}</p>
-                  {subProgress.current_item ? (
-                    <p className="mt-1 font-mono text-xs text-orange-700 truncate">{subProgress.current_item}</p>
-                  ) : null}
-                </div>
-                <p className="text-sm font-bold text-orange-800 tabular-nums">
-                  {subProgress.completed}/{subProgress.total} steps
-                </p>
-              </div>
-              <div className="h-3 w-full rounded-full bg-white overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-orange-500 transition-all duration-500"
-                  style={{ width: `${subProgressPercent}%` }}
-                />
-              </div>
-            </div>
-          ) : null}
 
           {runState.dry_run ? (
             <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 p-4 text-sm text-orange-700">
@@ -235,7 +220,7 @@ export default function TestProgress() {
             <div className="mt-8 flex flex-wrap justify-end gap-3">
               {runState.status === "completed" && (runState.job_id || runState.run_id) ? (
                 <button
-                  onClick={() => navigate(`/test-report/${runState.job_id || runState.run_id}`)}
+                  onClick={() => navigate(`/test-report/${runState.project_id}`)}
                   className="bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-orange-700 transition-colors"
                 >
                   View report

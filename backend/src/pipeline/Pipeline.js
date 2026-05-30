@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { WORKSPACE_BASE_PATH } = require('../config/env');
+const { WORKSPACE_BASE_PATH, TARGET_BASE_URL } = require('../config/env');
 const { runWithTracking } = require('../lib/tokenTracker');
 
 const detector  = require('./stages/detector');
@@ -88,21 +88,32 @@ class Pipeline {
     this._setupDirectories();
   }
 
-  _reportProgress(stageKey, message, currentItem) {
+  _reportProgress(stageKey, message) {
     const index = STAGE_INDEX[stageKey] == null ? 0 : STAGE_INDEX[stageKey];
     const stage = PROGRESS_STAGES[index];
-    const completed = Math.min(index + 1, PROGRESS_STAGES.length);
     this.onProgress({
       status: 'running',
       stage: stageKey,
       progress_percent: stage.percent,
       message,
+      sub_progress: null,
+    });
+  }
+
+  _reportSubProgress(stageKey, label, completed, total) {
+    if (!total || total <= 0) return;
+    const index = STAGE_INDEX[stageKey] == null ? 0 : STAGE_INDEX[stageKey];
+    const stage = PROGRESS_STAGES[index];
+    const safeCompleted = Math.max(0, Math.min(completed, total));
+    this.onProgress({
+      status: 'running',
+      stage: stageKey,
+      progress_percent: stage.percent,
       sub_progress: {
-        label: stage.label,
-        completed,
-        total: PROGRESS_STAGES.length,
-        percent: Math.round((completed / PROGRESS_STAGES.length) * 100),
-        current_item: currentItem || path.basename(this.sourceCodePath),
+        label,
+        completed: safeCompleted,
+        total,
+        percent: Math.round((safeCompleted / total) * 100),
       },
     });
   }
@@ -121,7 +132,7 @@ class Pipeline {
   // ── Stage runners ──────────────────────────────────────────────
 
   async runDetector() {
-    this._reportProgress('detector', 'Scanning project files and folders', path.basename(this.sourceCodePath));
+    this._reportProgress('detector', 'Scanning project files and folders');
     console.log('[STAGE 1] Detector...');
     const results = detector.run(this.sourceCodePath);
     const outPath = path.join(this.dirs.detector, 'detector_results.json');
@@ -131,27 +142,39 @@ class Pipeline {
   }
 
   async runAnalyzer(detectorResultsPath) {
-    this._reportProgress('analyzer', 'Analyzing source files with AI', 'Reading detected source files');
+    this._reportProgress('analyzer', 'Analyzing source files with AI');
     console.log('[STAGE 2] Analyzer...');
-    await analyzer.run(this.sourceCodePath, detectorResultsPath, this.dirs.analyzer, this.cacheDir);
+    await analyzer.run(this.sourceCodePath, detectorResultsPath, this.dirs.analyzer, this.cacheDir, {
+      onProgress: ({ completed, total }) => {
+        this._reportSubProgress('analyzer', 'Analyzing source files', completed, total);
+      },
+    });
   }
 
   async runPlanner(testType = 'UI Testing') {
-    this._reportProgress('planner', 'Building an executable test plan', testType);
+    this._reportProgress('planner', 'Building an executable test plan');
     console.log('[STAGE 3] Planner...');
-    await planner.run(this.dirs.analyzer, this.dirs.planner, this.cacheDir, testType);
+    await planner.run(this.dirs.analyzer, this.dirs.planner, this.cacheDir, testType, {
+      onProgress: ({ completed, total }) => {
+        this._reportSubProgress('planner', 'Planning analyzed files', completed, total);
+      },
+    });
   }
 
   runFilter() {
-    this._reportProgress('filter', 'Selecting test cases that can be generated safely', 'Filtering planner output');
+    this._reportProgress('filter', 'Selecting test cases that can be generated safely');
     console.log('[STAGE 3.5] Filter...');
     filter.run(this.dirs.planner, this.dirs.filter);
   }
 
   async runCoder(baseUrl) {
-    this._reportProgress('coder', 'Generating Playwright test files', baseUrl);
+    this._reportProgress('coder', 'Generating Playwright test files');
     console.log('[STAGE 4] Coder...');
-    const manifest = await coder.run(this.dirs.filter, this.specsDir, baseUrl, this.cacheDir);
+    const manifest = await coder.run(this.dirs.filter, this.specsDir, baseUrl, this.cacheDir, {
+      onProgress: ({ completed, total }) => {
+        this._reportSubProgress('coder', 'Generating test specs', completed, total);
+      },
+    });
     fs.writeFileSync(
       path.join(this.dirs.coder, 'coder_manifest.json'),
       JSON.stringify(manifest, null, 2), 'utf-8'
@@ -160,13 +183,13 @@ class Pipeline {
   }
 
   runValidator() {
-    this._reportProgress('validator', 'Checking generated tests before execution', 'TypeScript validation');
+    this._reportProgress('validator', 'Checking generated tests before execution');
     console.log('[STAGE 4.5] Validator...');
     return validator.run(this.specsDir, this.dirs.validator);
   }
 
   async runDebugger() {
-    this._reportProgress('debugger', 'Checking whether generated tests need repair', 'Validation results');
+    this._reportProgress('debugger', 'Checking whether generated tests need repair');
     console.log('[STAGE 4.7] Debugger...');
     const failedFiles = validator.getFailedSpecFiles(this.specsDir, this.dirs.validator);
     if (failedFiles.length === 0) return;
@@ -174,12 +197,16 @@ class Pipeline {
     const logPath = path.join(this.dirs.validator, 'validator_errors.log');
     const errorLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8') : '';
     const manifestPath = path.join(this.dirs.coder, 'coder_manifest.json');
-    this._reportProgress('debugger', 'Repairing generated tests', `${failedFiles.length} file(s) need repair`);
-    await debugger_.run(failedFiles, errorLog, manifestPath, this.dirs.filter, this.dirs.validator);
+    this._reportProgress('debugger', `Repairing ${failedFiles.length} generated test file(s)`);
+    await debugger_.run(failedFiles, errorLog, manifestPath, this.dirs.filter, this.dirs.validator, {
+      onProgress: ({ completed, total }) => {
+        this._reportSubProgress('debugger', 'Repairing generated tests', completed, total);
+      },
+    });
   }
 
   runExecutor(baseUrl) {
-    this._reportProgress('executor', 'Running generated tests in Playwright', baseUrl);
+    this._reportProgress('executor', 'Running generated tests in Playwright');
     console.log('[STAGE 5] Executor...');
     const specFiles = fs.existsSync(this.specsDir)
       ? fs.readdirSync(this.specsDir).filter(f => f.endsWith('.spec.ts'))
@@ -187,23 +214,37 @@ class Pipeline {
     if (specFiles.length === 0) return null;
 
     const detectorPath = path.join(this.dirs.detector, 'detector_results.json');
+    let detectedBaseUrl = null;
     if (fs.existsSync(detectorPath)) {
       const infra = JSON.parse(fs.readFileSync(detectorPath, 'utf-8')).infrastructure;
-      const frontend = infra.projects.find(p =>
+      const frontend = (infra.projects || []).find(p =>
+        p.type === 'frontend' &&
+        p.run_config &&
+        p.run_config.start_command &&
+        p.run_config.url
+      ) || (infra.projects || []).find(p =>
         p.project_name.toLowerCase() === 'frontend' ||
         ['client', 'frontend'].includes(p.root_path.split('/').pop().toLowerCase())
       );
-      if (frontend) process.env.FRONTEND_DIR = path.resolve(frontend.root_path);
+      if (frontend) {
+        process.env.FRONTEND_DIR = path.resolve(frontend.root_path);
+        if (frontend.run_config) {
+          process.env.FRONTEND_COMMAND = frontend.run_config.start_command || '';
+          process.env.FRONTEND_INSTALL_COMMAND = frontend.run_config.install_command || '';
+          detectedBaseUrl = frontend.run_config.url || null;
+        }
+      }
     }
 
     const reportFile = path.join(this.dirs.executor, 'test_report.json');
-    return executor.run(this.specsDir, reportFile, this.runWorkspaceDir, baseUrl);
+    const executorBaseUrl = baseUrl && baseUrl !== TARGET_BASE_URL ? baseUrl : (detectedBaseUrl || baseUrl);
+    return executor.run(this.specsDir, reportFile, this.runWorkspaceDir, executorBaseUrl);
   }
 
   async runReporter() {
     const executorJsonPath = path.join(this.dirs.executor, 'test_report.json');
     if (!fs.existsSync(executorJsonPath)) return null;
-    this._reportProgress('reporter', 'Summarizing test results for the report', 'Final report');
+    this._reportProgress('reporter', 'Summarizing test results for the report');
     console.log('[STAGE 6] Reporter...');
     return reporter.run(executorJsonPath, this.dirs.reporter);
   }

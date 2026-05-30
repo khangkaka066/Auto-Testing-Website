@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadPrompt, createCompletion } = require('../../lib/openai');
 const { AI_MAX_WORKERS } = require('../../config/env');
+const { mapConcurrent } = require('../../lib/concurrency');
 
 async function fixFile(filePath, errorLog, testPlanContent, prompt) {
   if (!fs.existsSync(filePath)) {
@@ -20,20 +21,7 @@ async function fixFile(filePath, errorLog, testPlanContent, prompt) {
   }
 }
 
-async function pLimit(items, maxConcurrent, fn) {
-  const results = [];
-  for (let i = 0; i < items.length; i += maxConcurrent) {
-    const batch = items.slice(i, i + maxConcurrent);
-    const batchResults = await Promise.allSettled(batch.map(fn));
-    for (const r of batchResults) {
-      const reason = r.reason && r.reason.message ? r.reason.message : 'Unknown error';
-      results.push(r.status === 'fulfilled' ? r.value : { status: 'failed', reason });
-    }
-  }
-  return results;
-}
-
-async function run(failedFiles, errorLog, coderManifestPath, filterDir, validatorOutputDir) {
+async function run(failedFiles, errorLog, coderManifestPath, filterDir, validatorOutputDir, options = {}) {
   if (failedFiles.length === 0) return;
 
   const specToPlanMap = {};
@@ -71,13 +59,19 @@ async function run(failedFiles, errorLog, coderManifestPath, filterDir, validato
   const prompt = loadPrompt('Debugger');
   const maxWorkers = Math.min(AI_MAX_WORKERS, failedFiles.length) || 1;
 
-  const results = await pLimit(failedFiles, maxWorkers, async (filePath) => {
+  const results = await mapConcurrent(failedFiles, maxWorkers, async (filePath) => {
     return fixFile(
       filePath,
       getFileSpecificLog(filePath),
       getTestPlanForSpec(filePath),
       prompt
     );
+  }, {
+    onProgress: options.onProgress,
+    onError: (err) => ({
+      status: 'failed',
+      reason: err && err.message ? err.message : 'Unknown error',
+    }),
   });
 
   fs.writeFileSync(

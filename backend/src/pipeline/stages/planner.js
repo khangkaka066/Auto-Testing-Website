@@ -4,6 +4,7 @@ const { z } = require('zod');
 const { loadPrompt, parseStructured } = require('../../lib/openai');
 const { stableHash, readCache, writeCache } = require('../../lib/cache');
 const { AI_MAX_WORKERS } = require('../../config/env');
+const { mapConcurrent } = require('../../lib/concurrency');
 
 const TestScopeEnum = z.enum([
   'UI Testing', 'Functional Testing', 'Performance Testing',
@@ -191,19 +192,7 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
   return data;
 }
 
-async function pLimit(items, maxConcurrent, fn) {
-  const results = [];
-  for (let i = 0; i < items.length; i += maxConcurrent) {
-    const batch = items.slice(i, i + maxConcurrent);
-    const batchResults = await Promise.allSettled(batch.map(fn));
-    for (const r of batchResults) {
-      results.push(r.status === 'fulfilled' ? r.value : null);
-    }
-  }
-  return results;
-}
-
-async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing') {
+async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing', options = {}) {
   const analyzerFiles = fs.readdirSync(analyzerDir).filter(f => f.endsWith('.json'));
   if (analyzerFiles.length === 0) return;
 
@@ -211,14 +200,14 @@ async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing') {
   const plannerCacheDir = path.join(cacheDir, 'planner');
   const maxWorkers = Math.min(AI_MAX_WORKERS, analyzerFiles.length) || 1;
 
-  const results = await pLimit(analyzerFiles, maxWorkers, async (filename) => {
+  const results = await mapConcurrent(analyzerFiles, maxWorkers, async (filename) => {
     try {
       return await planFile(path.join(analyzerDir, filename), prompt, plannerCacheDir, testType);
     } catch (err) {
       console.error(`[Planner] Error processing ${filename}: ${err.message}`);
       return null;
     }
-  });
+  }, { onProgress: options.onProgress });
 
   analyzerFiles.forEach((filename, i) => {
     const data = results[i];

@@ -54,13 +54,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     stage: 'initializing',
     progress_percent: 12,
     message: 'Preparing the AI pipeline',
-    sub_progress: {
-      label: 'Initializing workspace',
-      completed: 0,
-      total: 9,
-      percent: 0,
-      current_item: path.basename(sourcePath),
-    },
+    sub_progress: null,
     started_at: new Date().toISOString(),
   });
 
@@ -85,13 +79,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       stage: 'completed',
       progress_percent: 100,
       message: 'AI pipeline completed',
-      sub_progress: {
-        label: 'Pipeline completed',
-        completed: 9,
-        total: 9,
-        percent: 100,
-        current_item: 'Final report is ready',
-      },
+      sub_progress: null,
       finished_at: new Date().toISOString(),
       tokens_used: tokensUsed,
       result: pipeline.loadFinalReport(),
@@ -105,13 +93,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       stage: 'failed',
       progress_percent: 100,
       message: 'AI pipeline failed',
-      sub_progress: {
-        label: 'Pipeline failed',
-        completed: 0,
-        total: 9,
-        percent: 100,
-        current_item: err.message,
-      },
+      sub_progress: null,
       finished_at: new Date().toISOString(),
       error,
     });
