@@ -144,18 +144,8 @@ export default function TestProgress() {
               <StatusIcon className={`h-6 w-6 ${meta.tone} ${runState.status === "running" ? "animate-spin" : ""}`} />
             </div>
             <div>
-<<<<<<< HEAD
-              <p className="text-sm font-medium text-slate-500">Trạng thái</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
-                {!isFinished ? (
-                  <span className="text-sm font-semibold text-orange-600 animate-pulse">Loading...</span>
-                ) : null}
-              </div>
-=======
               <p className="text-sm font-medium text-slate-500">Status</p>
               <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
->>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
             </div>
           </div>
 

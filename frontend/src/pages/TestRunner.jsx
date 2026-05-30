@@ -66,10 +66,6 @@ export default function TestRunner() {
     formData.append("sourceZip", zipFile);
 
     try {
-<<<<<<< HEAD
-      // Upload file zip source code, backend sẽ lưu và giải nén vào workspaces/<user_id>
-=======
->>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
       const uploadRes = await axios.post(
         `${API_BASE_URL}/api/test/upload-source`,
         formData,
@@ -82,11 +78,6 @@ export default function TestRunner() {
       );
       const uploadedSource = uploadRes.data.data;
 
-<<<<<<< HEAD
-      // Kích hoạt pipeline AI với folder source vừa giải nén
-      const runRes = await axios.post(
-        "http://localhost:5000/api/run-test",
-=======
       await axios.post(
         `${API_BASE_URL}/api/test/history`,
         { filename: zipFile.name },
@@ -95,7 +86,6 @@ export default function TestRunner() {
 
       await axios.post(
         `${API_BASE_URL}/api/test/run`,
->>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
         {
           user_id: uploadedSource.user_id,
           project_id: uploadedSource.project_id,
@@ -109,11 +99,7 @@ export default function TestRunner() {
       }
 
       setIsTesting(false);
-<<<<<<< HEAD
-      toast.success(runRes.data.message || "Pipeline test đã bắt đầu!");
-=======
       toast.success("Test pipeline started!");
->>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
       sessionStorage.setItem(
         "latest_test_progress",
         JSON.stringify({
@@ -130,11 +116,7 @@ export default function TestRunner() {
       });
     } catch (err) {
       setIsTesting(false);
-<<<<<<< HEAD
-      toast.error(err.response?.data?.message || err.message || "Có lỗi xảy ra khi upload source code");
-=======
       toast.error(err.response?.data?.message || "An error occurred while uploading source code");
->>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
     }
   };
 
@@ -156,11 +138,7 @@ export default function TestRunner() {
             Launch Auto Test
           </h1>
           <p className="text-slate-500 mt-2">
-<<<<<<< HEAD
-            Tải lên file .zip chứa source code để hệ thống lưu vào workspaces, giải nén và chuẩn bị phân tích kiểm thử.
-=======
             Upload a .zip file containing your source code. The system will store it in your workspace, extract it, and prepare it for automated analysis.
->>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
           </p>
         </div>
 
