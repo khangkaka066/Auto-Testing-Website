@@ -6,14 +6,9 @@ import { useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { AuthUI } from "../components/ui/auth-fuse";
 
-<<<<<<< HEAD
-const GOOGLE_CLIENT_ID = "599072781636-k48pl9iogbk9qrv0c2952hgipf3ar78v.apps.googleusercontent.com";
-=======
-const GOOGLE_CLIENT_ID =
-  "599072781636-k48pl9iogbk9qrv0c2952hgipf3ar78v.apps.googleusercontent.com";
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
-function LoginContent() {
+function LoginContent({ enableGoogle = true }) {
   const navigate = useNavigate();
 
   const handleSignIn = async (email, password) => {
@@ -66,18 +61,45 @@ function LoginContent() {
       onSignIn={handleSignIn}
       onSignUp={handleSignUp}
       googleButton={
-        <GoogleLogin
-          onSuccess={handleGoogleSuccess}
-          onError={() => toast.error("An error occurred connecting to Google")}
-        />
+        enableGoogle ? (
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => toast.error("An error occurred connecting to Google")}
+          />
+        ) : null
       }
     />
   );
 }
 
 export default function Login() {
+  const [googleClientId, setGoogleClientId] = React.useState(GOOGLE_CLIENT_ID || "");
+
+  React.useEffect(() => {
+    if (googleClientId) return undefined;
+
+    let isMounted = true;
+    axios
+      .get(`${API_BASE_URL}/api/auth/google-client-config`)
+      .then((res) => {
+        const clientId = res.data?.google_client_id;
+        if (isMounted && clientId) {
+          setGoogleClientId(clientId);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [googleClientId]);
+
+  if (!googleClientId) {
+    return <LoginContent enableGoogle={false} />;
+  }
+
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={googleClientId}>
       <LoginContent />
     </GoogleOAuthProvider>
   );

@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
-const { PORT } = require('../../config/env');
+const { PORT, GOOGLE_CLIENT_ID } = require('../../config/env');
 const { findByEmail, findById, save, updateById } = require('../../lib/userStore');
 const { getUserStats } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
@@ -28,10 +28,6 @@ async function register(req, res) {
     return res.status(400).json({ success: false, message: 'Email and password are required' });
   }
   if (await findByEmail(email)) {
-<<<<<<< HEAD
-    await logAuth('register', 'failed', email, null, req);
-=======
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
@@ -43,11 +39,6 @@ async function register(req, res) {
     password_hash: await bcrypt.hash(password, 10),
   });
 
-<<<<<<< HEAD
-  await logAuth('register', 'success', email, userId, req);
-  const user = await findByEmail(email);
-=======
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
   return res.status(201).json({
     success: true,
     message: 'Registration successful',
@@ -96,41 +87,21 @@ async function googleAuth(req, res) {
     const { email, name, sub: googleId } = payload;
     if (!email) return res.status(400).json({ success: false, message: 'Cannot get email from Google token' });
 
-<<<<<<< HEAD
-    console.log(`[Google Auth] email=${email}, name=${name}`);
-
-    let user = await findByEmail(email);
-    if (!user) {
-      const userId = uuidv4();
-      const { error: saveError } = await supabase.from('users').insert([{
-=======
     if (!(await findByEmail(email))) {
       const userId = uuidv4();
       await save(email, {
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
         id: userId,
         name: name || email.split('@')[0],
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10),
         created_at: new Date().toISOString(),
-      }]);
-
-      if (saveError) {
-        console.error('[Google Auth] Insert user failed:', saveError.message);
-        return res.status(500).json({ success: false, message: `Cannot create account: ${saveError.message}` });
-      }
-
-      user = await findByEmail(email);
-      if (!user) {
-        return res.status(500).json({ success: false, message: 'User created but could not be retrieved' });
-      }
+      });
     }
 
-<<<<<<< HEAD
-    await logAuth('google_login', 'success', user.email, user.id, req);
-=======
     const user = await findByEmail(email);
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
+    if (!user) {
+      return res.status(500).json({ success: false, message: 'User created but could not be retrieved' });
+    }
     return res.json({
       success: true,
       message: 'Google login successful',
@@ -148,24 +119,18 @@ function getProfile(req, res) {
   return res.json({ success: true, user: { name, email, avatar: avatar || '' } });
 }
 
+function getGoogleClientConfig(req, res) {
+  return res.json({
+    success: true,
+    google_client_id: GOOGLE_CLIENT_ID,
+  });
+}
+
 async function updateProfile(req, res) {
   const { name, password } = req.body;
   if (!name?.trim()) {
     return res.status(400).json({ success: false, message: 'Name cannot be empty' });
   }
-<<<<<<< HEAD
-
-  const supabase = require('../../lib/supabase');
-  const updateData = { name: name.trim() };
-  if (password?.trim()) {
-    updateData.password_hash = await bcrypt.hash(password, 10);
-  }
-
-  const { error } = await supabase.from('users').update(updateData).eq('id', req.user.id);
-  if (error) return res.status(400).json({ success: false, message: error.message });
-
-  return res.json({ success: true, message: 'Profile updated', user: { name: updateData.name, email: req.user.email } });
-=======
   const changes = { name: name.trim() };
   if (password?.trim()) {
     changes.password_hash = await bcrypt.hash(password, 10);
@@ -173,7 +138,6 @@ async function updateProfile(req, res) {
   await updateById(req.user.id, changes);
   Object.assign(req.user, changes);
   return res.json({ success: true, message: 'Profile updated', user: { name: req.user.name, email: req.user.email } });
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
 }
 
 function uploadAvatar(upload) {
@@ -185,15 +149,8 @@ function uploadAvatar(upload) {
       const host = req.headers.host || `localhost:${PORT}`;
       const protocol = req.protocol || 'http';
       const avatarUrl = `${protocol}://${host}/static/avatars/${req.file.filename}`;
-<<<<<<< HEAD
-
-      const supabase = require('../../lib/supabase');
-      await supabase.from('users').update({ avatar: avatarUrl }).eq('id', req.user.id);
-
-=======
       await updateById(req.user.id, { avatar: avatarUrl });
       req.user.avatar = avatarUrl;
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
       return res.json({ success: true, message: 'Avatar uploaded', avatar_url: avatarUrl });
     });
   };
@@ -204,4 +161,4 @@ async function getStats(req, res) {
   return res.json({ success: true, data: stats });
 }
 
-module.exports = { register, login, googleAuth, getProfile, updateProfile, uploadAvatar, getStats };
+module.exports = { register, login, googleAuth, getGoogleClientConfig, getProfile, updateProfile, uploadAvatar, getStats };

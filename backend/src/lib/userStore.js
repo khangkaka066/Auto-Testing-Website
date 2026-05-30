@@ -1,34 +1,3 @@
-<<<<<<< HEAD
-const supabase = require('./supabase');
-
-async function findByEmail(email) {
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email.trim())
-    .maybeSingle();
-  return data || null;
-}
-
-async function findById(id) {
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-  return data || null;
-}
-
-async function save(email, user) {
-  const userWithTimestamp = {
-    ...user,
-    created_at: user.created_at || new Date().toISOString(),
-  };
-  await supabase.from('users').insert([userWithTimestamp]);
-}
-
-module.exports = { findByEmail, findById, save };
-=======
 const { MongoClient } = require('mongodb');
 const { MONGO_URL, DB_NAME } = require('../config/env');
 
@@ -75,4 +44,3 @@ async function updateById(id, changes) {
 }
 
 module.exports = { findByEmail, findById, save, updateById, INITIAL_CREDITS };
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
