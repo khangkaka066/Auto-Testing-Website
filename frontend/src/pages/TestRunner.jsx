@@ -78,22 +78,19 @@ export default function TestRunner() {
       );
       const uploadedSource = uploadRes.data.data;
 
-      await axios.post(
-        `${API_BASE_URL}/api/test/history`,
-        { filename: zipFile.name },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      await axios.post(
+      const runRes = await axios.post(
         `${API_BASE_URL}/api/test/run`,
         {
           user_id: uploadedSource.user_id,
           project_id: uploadedSource.project_id,
           source_path: uploadedSource.source_path,
-          source_archive_path: uploadedSource.source_archive_path,
+          source_name: uploadedSource.project_name,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      if (!runRes.data.success) {
+        throw new Error(runRes.data.message || "Pipeline AI chạy thất bại");
+      }
 
       setIsTesting(false);
       toast.success("Test pipeline started!");

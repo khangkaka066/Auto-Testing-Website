@@ -10,6 +10,49 @@ import {
 import { toast } from "sonner";
 import axios from "axios";
 
+function scoreColor(score) {
+  if (score === null || score === undefined) return "border-slate-200 text-slate-400 bg-white";
+  if (score <= 25) return "border-red-200 text-red-600 bg-red-50";
+  if (score <= 50) return "border-orange-200 text-orange-600 bg-orange-50";
+  if (score <= 75) return "border-lime-200 text-lime-600 bg-lime-50";
+  return "border-emerald-200 text-emerald-700 bg-emerald-50";
+}
+
+function parseScore(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Math.max(0, Math.min(100, Math.round(value)));
+  const match = String(value).match(/\d+/);
+  return match ? Math.max(0, Math.min(100, Number(match[0]))) : null;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function lastResultFromRun(data) {
+  const report = data?.result?.final_report;
+  if (!report) return null;
+  return {
+    project_id: data.project_id,
+    job_id: data.job_id,
+    run_id: data.run_id,
+    finished_at: data.finished_at,
+    health_score: report.health_score,
+    summary: report.summary,
+    issues: report.issues || [],
+  };
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -34,14 +77,6 @@ export default function Dashboard() {
   const [selectedBranch, setSelectedBranch] = useState("main");
   const [loadingRepos, setLoadingRepos] = useState(false);
 
-  // ── Load persisted data ──────────────────────────────────────
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("last_test_result");
-      if (saved) setLastResult(JSON.parse(saved));
-    } catch {}
-  }, []);
-
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
@@ -49,8 +84,33 @@ export default function Dashboard() {
     setUser({ name: localStorage.getItem("user_name") || "Developer", email: "" });
 
     axios.get(`${API_BASE_URL}/api/test/history`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => { if (res.data.success) setHistoryList(res.data.data); })
-      .catch(() => {});
+      .then(async (res) => {
+        if (!res.data.success) return;
+        const history = res.data.data || [];
+        setHistoryList(history);
+
+        const latestCompleted = history.find(item => item.status === "completed" && item.project_id);
+        if (!latestCompleted) {
+          setLastResult(null);
+          localStorage.removeItem("last_test_result");
+          return;
+        }
+
+        const runRes = await axios.get(`${API_BASE_URL}/api/test/run/${latestCompleted.project_id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const nextResult = lastResultFromRun(runRes.data.data);
+        setLastResult(nextResult);
+        if (nextResult) {
+          localStorage.setItem("last_test_result", JSON.stringify(nextResult));
+        } else {
+          localStorage.removeItem("last_test_result");
+        }
+      })
+      .catch(() => {
+        setLastResult(null);
+        localStorage.removeItem("last_test_result");
+      });
 
     axios.get(`${API_BASE_URL}/api/auth/stats`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => { if (res.data.success) setUsageStats(res.data.data); })
@@ -165,14 +225,12 @@ export default function Dashboard() {
         });
         const src = uploadRes.data.data;
 
-        await axios.post(`${API_BASE_URL}/api/test/history`, { filename: zipFile.name },
-          { headers: { Authorization: `Bearer ${token}` } });
-
         const runRes = await axios.post(`${API_BASE_URL}/api/test/run`, {
           user_id: src.user_id,
           project_id: src.project_id,
           source_path: src.source_path,
           source_archive_path: src.source_archive_path,
+          source_name: src.project_name,
         }, { headers: { Authorization: `Bearer ${token}` } });
 
         const projectId = runRes.data.data.project_id;
@@ -417,15 +475,33 @@ export default function Dashboard() {
               <h3 className="font-bold text-lg">Test History</h3>
             </div>
             <div className="overflow-y-auto flex-1 pr-2 space-y-3">
-              {historyList.length > 0 ? historyList.map((item) => (
-                <div key={item.id} className="border border-slate-100 bg-slate-50 p-3 rounded-lg flex items-start gap-3 hover:bg-slate-100 transition-colors">
-                  <FileText className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{item.filename}</p>
-                    <p className="text-xs text-slate-500 mt-1">{item.timestamp}</p>
-                  </div>
-                </div>
-              )) : (
+              {historyList.length > 0 ? historyList.map((item) => {
+                const score = parseScore(item.score);
+                const canOpenReport = Boolean(item.project_id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    disabled={!canOpenReport}
+                    onClick={() => {
+                      if (canOpenReport) navigate(`/test-report/${item.project_id}`);
+                    }}
+                    className={`w-full border border-slate-100 bg-slate-50 p-3 rounded-lg flex items-start gap-3 text-left transition-colors ${
+                      canOpenReport ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"
+                    }`}
+                  >
+                    <FileText className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{item.filename}</p>
+                      <p className="text-xs text-slate-500 mt-1">Start: {formatDateTime(item.start_time || item.timestamp)}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">End: {formatDateTime(item.end_time)}</p>
+                    </div>
+                    <div className={`shrink-0 rounded-lg border px-2 py-1 text-xs font-bold tabular-nums ${scoreColor(score)}`}>
+                      {score === null ? ".../100" : `${score}/100`}
+                    </div>
+                  </button>
+                );
+              }) : (
                 <p className="text-sm text-slate-500 text-center mt-6">No history yet. Run your first test!</p>
               )}
             </div>

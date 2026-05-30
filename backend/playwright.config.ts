@@ -1,13 +1,30 @@
 // File: backend/utils/playwright_template.config.ts
 import { defineConfig, devices } from '@playwright/test';
 
+const frontendInstallCommand = process.env.FRONTEND_INSTALL_COMMAND;
+const frontendStartCommand = process.env.FRONTEND_COMMAND;
+const frontendDir = process.env.FRONTEND_DIR;
+const frontendUrl = process.env.BASE_URL || process.env.FRONTEND_URL;
+const frontendCommand = [frontendInstallCommand, frontendStartCommand].filter(Boolean).join(' && ');
+const webServer = frontendCommand && frontendDir && frontendUrl
+  ? [
+      {
+        command: frontendCommand,
+        cwd: frontendDir,
+        url: frontendUrl,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+      },
+    ]
+  : undefined;
+
 export default defineConfig({
   testDir: './tests', // Code sinh ra sẽ nằm ở thư mục tests/ bên ngoài
   outputDir: './test-results',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 1 : 2,
+  retries: process.env.CI ? 2 : 2,
+  workers: process.env.CI ? 1 : 10,
   
   // BẮT BUỘC: Ép Playwright xuất file JSON để Agent Reporter đọc được
   reporter: [
@@ -26,14 +43,5 @@ export default defineConfig({
     },
   ],
 
-  // THÔNG MINH: Tự động khởi động App của khách hàng dựa trên biến môi trường
-  webServer: [
-    {
-      command: 'npm install && npm run dev', 
-      cwd: process.env.FRONTEND_DIR || './', // Tự động trỏ vào workspace của khách!
-      url: process.env.BASE_URL || 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
-    }
-  ]
+  webServer,
 });

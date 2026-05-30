@@ -8,8 +8,8 @@ const Pipeline = require('../../pipeline/Pipeline');
 const { addUserTokens } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
 const {
+  WORKSPACE_BASE_PATH,
   SOURCE_WORKSPACE_BASE_PATH,
-  UPLOAD_ARCHIVE_BASE_PATH,
   TARGET_BASE_URL,
   AI_DEBUG,
 } = require('../../config/env');
@@ -17,21 +17,60 @@ const {
 // ── Helpers ────────────────────────────────────────────────────────
 
 function safeName(value, fallback = 'source') {
-  return (value || '').replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._-]+|[._-]+$/g, '') || fallback;
+  return String(value || '').replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._-]+|[._-]+$/g, '') || fallback;
 }
 
-function buildUniqueExtractDir(rootDir, zipFilename) {
-  const base = path.basename(zipFilename, path.extname(zipFilename))
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/^[._-]+|[._-]+$/g, '') || 'source_project';
+function projectNameFromZip(zipFilename) {
+  return safeName(path.basename(zipFilename, path.extname(zipFilename)), 'source_project');
+}
 
-  let dir = path.join(rootDir, base);
-  if (fs.existsSync(dir)) {
-    const ts = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
-    dir = path.join(rootDir, `${base}_${ts}`);
-  }
-  return dir;
+function displayNameFromSource(sourcePath, fallback = 'source_project') {
+  return safeName(path.basename(sourcePath || ''), fallback);
+}
+
+function createTestHistory({
+  userId,
+  projectId,
+  jobId,
+  filename,
+  startTime,
+  endTime = null,
+  score = null,
+  status = 'queued',
+  timestamp = null,
+}) {
+  const existing = testHistoryDb.find(record =>
+    (jobId && record.job_id === jobId) ||
+    (projectId && record.project_id === projectId)
+  );
+  const record = existing || {
+    id: uuidv4(),
+    user_id: userId,
+  };
+
+  Object.assign(record, {
+    user_id: userId,
+    project_id: projectId || record.project_id || null,
+    job_id: jobId || record.job_id || null,
+    filename,
+    start_time: startTime || record.start_time || new Date().toISOString(),
+    end_time: endTime,
+    score,
+    status,
+    timestamp: timestamp || record.timestamp || new Date().toLocaleString('vi-VN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).replace(',', ''),
+  });
+
+  if (!existing) testHistoryDb.unshift(record);
+  return record;
+}
+
+function updateTestHistoryByJob(jobId, changes) {
+  const record = testHistoryDb.find(item => item.job_id === jobId);
+  if (record) Object.assign(record, changes);
+  return record || null;
 }
 
 function isPathInside(parentDir, candidatePath) {
@@ -58,12 +97,16 @@ function extractZipSafely(zipPath, extractRoot) {
 // ── Background job runner ─────────────────────────────────────────
 
 async function runPipelineJob(jobId, sourcePath, baseUrl) {
+  const startedAt = new Date().toISOString();
   updateJob(jobId, {
     status: 'running',
-    progress_percent: 40,
-    message: 'AI pipeline is running',
-    started_at: new Date().toISOString(),
+    stage: 'initializing',
+    progress_percent: 12,
+    message: 'Preparing the AI pipeline',
+    sub_progress: null,
+    started_at: startedAt,
   });
+  updateTestHistoryByJob(jobId, { start_time: startedAt, status: 'running' });
 
   const job = getJob(jobId);
 
@@ -72,6 +115,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       userId: job.user_id,
       projectId: job.project_id,
       sourceCodePath: sourcePath,
+      onProgress: (progress) => updateJob(jobId, progress),
     });
 
     updateJob(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
@@ -80,25 +124,38 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     const tokensUsed = pipeline.tokensUsed || 0;
     addUserTokens(job.user_id, tokensUsed);
 
+    const finishedAt = new Date().toISOString();
+    const result = pipeline.loadFinalReport();
+    const score = result.final_report && result.final_report.health_score != null
+      ? result.final_report.health_score
+      : null;
+
     updateJob(jobId, {
       status: 'completed',
+      stage: 'completed',
       progress_percent: 100,
       message: 'AI pipeline completed',
-      finished_at: new Date().toISOString(),
+      sub_progress: null,
+      finished_at: finishedAt,
       tokens_used: tokensUsed,
-      result: pipeline.loadFinalReport(),
+      result,
     });
+    updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'completed', score });
   } catch (err) {
     const error = { type: err.constructor.name, message: err.message };
     if (AI_DEBUG) error.stack = err.stack;
+    const finishedAt = new Date().toISOString();
     updateJob(jobId, {
       success: false,
       status: 'failed',
+      stage: 'failed',
       progress_percent: 100,
       message: 'AI pipeline failed',
-      finished_at: new Date().toISOString(),
+      sub_progress: null,
+      finished_at: finishedAt,
       error,
     });
+    updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'failed', score: null });
   }
 }
 
@@ -111,17 +168,24 @@ async function uploadSource(req, res) {
 
   const userId = req.user.id;
   const projectId = uuidv4();
-  const sourceRoot = path.resolve(SOURCE_WORKSPACE_BASE_PATH);
-  const archiveRoot = path.resolve(UPLOAD_ARCHIVE_BASE_PATH);
-  const extractDir = buildUniqueExtractDir(path.join(sourceRoot, userId, 'source'), req.file.originalname);
-  const archiveDir = path.join(archiveRoot, userId);
-  const archivePath = path.join(archiveDir, `${projectId}-${path.basename(req.file.filename)}`);
+  const workspaceRoot = path.resolve(WORKSPACE_BASE_PATH);
+  const projectsDir = path.join(workspaceRoot, safeName(userId), 'projects');
+  const projectName = projectNameFromZip(req.file.originalname);
+  const extractDir = path.join(projectsDir, projectName);
+  const tempExtractDir = path.join(projectsDir, `.${projectName}_${projectId}_extracting`);
+  const archivePath = req.file.path;
 
   try {
-    fs.mkdirSync(extractDir, { recursive: true });
-    fs.mkdirSync(archiveDir, { recursive: true });
-    fs.copyFileSync(req.file.path, archivePath);
-    fs.rmSync(req.file.path, { force: true });
+    if (!isPathInside(projectsDir, archivePath)) {
+      throw new Error('Invalid upload path');
+    }
+
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
+    fs.mkdirSync(tempExtractDir, { recursive: true });
+    extractZipSafely(archivePath, tempExtractDir);
+    fs.rmSync(extractDir, { recursive: true, force: true });
+    fs.renameSync(tempExtractDir, extractDir);
+    fs.rmSync(archivePath, { force: true });
 
     const fileSizeBytes = req.file.size || 0;
 
@@ -143,62 +207,55 @@ async function uploadSource(req, res) {
 
     return res.json({
       success: true,
-      message: 'Source uploaded successfully',
+      message: 'Source uploaded and extracted successfully',
       data: {
         user_id: userId,
         project_id: projectId,
-        workspace_path: path.join(sourceRoot, userId),
+        project_name: projectName,
+        workspace_path: path.join(workspaceRoot, safeName(userId)),
         source_path: extractDir,
-        source_archive_path: archivePath,
+        source_archive_path: null,
       },
     });
   } catch (err) {
-    fs.rmSync(extractDir, { recursive: true, force: true });
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
     fs.rmSync(archivePath, { force: true });
     return res.status(400).json({ success: false, message: err.message });
   }
 }
 
 async function startTest(req, res) {
-  const { user_id, project_id, source_path, source_archive_path, base_url } = req.body;
+  const { user_id, project_id, source_path, base_url, source_name } = req.body;
+  const authenticatedUserId = req.user.id;
 
-  if (!user_id || !project_id || (!source_path && !source_archive_path)) {
+  if (!user_id || !project_id || !source_path) {
     return res.status(400).json({
       success: false,
-      message: 'Required: user_id, project_id, and source_path or source_archive_path',
+      message: 'Required: user_id, project_id, and source_path',
     });
   }
-
-  let resolvedSourcePath;
-
-  if (source_archive_path) {
-    const archivePath = path.resolve(source_archive_path);
-    const archiveRoot = path.resolve(UPLOAD_ARCHIVE_BASE_PATH);
-    if (!isPathInside(archiveRoot, archivePath) || !fs.existsSync(archivePath)) {
-      return res.status(400).json({ success: false, message: 'Invalid or missing source_archive_path' });
-    }
-
-    const extractDir = path.join(
-      path.resolve(SOURCE_WORKSPACE_BASE_PATH),
-      safeName(user_id), safeName(project_id),
-      `source_${uuidv4().replace(/-/g, '').slice(0, 12)}`
-    );
-    try {
-      fs.mkdirSync(extractDir, { recursive: true });
-      extractZipSafely(archivePath, extractDir);
-      resolvedSourcePath = extractDir;
-    } catch (err) {
-      fs.rmSync(extractDir, { recursive: true, force: true });
-      return res.status(400).json({ success: false, message: `Zip extraction failed: ${err.message}` });
-    }
-  } else {
-    resolvedSourcePath = path.resolve(source_path);
-    if (!fs.existsSync(resolvedSourcePath) || !fs.statSync(resolvedSourcePath).isDirectory()) {
-      return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
-    }
+  if (String(user_id) !== String(authenticatedUserId)) {
+    return res.status(403).json({ success: false, message: 'user_id does not match the authenticated user' });
   }
 
-  const job = createJob({ userId: user_id, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
+  const resolvedSourcePath = path.resolve(source_path);
+  const projectsDir = path.join(path.resolve(WORKSPACE_BASE_PATH), safeName(authenticatedUserId), 'projects');
+  if (!isPathInside(projectsDir, resolvedSourcePath)) {
+    return res.status(400).json({ success: false, message: 'source_path must be inside the user projects workspace' });
+  }
+  if (!fs.existsSync(resolvedSourcePath) || !fs.statSync(resolvedSourcePath).isDirectory()) {
+    return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
+  }
+
+  const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
+  createTestHistory({
+    userId: authenticatedUserId,
+    projectId: project_id,
+    jobId: job.job_id,
+    filename: source_name || displayNameFromSource(resolvedSourcePath),
+    startTime: job.started_at || job.created_at,
+    status: job.status,
+  });
   setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url));
 
   return res.json({ success: true, data: job });
@@ -213,8 +270,13 @@ function getTestStatus(req, res) {
   return res.json({ success: true, data: job });
 }
 
+<<<<<<< HEAD
 async function addTestHistory(req, res) {
   const { filename, test_type, status, detail_report } = req.body;
+=======
+function addTestHistory(req, res) {
+  const { filename, project_id, job_id, start_time, end_time, score, status } = req.body;
+>>>>>>> 730f661cf5b2789145bddaa73216cb84acc8f647
   if (!filename) return res.status(400).json({ success: false, message: 'Filename is required' });
 
   const record = {
@@ -225,10 +287,25 @@ async function addTestHistory(req, res) {
     detail_report: detail_report || null,
   };
 
+<<<<<<< HEAD
   const { data, error } = await supabase.from('test_reports').insert([record]).select().single();
   if (error) return res.status(500).json({ success: false, message: error.message });
 
   return res.json({ success: true, data });
+=======
+  const record = createTestHistory({
+    userId: req.user.id,
+    projectId: project_id,
+    jobId: job_id,
+    filename,
+    startTime: start_time,
+    endTime: end_time,
+    score,
+    status,
+    timestamp,
+  });
+  return res.json({ success: true, data: record });
+>>>>>>> 730f661cf5b2789145bddaa73216cb84acc8f647
 }
 
 async function getTestHistory(req, res) {
@@ -279,6 +356,14 @@ async function startTestFromGithub(req, res) {
   }
 
   const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url });
+  createTestHistory({
+    userId,
+    projectId,
+    jobId: job.job_id,
+    filename: repo_full_name,
+    startTime: job.started_at || job.created_at,
+    status: job.status,
+  });
   setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url));
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }

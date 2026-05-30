@@ -1,4 +1,4 @@
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -10,6 +10,7 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
     return_code: returnCode,
     stats: { total: 0, passed: 0, failed: 0, skipped: 0, timed_out: 0, duration_ms: 0 },
     test_cases: [],
+    errors: [],
     stderr: (stderr || '').trim(),
   };
 
@@ -29,7 +30,8 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
 
   const testCases = [];
 
-  function walkSuite(suite, parentTitle = '') {
+  function walkSuite(suite, parentTitle = '', inheritedFile = '') {
+    const suiteFile = suite.file || inheritedFile;
     const currentTitle = [parentTitle, suite.title].filter(Boolean).join(' > ');
     for (const spec of (suite.specs || [])) {
       const specTitle = [currentTitle, spec.title].filter(Boolean).join(' > ');
@@ -37,48 +39,97 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
         const outcome = (test.outcome || 'unknown').toLowerCase();
         const durationMs = (test.results || []).reduce((s, r) => s + (r.duration || 0), 0);
         const errors = (test.results || [])
-          .map(r => r.error?.message)
+          .map(r => (r.error && r.error.message) || null)
           .filter(Boolean)
           .map(m => m.trim());
-        testCases.push({ title: specTitle, status: outcome, duration_ms: durationMs, errors });
+        testCases.push({ title: specTitle, file: suiteFile, status: outcome, duration_ms: durationMs, errors });
       }
     }
-    for (const child of (suite.suites || [])) walkSuite(child, currentTitle);
+    for (const child of (suite.suites || [])) walkSuite(child, currentTitle, suiteFile);
   }
 
   for (const s of (data.suites || [])) walkSuite(s);
+
+  const runnerErrors = (data.errors || [])
+    .map(err => ({
+      message: (err.message || '').trim(),
+      stack: (err.stack || '').trim(),
+    }))
+    .filter(err => err.message || err.stack);
 
   const total = testCases.length;
   const failed = testCases.filter(t => t.errors.length > 0).length;
   const skipped = testCases.filter(t => t.status === 'skipped').length;
   const timedOut = testCases.filter(t => t.status === 'timedout').length;
-  const durationMs = (data.stats?.duration) ?? testCases.reduce((s, t) => s + t.duration_ms, 0);
+  const durationMs = data.stats && data.stats.duration != null
+    ? data.stats.duration
+    : testCases.reduce((s, t) => s + t.duration_ms, 0);
 
   summary.stats = { total, passed: total - failed, failed, skipped, timed_out: timedOut, duration_ms: Math.round(durationMs) };
   summary.test_cases = testCases;
+  summary.errors = runnerErrors;
   return summary;
 }
 
-function run(specsDir, reportFile, workingDir, baseUrl) {
+function runCommand(command, args, options) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, options);
+    let stdout = '';
+    let stderr = '';
+
+    if (child.stdout) {
+      child.stdout.on('data', chunk => {
+        stdout += chunk.toString();
+      });
+    }
+    if (child.stderr) {
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString();
+      });
+    }
+
+    child.on('error', error => {
+      resolve({ stdout, stderr, status: null, error });
+    });
+    child.on('close', status => {
+      resolve({ stdout, stderr, status, error: null });
+    });
+  });
+}
+
+async function run(specsDir, reportFile, workingDir, baseUrl) {
   fs.mkdirSync(path.dirname(reportFile), { recursive: true });
 
-  const env = { ...process.env };
+  const env = Object.assign({}, process.env);
   if (baseUrl) env.BASE_URL = baseUrl;
+  const playwrightJsonPath = path.join(workingDir, 'playwright-report.json');
 
-  const result = spawnSync(
+  const result = await runCommand(
     'npx',
-    ['playwright', 'test', '--reporter=json'],
+    ['playwright', 'test'],
     {
       cwd: workingDir,
       env,
-      encoding: 'utf-8',
       shell: process.platform === 'win32',
-      maxBuffer: 50 * 1024 * 1024,
     }
   );
 
-  const summary = parsePlaywrightOutput(result.stdout, result.stderr, result.status ?? 1);
+  const rawStdout = result.stdout || '';
+  const rawStderr = result.stderr || '';
+  const returnCode = result.status == null ? 1 : result.status;
+  const rawReport = fs.existsSync(playwrightJsonPath)
+    ? fs.readFileSync(playwrightJsonPath, 'utf-8')
+    : rawStdout;
+
+  const summary = parsePlaywrightOutput(rawReport, rawStderr, returnCode);
   summary.specs_dir = specsDir;
+  summary.playwright_report_path = fs.existsSync(playwrightJsonPath) ? playwrightJsonPath : null;
+
+  if (!summary.playwright_report_path || summary.stats.total === 0) {
+    summary.stdout = rawStdout.trim();
+    summary.stderr = rawStderr.trim();
+    summary.error = result.error ? result.error.message : null;
+  }
 
   fs.writeFileSync(reportFile, JSON.stringify(summary, null, 2), 'utf-8');
   return summary;

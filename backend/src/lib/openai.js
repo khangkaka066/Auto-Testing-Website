@@ -28,15 +28,15 @@ function loadPrompt(promptName) {
   };
 }
 
-async function retryCall(fn, retries = AI_RETRY_COUNT, baseDelayMs = 1000) {
+async function retryCall(fn, maxRetries = AI_RETRY_COUNT, baseDelayMs = 1000) {
   let lastError;
-  for (let i = 0; i < retries; i++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (err) {
       lastError = err;
-      if (i < retries - 1) {
-        await new Promise(r => setTimeout(r, baseDelayMs * 2 ** i));
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));
       }
     }
   }

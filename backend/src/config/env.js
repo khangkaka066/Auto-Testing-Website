@@ -1,15 +1,20 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '..', '..', '.env') });
 
+function intFromEnv(name, fallback, min = 0) {
+  const parsed = parseInt(process.env[name] || String(fallback), 10);
+  return Number.isFinite(parsed) ? Math.max(min, parsed) : fallback;
+}
+
 module.exports = {
-  PORT: parseInt(process.env.PORT || '5001', 10),
+  PORT: intFromEnv('PORT', 5001, 1),
   MONGO_URL: process.env.MONGO_URL || '',
   DB_NAME: process.env.DB_NAME || 'testpilot_db',
   CORS_ORIGINS: process.env.CORS_ORIGINS || '*',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   AI_DEBUG: (process.env.AI_DEBUG || 'false').toLowerCase() === 'true',
-  AI_MAX_WORKERS: Math.max(1, parseInt(process.env.AI_MAX_WORKERS || '4', 10)),
+  AI_MAX_WORKERS: intFromEnv('AI_MAX_WORKERS', 4, 1),
   AI_CACHE_ENABLED: (process.env.AI_CACHE_ENABLED || 'true').toLowerCase() !== 'false',
-  AI_RETRY_COUNT: Math.max(1, parseInt(process.env.AI_RETRY_COUNT || '3', 10)),
+  AI_RETRY_COUNT: intFromEnv('AI_RETRY_COUNT', 3, 0),
   WORKSPACE_BASE_PATH: process.env.WORKSPACE_BASE_PATH || 'workspaces',
   SOURCE_WORKSPACE_BASE_PATH: process.env.SOURCE_WORKSPACE_BASE_PATH || 'uploaded_sources',
   UPLOAD_ARCHIVE_BASE_PATH: process.env.UPLOAD_ARCHIVE_BASE_PATH || 'uploaded_archives',

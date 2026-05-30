@@ -29,6 +29,22 @@ const STATUS_META = {
   },
 };
 
+const STAGE_LABELS = {
+  queued: "Queued",
+  initializing: "Initializing",
+  detector: "Detector",
+  analyzer: "Analyzer",
+  planner: "Planner",
+  filter: "Filter",
+  coder: "Coder",
+  validator: "Validator",
+  debugger: "Debugger",
+  executor: "Executor",
+  reporter: "Reporter",
+  completed: "Completed",
+  failed: "Failed",
+};
+
 export default function TestProgress() {
   const { projectId } = useParams();
   const location = useLocation();
@@ -43,6 +59,8 @@ export default function TestProgress() {
   const [runState, setRunState] = useState({
     status: "queued",
     message: "Initializing test pipeline.",
+    stage: "queued",
+    sub_progress: null,
     progress_percent: 10,
     project_id: projectId,
     source_path: location.state?.sourcePath || latestProgress.sourcePath || "",
@@ -51,6 +69,14 @@ export default function TestProgress() {
   const meta = useMemo(() => STATUS_META[runState.status] || STATUS_META.queued, [runState.status]);
   const StatusIcon = meta.icon;
   const progressPercent = Math.max(0, Math.min(100, runState.progress_percent || 0));
+  const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "Queued";
+  const subProgress = runState.sub_progress;
+  const showSubProgress = runState.status === "running" && subProgress && Number(subProgress.total) > 0;
+  const subProgressPercent = showSubProgress
+    ? Math.max(0, Math.min(100, subProgress.percent ?? Math.round((subProgress.completed / subProgress.total) * 100)))
+    : 0;
+  const subProgressCompleted = showSubProgress ? Math.max(0, Number(subProgress.completed) || 0) : 0;
+  const subProgressTotal = showSubProgress ? Math.max(0, Number(subProgress.total) || 0) : 0;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -61,6 +87,7 @@ export default function TestProgress() {
     }
 
     let isMounted = true;
+    let intervalId;
 
     const fetchStatus = async () => {
       try {
@@ -76,6 +103,7 @@ export default function TestProgress() {
           const report = data.result.final_report;
           localStorage.setItem("last_test_result", JSON.stringify({
             project_id:   data.project_id,
+            job_id:       data.job_id,
             run_id:       data.run_id,
             finished_at:  data.finished_at,
             health_score: report.health_score,
@@ -94,7 +122,7 @@ export default function TestProgress() {
     };
 
     fetchStatus();
-    const intervalId = setInterval(fetchStatus, 2000);
+    intervalId = setInterval(fetchStatus, 2000);
 
     return () => {
       isMounted = false;
@@ -138,7 +166,14 @@ export default function TestProgress() {
           </div>
 
           <div className="mt-8">
-            <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div className="mb-3 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Current stage</p>
+                <p className="text-lg font-bold text-slate-900">{stageLabel}</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{progressPercent}%</p>
+            </div>
+            <div className="h-4 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   runState.status === "failed" ? "bg-red-500" : "bg-orange-600"
@@ -146,16 +181,25 @@ export default function TestProgress() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+            {showSubProgress ? (
+              <div className="mt-4">
+                <div className="mb-2 flex items-end justify-between gap-4 text-sm">
+                  <p className="font-semibold text-orange-800">{subProgress.label}</p>
+                  <p className="font-bold text-orange-800 tabular-nums">
+                    {subProgressCompleted}/{subProgressTotal}
+                  </p>
+                </div>
+                <div className="h-3 w-full rounded-full bg-orange-50 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-orange-500 transition-all duration-500"
+                    style={{ width: `${subProgressPercent}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="mt-3 flex justify-between text-sm text-slate-500">
               <span>{runState.message}</span>
-              <span>{progressPercent}%</span>
-            </div>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 gap-4 text-sm">
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-              <p className="font-semibold text-slate-700 mb-1">Stage</p>
-              <p className="font-mono text-xs text-slate-500 break-all">{runState.stage || "-"}</p>
+              {!isFinished ? <span className="animate-pulse">Loading...</span> : <span>{meta.label}</span>}
             </div>
           </div>
 
@@ -173,7 +217,15 @@ export default function TestProgress() {
           ) : null}
 
           {isFinished ? (
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex flex-wrap justify-end gap-3">
+              {runState.status === "completed" && (runState.job_id || runState.run_id) ? (
+                <button
+                  onClick={() => navigate(`/test-report/${runState.project_id}`)}
+                  className="bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  View report
+                </button>
+              ) : null}
               <button
                 onClick={() => navigate("/dashboard")}
                 className="bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"

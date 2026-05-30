@@ -5,13 +5,17 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { authMiddleware } = require('../../middleware/auth');
 const ctrl = require('./test.controller');
-const { SOURCE_WORKSPACE_BASE_PATH } = require('../../config/env');
+const { WORKSPACE_BASE_PATH } = require('../../config/env');
 
 const router = express.Router();
 
+function safePathSegment(value, fallback = 'user') {
+  return String(value || '').replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._-]+|[._-]+$/g, '') || fallback;
+}
+
 const sourceZipStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(path.resolve(SOURCE_WORKSPACE_BASE_PATH), req.user.id, 'uploads');
+    const dir = path.join(path.resolve(WORKSPACE_BASE_PATH), safePathSegment(req.user.id), 'projects');
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

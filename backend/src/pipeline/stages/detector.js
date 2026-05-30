@@ -4,6 +4,123 @@ const path = require('path');
 const SUPPORTED_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.vue']);
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'public', '__pycache__', '.emergent', 'venv']);
 
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function hasDep(allDeps, name) {
+  return Object.prototype.hasOwnProperty.call(allDeps, name);
+}
+
+function getPackageManager(rootPath) {
+  if (fs.existsSync(path.join(rootPath, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (fs.existsSync(path.join(rootPath, 'yarn.lock'))) return 'yarn';
+  return 'npm';
+}
+
+function packageCommand(packageManager, scriptName) {
+  if (packageManager === 'yarn') return `yarn ${scriptName}`;
+  if (packageManager === 'pnpm') return `pnpm ${scriptName}`;
+  return scriptName === 'start' ? 'npm start' : `npm run ${scriptName}`;
+}
+
+function installCommand(packageManager) {
+  if (packageManager === 'yarn') return 'yarn install';
+  if (packageManager === 'pnpm') return 'pnpm install';
+  return 'npm install';
+}
+
+function chooseScript(scripts, candidates) {
+  for (const name of candidates) {
+    if (scripts[name]) return name;
+  }
+  return null;
+}
+
+function detectFrontendRunConfig(rootPath, pkg, allDeps, framework) {
+  const scripts = pkg.scripts || {};
+  const packageManager = getPackageManager(rootPath);
+  const lowerScripts = Object.values(scripts).join(' ').toLowerCase();
+  let port = 3000;
+  let scriptName = chooseScript(scripts, ['dev', 'start', 'serve']);
+  let confidence = 'medium';
+  const notes = [];
+
+  if (framework === 'Vite' || lowerScripts.includes('vite')) {
+    port = 5173;
+    scriptName = chooseScript(scripts, ['dev', 'start']) || scriptName;
+    confidence = 'high';
+  } else if (framework === 'Create React App' || lowerScripts.includes('react-scripts start')) {
+    port = 3000;
+    scriptName = chooseScript(scripts, ['start', 'dev']) || scriptName;
+    confidence = 'high';
+  } else if (framework === 'Next.js' || hasDep(allDeps, 'next')) {
+    port = 3000;
+    scriptName = chooseScript(scripts, ['dev', 'start']) || scriptName;
+    confidence = 'high';
+  } else if (framework === 'Angular' || lowerScripts.includes('ng serve')) {
+    port = 4200;
+    scriptName = chooseScript(scripts, ['start', 'dev']) || scriptName;
+    confidence = 'high';
+  } else if (framework === 'SvelteKit') {
+    port = 5173;
+    scriptName = chooseScript(scripts, ['dev', 'start']) || scriptName;
+    confidence = 'high';
+  } else if (framework === 'Astro') {
+    port = 4321;
+    scriptName = chooseScript(scripts, ['dev', 'start']) || scriptName;
+    confidence = 'high';
+  } else if (framework === 'Vue') {
+    port = lowerScripts.includes('vite') ? 5173 : 8080;
+    scriptName = chooseScript(scripts, ['dev', 'serve', 'start']) || scriptName;
+    confidence = lowerScripts.includes('vite') ? 'high' : 'medium';
+  }
+
+  if (!scriptName) {
+    notes.push('No frontend start script was detected.');
+    return {
+      package_manager: packageManager,
+      install_command: installCommand(packageManager),
+      start_command: null,
+      url: null,
+      port: null,
+      confidence: 'low',
+      notes,
+    };
+  }
+
+  return {
+    package_manager: packageManager,
+    install_command: installCommand(packageManager),
+    start_command: packageCommand(packageManager, scriptName),
+    url: `http://localhost:${port}`,
+    port,
+    confidence,
+    notes,
+  };
+}
+
+function detectFramework(allDeps, scripts) {
+  const lowerScripts = Object.values(scripts || {}).join(' ').toLowerCase();
+  if (hasDep(allDeps, 'next')) return 'Next.js';
+  if (hasDep(allDeps, '@angular/core') || lowerScripts.includes('ng serve')) return 'Angular';
+  if (hasDep(allDeps, '@sveltejs/kit')) return 'SvelteKit';
+  if (hasDep(allDeps, 'astro')) return 'Astro';
+  if (hasDep(allDeps, 'react-scripts') || lowerScripts.includes('react-scripts start')) return 'Create React App';
+  if (hasDep(allDeps, 'vite') || lowerScripts.includes('vite')) {
+    if (hasDep(allDeps, 'react') || hasDep(allDeps, '@vitejs/plugin-react') || hasDep(allDeps, '@vitejs/plugin-react-swc')) return 'Vite';
+    if (hasDep(allDeps, 'vue') || hasDep(allDeps, '@vitejs/plugin-vue')) return 'Vite';
+    return 'Vite';
+  }
+  if (hasDep(allDeps, 'react') || hasDep(allDeps, 'react-dom')) return 'React';
+  if (hasDep(allDeps, 'vue')) return 'Vue';
+  return 'Vanilla JS';
+}
+
 function scanProjectFiles(rootPath) {
   const files = [];
 
@@ -52,17 +169,31 @@ function extractProjectMetadata(rootPath) {
     const hasPackageJson = entries.some(e => e.isFile() && e.name === 'package.json');
     if (hasPackageJson) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
-        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-        let framework = 'Vanilla JS';
-        if (allDeps.react || allDeps['react-dom']) framework = 'React';
-        else if (allDeps.vue) framework = 'Vue';
-        projects.push({
-          project_name: pkg.name || 'unknown-project',
-          root_path: dir,
-          framework,
-          has_playwright: !!allDeps['@playwright/test'],
-        });
+        const pkg = readJson(path.join(dir, 'package.json'));
+        if (pkg) {
+          const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+          const framework = detectFramework(allDeps, pkg.scripts || {});
+          const isFrontend = ['React', 'Vue', 'Vite', 'Create React App', 'Next.js', 'Angular', 'SvelteKit', 'Astro', 'Vanilla JS']
+            .includes(framework) && (
+              hasDep(allDeps, 'react') ||
+              hasDep(allDeps, 'react-dom') ||
+              hasDep(allDeps, 'vue') ||
+              hasDep(allDeps, 'vite') ||
+              hasDep(allDeps, 'next') ||
+              hasDep(allDeps, '@angular/core') ||
+              hasDep(allDeps, '@sveltejs/kit') ||
+              hasDep(allDeps, 'astro') ||
+              fs.existsSync(path.join(dir, 'index.html'))
+            );
+          projects.push({
+            project_name: pkg.name || 'unknown-project',
+            root_path: dir,
+            framework,
+            type: isFrontend ? 'frontend' : 'node',
+            has_playwright: !!allDeps['@playwright/test'],
+            run_config: isFrontend ? detectFrontendRunConfig(dir, pkg, allDeps, framework) : null,
+          });
+        }
       } catch {
         // skip malformed package.json
       }

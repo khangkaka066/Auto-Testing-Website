@@ -4,6 +4,7 @@ const { z } = require('zod');
 const { loadPrompt, parseStructured } = require('../../lib/openai');
 const { stableHash, readCache, writeCache } = require('../../lib/cache');
 const { AI_MAX_WORKERS } = require('../../config/env');
+const { mapConcurrent } = require('../../lib/concurrency');
 
 const TestScopeEnum = z.enum([
   'UI Testing', 'Functional Testing', 'Performance Testing',
@@ -17,35 +18,35 @@ const PlannedTestCaseSchema = z.object({
   priority: z.enum(['P0', 'P1', 'P2']),
   scope: TestScopeEnum,
   objective: z.string(),
-  preconditions: z.array(z.string()).default([]),
+  preconditions: z.array(z.string()),
   test_data: z.array(z.object({
     name: z.string(),
     value: z.string(),
-    description: z.string().default(''),
-  })).default([]),
-  steps: z.array(z.string()).default([]),
+    description: z.string(),
+  })),
+  steps: z.array(z.string()),
   mock_strategy: z.object({
-    type: z.enum(['none', 'route_intercept', 'service_stub', 'hybrid']).default('none'),
-    targets: z.array(z.string()).default([]),
-    notes: z.string().default(''),
-  }).default({}),
+    type: z.enum(['none', 'route_intercept', 'service_stub', 'hybrid']),
+    targets: z.array(z.string()),
+    notes: z.string(),
+  }),
   criteria: z.object({
-    pass_when: z.array(z.string()).default([]),
-    fail_when: z.array(z.string()).default([]),
-  }).default({}),
+    pass_when: z.array(z.string()),
+    fail_when: z.array(z.string()),
+  }),
 });
 
 const PlannerOutputSchema = z.object({
-  planner_version: z.string().default('1.3'),
+  planner_version: z.string(),
   component_name: z.string(),
   module_type: z.string(),
   impact_level: z.string(),
-  should_generate_plan: z.boolean().default(true),
-  skip_reason: z.string().default(''),
-  requested_test_types: z.array(z.string()).default([]),
-  skipped_test_types: z.array(z.string()).default([]),
-  generation_notes: z.array(z.string()).default([]),
-  test_cases: z.array(PlannedTestCaseSchema).default([]),
+  should_generate_plan: z.boolean(),
+  skip_reason: z.string(),
+  requested_test_types: z.array(z.string()),
+  skipped_test_types: z.array(z.string()),
+  generation_notes: z.array(z.string()),
+  test_cases: z.array(PlannedTestCaseSchema),
 });
 
 const SCOPE_CAPABILITIES = {
@@ -82,6 +83,53 @@ function resolveApplicableTypes(analyzerOutput, requestedTypes) {
     }
   }
   return { applicable, skipped, notes };
+}
+
+function normalizeTestCase(testCase, index) {
+  const mockStrategy = testCase.mock_strategy || {};
+  const criteria = testCase.criteria || {};
+  return {
+    case_id: testCase.case_id || `TC_${index + 1}`,
+    title: testCase.title || `Generated test case ${index + 1}`,
+    priority: ['P0', 'P1', 'P2'].includes(testCase.priority) ? testCase.priority : 'P2',
+    scope: TestScopeEnum.options.includes(testCase.scope) ? testCase.scope : 'UI Testing',
+    objective: testCase.objective || '',
+    preconditions: Array.isArray(testCase.preconditions) ? testCase.preconditions : [],
+    test_data: Array.isArray(testCase.test_data)
+      ? testCase.test_data.map(item => ({
+        name: item.name || '',
+        value: item.value || '',
+        description: item.description || '',
+      }))
+      : [],
+    steps: Array.isArray(testCase.steps) ? testCase.steps : [],
+    mock_strategy: {
+      type: ['none', 'route_intercept', 'service_stub', 'hybrid'].includes(mockStrategy.type)
+        ? mockStrategy.type
+        : 'none',
+      targets: Array.isArray(mockStrategy.targets) ? mockStrategy.targets : [],
+      notes: mockStrategy.notes || '',
+    },
+    criteria: {
+      pass_when: Array.isArray(criteria.pass_when) ? criteria.pass_when : [],
+      fail_when: Array.isArray(criteria.fail_when) ? criteria.fail_when : [],
+    },
+  };
+}
+
+function normalizePlannerOutput(result) {
+  return {
+    planner_version: result.planner_version || '1.3',
+    component_name: result.component_name || 'UnknownComponent',
+    module_type: result.module_type || 'Unknown',
+    impact_level: result.impact_level || 'Low',
+    should_generate_plan: result.should_generate_plan !== false,
+    skip_reason: result.skip_reason || '',
+    requested_test_types: Array.isArray(result.requested_test_types) ? result.requested_test_types : [],
+    skipped_test_types: Array.isArray(result.skipped_test_types) ? result.skipped_test_types : [],
+    generation_notes: Array.isArray(result.generation_notes) ? result.generation_notes : [],
+    test_cases: Array.isArray(result.test_cases) ? result.test_cases.map(normalizeTestCase) : [],
+  };
 }
 
 async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testing') {
@@ -129,13 +177,14 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
     'PlannerOutput'
   );
 
+  const normalizedResult = normalizePlannerOutput(result);
   const data = {
-    ...result,
+    ...normalizedResult,
     should_generate_plan: true,
     skip_reason: '',
     requested_test_types: applicable,
     skipped_test_types: skipped,
-    generation_notes: [...notes, ...(result.generation_notes || [])],
+    generation_notes: [...notes, ...normalizedResult.generation_notes],
     file_path: content.file_path,
   };
 
@@ -143,19 +192,7 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
   return data;
 }
 
-async function pLimit(items, maxConcurrent, fn) {
-  const results = [];
-  for (let i = 0; i < items.length; i += maxConcurrent) {
-    const batch = items.slice(i, i + maxConcurrent);
-    const batchResults = await Promise.allSettled(batch.map(fn));
-    for (const r of batchResults) {
-      results.push(r.status === 'fulfilled' ? r.value : null);
-    }
-  }
-  return results;
-}
-
-async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing') {
+async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing', options = {}) {
   const analyzerFiles = fs.readdirSync(analyzerDir).filter(f => f.endsWith('.json'));
   if (analyzerFiles.length === 0) return;
 
@@ -163,14 +200,14 @@ async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing') {
   const plannerCacheDir = path.join(cacheDir, 'planner');
   const maxWorkers = Math.min(AI_MAX_WORKERS, analyzerFiles.length) || 1;
 
-  const results = await pLimit(analyzerFiles, maxWorkers, async (filename) => {
+  const results = await mapConcurrent(analyzerFiles, maxWorkers, async (filename) => {
     try {
       return await planFile(path.join(analyzerDir, filename), prompt, plannerCacheDir, testType);
     } catch (err) {
       console.error(`[Planner] Error processing ${filename}: ${err.message}`);
       return null;
     }
-  });
+  }, { onProgress: options.onProgress });
 
   analyzerFiles.forEach((filename, i) => {
     const data = results[i];

@@ -4,15 +4,16 @@ const { z } = require('zod');
 const { loadPrompt, parseStructured } = require('../../lib/openai');
 const { stableHash, readCache, writeCache } = require('../../lib/cache');
 const { AI_MAX_WORKERS } = require('../../config/env');
+const { mapConcurrent } = require('../../lib/concurrency');
 
 const GeneratedSpecSchema = z.object({
   spec_file: z.string(),
   content: z.string(),
-  test_case_count: z.number().int().default(0),
+  test_case_count: z.number().int(),
 });
 
 const CoderBatchOutputSchema = z.object({
-  generated: z.array(GeneratedSpecSchema).default([]),
+  generated: z.array(GeneratedSpecSchema),
 });
 
 const FORBIDDEN_PATTERNS = [
@@ -39,6 +40,18 @@ function validateOutput(output) {
     }
   }
   return violations;
+}
+
+function normalizeCoderOutput(output) {
+  return {
+    generated: Array.isArray(output.generated)
+      ? output.generated.map(item => ({
+        spec_file: item.spec_file || 'generated.spec.ts',
+        content: item.content || '',
+        test_case_count: Number.isInteger(item.test_case_count) ? item.test_case_count : 0,
+      }))
+      : [],
+  };
 }
 
 async function generateOne(item, prompt, baseUrl, cacheDir) {
@@ -81,13 +94,13 @@ async function generateOne(item, prompt, baseUrl, cacheDir) {
     if (parsed.success) return parsed.data;
   }
 
-  let output = await parseStructured(
+  let output = normalizeCoderOutput(await parseStructured(
     prompt.model,
     prompt.systemPrompt,
     userPrompt,
     CoderBatchOutputSchema,
     'CoderBatchOutput'
-  );
+  ));
 
   const violations = validateOutput(output);
   if (violations.length > 0) {
@@ -101,29 +114,17 @@ async function generateOne(item, prompt, baseUrl, cacheDir) {
       'Return ONLY JSON matching the CoderBatchOutput schema.\n' +
       JSON.stringify(repairPayload, null, 2);
 
-    output = await parseStructured(
+    output = normalizeCoderOutput(await parseStructured(
       prompt.model,
       prompt.systemPrompt,
       repairPrompt,
       CoderBatchOutputSchema,
       'CoderBatchOutput'
-    );
+    ));
   }
 
   writeCache(cacheDir, cacheKey, output);
   return output;
-}
-
-async function pLimit(items, maxConcurrent, fn) {
-  const results = new Array(items.length).fill(null);
-  for (let i = 0; i < items.length; i += maxConcurrent) {
-    const batch = items.slice(i, i + maxConcurrent);
-    const batchResults = await Promise.allSettled(batch.map((item, j) => fn(item, i + j)));
-    batchResults.forEach((r, j) => {
-      results[i + j] = r.status === 'fulfilled' ? r.value : null;
-    });
-  }
-  return results;
 }
 
 function loadItems(filteredDir) {
@@ -140,7 +141,7 @@ function loadItems(filteredDir) {
     });
 }
 
-async function run(filteredDir, outputDir, baseUrl, cacheDir) {
+async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
   const items = loadItems(filteredDir);
   if (items.length === 0) return { generated_count: 0, generated: [] };
 
@@ -150,14 +151,14 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir) {
 
   const maxWorkers = Math.min(AI_MAX_WORKERS, items.length) || 1;
 
-  const outputs = await pLimit(items, maxWorkers, async (item) => {
+  const outputs = await mapConcurrent(items, maxWorkers, async (item) => {
     try {
       return await generateOne(item, prompt, baseUrl, coderCacheDir);
     } catch (err) {
       console.error(`[Coder] Error generating spec for ${item.source_file}: ${err.message}`);
       return { generated: [] };
     }
-  });
+  }, { onProgress: options.onProgress });
 
   const manifest = [];
   const usedNames = new Set();

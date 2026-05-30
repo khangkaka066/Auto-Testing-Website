@@ -15,14 +15,46 @@ const ReporterOutputSchema = z.object({
   }),
   issues: z.array(z.object({
     page: z.string(),
+    file: z.string().optional(),
     error: z.string(),
     severity: z.enum(['Critical', 'High', 'Medium', 'Low']),
-  })).default([]),
+  })),
 });
+
+function normalizeReporterOutput(result) {
+  const summary = result.summary || {};
+  return {
+    health_score: result.health_score || '0/100',
+    summary: {
+      passed: Number.isInteger(summary.passed) ? summary.passed : 0,
+      failed: Number.isInteger(summary.failed) ? summary.failed : 0,
+      total: Number.isInteger(summary.total) ? summary.total : 0,
+      duration: summary.duration || '0 seconds',
+    },
+    issues: Array.isArray(result.issues)
+      ? result.issues.map(issue => ({
+        page: issue.page || 'Unknown page',
+        file: issue.file || issue.page || 'Unknown file',
+        error: issue.error || 'No issue details were provided.',
+        severity: ['Critical', 'High', 'Medium', 'Low'].includes(issue.severity) ? issue.severity : 'Low',
+      }))
+      : [],
+  };
+}
 
 function optimizeReportForLLM(rawReport) {
   const optimized = { summary: rawReport.stats || {}, failed_tests: [] };
   const seen = new Set();
+
+  for (const err of (rawReport.errors || [])) {
+    const message = (err.message || err.stack || '').replace(ANSI_RE, '').trim();
+    if (!message) continue;
+    optimized.failed_tests.push({
+      title: 'Playwright runner error',
+      file: 'playwright.config.ts',
+      error_summary: message,
+    });
+  }
 
   for (const tc of (rawReport.test_cases || [])) {
     const title = (tc.title || '').split(' > ').pop();
@@ -35,7 +67,11 @@ function optimizeReportForLLM(rawReport) {
       if (line.includes('Call log:')) break;
       if (line.trim() && !line.includes('Error: expect')) coreLines.push(line.trim());
     }
-    optimized.failed_tests.push({ title, error_summary: coreLines.join('\n') });
+    optimized.failed_tests.push({
+      title,
+      file: tc.file || 'Unknown file',
+      error_summary: coreLines.join('\n'),
+    });
   }
 
   return optimized;
@@ -50,7 +86,7 @@ async function run(executorJsonPath, outputDir) {
 
   let result;
   try {
-    result = await parseStructured(model, systemPrompt, userPrompt, ReporterOutputSchema, 'ReporterOutput');
+    result = normalizeReporterOutput(await parseStructured(model, systemPrompt, userPrompt, ReporterOutputSchema, 'ReporterOutput'));
   } catch (err) {
     console.error(`[Reporter] Parse error: ${err.message}`);
     result = {
