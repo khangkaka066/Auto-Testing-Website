@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
 const { PORT } = require('../../config/env');
 const { findByEmail, findById, save } = require('../../lib/userStore');
+const { getUserStats } = require('../../lib/tokenTracker');
 
 function makeToken(userId) {
   return `testpilot_mock_token_${userId}_${uuidv4().slice(0, 8)}`;
@@ -115,4 +116,9 @@ function uploadAvatar(upload) {
   };
 }
 
-module.exports = { register, login, googleAuth, getProfile, updateProfile, uploadAvatar };
+function getStats(req, res) {
+  const stats = getUserStats(req.user.id);
+  return res.json({ success: true, data: stats });
+}
+
+module.exports = { register, login, googleAuth, getProfile, updateProfile, uploadAvatar, getStats };

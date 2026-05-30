@@ -1,9 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const AdmZip = require('adm-zip');
 const { createJob, updateJob, getJobByProject, getJob } = require('../../lib/jobStore');
 const Pipeline = require('../../pipeline/Pipeline');
+const { addUserTokens } = require('../../lib/tokenTracker');
 const {
   SOURCE_WORKSPACE_BASE_PATH,
   UPLOAD_ARCHIVE_BASE_PATH,
@@ -77,11 +79,15 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     updateJob(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
     await pipeline.execute(baseUrl || TARGET_BASE_URL);
 
+    const tokensUsed = pipeline.tokensUsed || 0;
+    addUserTokens(job.user_id, tokensUsed);
+
     updateJob(jobId, {
       status: 'completed',
       progress_percent: 100,
       message: 'AI pipeline completed',
       finished_at: new Date().toISOString(),
+      tokens_used: tokensUsed,
       result: pipeline.loadFinalReport(),
     });
   } catch (err) {
@@ -209,4 +215,46 @@ function getTestHistory(req, res) {
   return res.json({ success: true, data: testHistoryDb.filter(r => r.user_id === req.user.id) });
 }
 
-module.exports = { uploadSource, startTest, getTestStatus, addTestHistory, getTestHistory };
+async function startTestFromGithub(req, res) {
+  const { repo_full_name, branch = 'main', base_url } = req.body;
+  const userId = req.user.id;
+  const githubToken = req.user.github_token;
+
+  if (!repo_full_name) {
+    return res.status(400).json({ success: false, message: 'repo_full_name is required (e.g. "owner/repo")' });
+  }
+  if (!githubToken) {
+    return res.status(403).json({ success: false, message: 'GitHub not connected. Please connect your GitHub account first.' });
+  }
+
+  // Validate tên repo an toàn (không có command injection)
+  if (!/^[\w.\-]+\/[\w.\-]+$/.test(repo_full_name)) {
+    return res.status(400).json({ success: false, message: 'Invalid repo name format' });
+  }
+
+  const projectId = uuidv4();
+  const cloneDir = path.join(
+    path.resolve(SOURCE_WORKSPACE_BASE_PATH),
+    safeName(userId), `github_${projectId}`
+  );
+
+  // Dùng OAuth token để clone — hoạt động với cả private repo
+  const cloneUrl = `https://x-access-token:${githubToken}@github.com/${repo_full_name}.git`;
+
+  try {
+    fs.mkdirSync(path.dirname(cloneDir), { recursive: true });
+    execSync(
+      `git clone --depth=1 --branch ${branch} ${cloneUrl} ${cloneDir}`,
+      { timeout: 120_000, stdio: 'pipe' }
+    );
+  } catch (err) {
+    const msg = (err.stderr || err.stdout || err.message || '').toString().split('\n').find(l => l.trim()) || 'Clone failed';
+    return res.status(400).json({ success: false, message: `Clone failed: ${msg}` });
+  }
+
+  const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url });
+  setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url));
+  return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
+}
+
+module.exports = { uploadSource, startTest, startTestFromGithub, getTestStatus, addTestHistory, getTestHistory };

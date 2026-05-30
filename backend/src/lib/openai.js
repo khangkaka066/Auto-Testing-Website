@@ -4,6 +4,7 @@ const matter = require('gray-matter');
 const path = require('path');
 const fs = require('fs');
 const { OPENAI_API_KEY, AI_RETRY_COUNT } = require('../config/env');
+const { recordTokens } = require('./tokenTracker');
 
 const PROMPTS_DIR = path.join(__dirname, '..', '..', 'prompts');
 
@@ -55,6 +56,7 @@ async function parseStructured(model, systemPrompt, userContent, zodSchema, sche
       ],
       response_format: zodResponseFormat(zodSchema, schemaName),
     });
+    recordTokens(res.usage);
     const parsed = res.choices[0].message.parsed;
     if (!parsed) throw new Error(`OpenAI returned null for schema ${schemaName}`);
     return parsed;
@@ -73,6 +75,7 @@ async function createCompletion(model, systemPrompt, userContent) {
         { role: 'user', content: userContent },
       ],
     });
+    recordTokens(res.usage);
     return res.choices[0].message.content || '';
   });
 }

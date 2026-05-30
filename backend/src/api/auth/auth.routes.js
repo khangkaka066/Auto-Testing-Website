@@ -28,5 +28,6 @@ router.post('/google',            ctrl.googleAuth);
 router.get('/profile',  authMiddleware, ctrl.getProfile);
 router.put('/profile',  authMiddleware, ctrl.updateProfile);
 router.post('/avatar',  authMiddleware, ctrl.uploadAvatar(avatarUpload));
+router.get('/stats',    authMiddleware, ctrl.getStats);
 
 module.exports = router;
