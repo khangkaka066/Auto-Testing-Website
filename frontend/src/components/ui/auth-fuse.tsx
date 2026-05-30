@@ -1,9 +1,9 @@
 import * as React from "react";
-import { useState, useId, useEffect } from "react";
+import { useState, useId, useEffect, type ComponentRef, type SyntheticEvent } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Eye, EyeOff, Zap, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -67,7 +67,7 @@ export function Typewriter({
     );
 
     return () => clearTimeout(timeout);
-  }, [currentIndex, isDeleting, currentText, loop, speed, deleteSpeed, delay, displayText, text]);
+  }, [currentIndex, isDeleting, currentText, loop, speed, deleteSpeed, delay, displayText, text, textArray.length]);
 
   return (
     <span className={className}>
@@ -84,7 +84,7 @@ const labelVariants = cva(
 );
 
 const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
+  ComponentRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
     VariantProps<typeof labelVariants>
 >(({ className, ...props }, ref) => (
@@ -211,7 +211,7 @@ interface SignInFormProps {
 function SignInForm({ onSubmit }: SignInFormProps) {
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignIn = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
@@ -229,7 +229,7 @@ function SignInForm({ onSubmit }: SignInFormProps) {
     <form onSubmit={handleSignIn} autoComplete="on" className="flex flex-col gap-8">
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex items-center gap-2 mb-1">
-          <Zap className="h-5 w-5 text-orange-500" />
+          <img src="/logo.png" alt="TestPilot" className="h-7 w-7 rounded-md" />
           <span className="text-sm font-semibold text-orange-500 tracking-wide uppercase">TestPilot</span>
         </div>
         <h1 className="text-2xl font-bold">Welcome back</h1>
@@ -276,7 +276,7 @@ interface SignUpFormProps {
 function SignUpForm({ onSubmit }: SignUpFormProps) {
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignUp = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;
@@ -295,7 +295,7 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
     <form onSubmit={handleSignUp} autoComplete="on" className="flex flex-col gap-8">
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex items-center gap-2 mb-1">
-          <Zap className="h-5 w-5 text-orange-500" />
+          <img src="/logo.png" alt="TestPilot" className="h-7 w-7 rounded-md" />
           <span className="text-sm font-semibold text-orange-500 tracking-wide uppercase">TestPilot</span>
         </div>
         <h1 className="text-2xl font-bold">Create an account</h1>

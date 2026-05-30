@@ -1,5 +1,5 @@
 import React from "react";
-import { Plane, Twitter, Github, Linkedin } from "lucide-react";
+import { Twitter, Github, Linkedin } from "lucide-react";
 
 const cols = [
   {
@@ -27,9 +27,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
           <div className="col-span-2 md:col-span-2">
             <a href="#" className="flex items-center gap-2 font-display font-bold text-lg">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white">
-                <Plane className="h-4 w-4 -rotate-45" />
-              </span>
+              <img src="/logo.png" alt="TestPilot" className="h-8 w-8 rounded-md" />
               TestPilot
             </a>
             <p className="mt-4 text-sm text-slate-600 max-w-xs leading-relaxed">

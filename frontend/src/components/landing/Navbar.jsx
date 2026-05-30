@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import API_BASE_URL from "../../config";
-import { Menu, X, Plane, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
@@ -74,9 +74,11 @@ export default function Navbar() {
           href={isLoggedIn ? "/dashboard" : "/"}
           className="group flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900"
         >
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white transition-all duration-300 group-hover:bg-orange-500 group-hover:scale-110 group-hover:rotate-3">
-            <Plane className="h-4 w-4 -rotate-45 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </span>
+          <img
+            src="/logo.png"
+            alt="TestPilot"
+            className="h-8 w-8 rounded-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
+          />
           <span className="transition-colors duration-300 group-hover:text-orange-500">TestPilot</span>
         </a>
 
