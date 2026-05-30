@@ -1,6 +1,6 @@
 const axios = require('axios');
 const crypto = require('crypto');
-const { findById } = require('../../lib/userStore');
+const { findById, updateById } = require('../../lib/userStore');
 const {
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
@@ -58,12 +58,11 @@ async function handleCallback(req, res) {
       headers: { Authorization: `Bearer ${access_token}`, 'User-Agent': 'TestPilot' },
     });
 
-    const user = findById(pending.userId);
-    if (user) {
-      user.github_token = access_token;
-      user.github_login = profileRes.data.login;
-      user.github_avatar = profileRes.data.avatar_url;
-    }
+    await updateById(pending.userId, {
+      github_token:  access_token,
+      github_login:  profileRes.data.login,
+      github_avatar: profileRes.data.avatar_url,
+    });
 
     res.redirect(`${FRONTEND_URL}/dashboard?github=connected&login=${profileRes.data.login}`);
   } catch (err) {

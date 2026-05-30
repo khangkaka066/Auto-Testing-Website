@@ -1,17 +1,46 @@
-// In-memory user store.
-// Shape: { [email]: { id, name, email, password_hash, avatar } }
-const usersDb = {};
+const { MongoClient } = require('mongodb');
+const { MONGO_URL, DB_NAME } = require('../config/env');
 
-function findByEmail(email) {
-  return usersDb[email] || null;
+const INITIAL_CREDITS = 500_000;
+let _col = null;
+
+// Kết nối lazy — chỉ kết nối khi lần đầu cần dùng
+async function getCollection() {
+  if (_col) return _col;
+  if (!MONGO_URL) throw new Error('MONGO_URL not configured');
+  const client = await MongoClient.connect(MONGO_URL);
+  _col = client.db(DB_NAME).collection('users');
+  // Index để tìm nhanh theo email và id
+  await _col.createIndex({ email: 1 }, { unique: true }).catch(() => {});
+  await _col.createIndex({ id: 1 }, { unique: true }).catch(() => {});
+  console.log('[userStore] MongoDB users collection ready');
+  return _col;
 }
 
-function findById(id) {
-  return Object.values(usersDb).find(u => u.id === id) || null;
+async function findByEmail(email) {
+  const col = await getCollection();
+  return col.findOne({ email }, { projection: { _id: 0 } });
 }
 
-function save(email, user) {
-  usersDb[email] = user;
+async function findById(id) {
+  const col = await getCollection();
+  return col.findOne({ id }, { projection: { _id: 0 } });
 }
 
-module.exports = { usersDb, findByEmail, findById, save };
+async function save(email, user) {
+  const col = await getCollection();
+  // Đảm bảo có credits mặc định nếu user mới
+  if (user.tokens_used === undefined) user.tokens_used = 0;
+  if (user.credits === undefined) user.credits = INITIAL_CREDITS;
+  await col.updateOne({ email }, { $set: user }, { upsert: true });
+}
+
+async function updateById(id, changes) {
+  const col = await getCollection();
+  // Nếu changes có operator ($set, $inc, ...) thì dùng trực tiếp, không bọc thêm
+  const hasOperator = Object.keys(changes).some(k => k.startsWith('$'));
+  const update = hasOperator ? changes : { $set: changes };
+  await col.updateOne({ id }, update);
+}
+
+module.exports = { findByEmail, findById, save, updateById, INITIAL_CREDITS };

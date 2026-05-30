@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
 const { PORT } = require('../../config/env');
-const { findByEmail, findById, save } = require('../../lib/userStore');
+const { findByEmail, findById, save, updateById } = require('../../lib/userStore');
 const { getUserStats } = require('../../lib/tokenTracker');
 
 function makeToken(userId) {
@@ -13,24 +13,23 @@ async function register(req, res) {
   if (!email?.trim() || !password) {
     return res.status(400).json({ success: false, message: 'Email and password are required' });
   }
-  if (findByEmail(email)) {
+  if (await findByEmail(email)) {
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
   const userId = uuidv4();
-  save(email, {
+  await save(email, {
     id: userId,
     name: name || email.split('@')[0],
     email,
     password_hash: await bcrypt.hash(password, 10),
   });
 
-  const user = findByEmail(email);
   return res.status(201).json({
     success: true,
     message: 'Registration successful',
     token: makeToken(userId),
-    user: { id: userId, name: user.name, email },
+    user: { id: userId, name: name || email.split('@')[0], email },
   });
 }
 
@@ -39,7 +38,7 @@ async function login(req, res) {
   if (!email?.trim() || !password) {
     return res.status(400).json({ success: false, message: 'Email and password are required' });
   }
-  const user = findByEmail(email);
+  const user = await findByEmail(email);
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
     return res.status(401).json({ success: false, message: 'Invalid email or password' });
   }
@@ -63,9 +62,9 @@ async function googleAuth(req, res) {
     const { email, name } = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf-8'));
     if (!email) return res.status(400).json({ success: false, message: 'Cannot get email from Google token' });
 
-    if (!findByEmail(email)) {
+    if (!(await findByEmail(email))) {
       const userId = uuidv4();
-      save(email, {
+      await save(email, {
         id: userId,
         name: name || email.split('@')[0],
         email,
@@ -73,7 +72,7 @@ async function googleAuth(req, res) {
       });
     }
 
-    const user = findByEmail(email);
+    const user = await findByEmail(email);
     return res.json({
       success: true,
       message: 'Google login successful',
@@ -95,29 +94,32 @@ async function updateProfile(req, res) {
   if (!name?.trim()) {
     return res.status(400).json({ success: false, message: 'Name cannot be empty' });
   }
-  req.user.name = name.trim();
+  const changes = { name: name.trim() };
   if (password?.trim()) {
-    req.user.password_hash = await bcrypt.hash(password, 10);
+    changes.password_hash = await bcrypt.hash(password, 10);
   }
+  await updateById(req.user.id, changes);
+  Object.assign(req.user, changes);
   return res.json({ success: true, message: 'Profile updated', user: { name: req.user.name, email: req.user.email } });
 }
 
 function uploadAvatar(upload) {
   return (req, res) => {
-    upload.single('file')(req, res, (err) => {
+    upload.single('file')(req, res, async (err) => {
       if (err) return res.status(400).json({ success: false, message: err.message });
       if (!req.file) return res.status(400).json({ success: false, message: 'No file provided' });
       const host = req.headers.host || `localhost:${PORT}`;
       const protocol = req.protocol || 'http';
       const avatarUrl = `${protocol}://${host}/static/avatars/${req.file.filename}`;
+      await updateById(req.user.id, { avatar: avatarUrl });
       req.user.avatar = avatarUrl;
       return res.json({ success: true, message: 'Avatar uploaded', avatar_url: avatarUrl });
     });
   };
 }
 
-function getStats(req, res) {
-  const stats = getUserStats(req.user.id);
+async function getStats(req, res) {
+  const stats = await getUserStats(req.user.id);
   return res.json({ success: true, data: stats });
 }
 
