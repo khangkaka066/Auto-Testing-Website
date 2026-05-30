@@ -7,7 +7,6 @@ function intFromEnv(name, fallback, min = 0) {
 
 module.exports = {
   PORT: intFromEnv('PORT', 5001, 1),
-  MONGO_URL: process.env.MONGO_URL || '',
   DB_NAME: process.env.DB_NAME || 'testpilot_db',
   CORS_ORIGINS: process.env.CORS_ORIGINS || '*',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',

@@ -1,46 +1,53 @@
-const { MongoClient } = require('mongodb');
-const { MONGO_URL, DB_NAME } = require('../config/env');
+const supabase = require('./supabase');
 
 const INITIAL_CREDITS = 500_000;
-let _col = null;
-
-// Kết nối lazy — chỉ kết nối khi lần đầu cần dùng
-async function getCollection() {
-  if (_col) return _col;
-  if (!MONGO_URL) throw new Error('MONGO_URL not configured');
-  const client = await MongoClient.connect(MONGO_URL);
-  _col = client.db(DB_NAME).collection('users');
-  // Index để tìm nhanh theo email và id
-  await _col.createIndex({ email: 1 }, { unique: true }).catch(() => {});
-  await _col.createIndex({ id: 1 }, { unique: true }).catch(() => {});
-  console.log('[userStore] MongoDB users collection ready');
-  return _col;
-}
 
 async function findByEmail(email) {
-  const col = await getCollection();
-  return col.findOne({ email }, { projection: { _id: 0 } });
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+  return data || null;
 }
 
 async function findById(id) {
-  const col = await getCollection();
-  return col.findOne({ id }, { projection: { _id: 0 } });
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
 }
 
 async function save(email, user) {
-  const col = await getCollection();
-  // Đảm bảo có credits mặc định nếu user mới
   if (user.tokens_used === undefined) user.tokens_used = 0;
   if (user.credits === undefined) user.credits = INITIAL_CREDITS;
-  await col.updateOne({ email }, { $set: user }, { upsert: true });
+
+  const { error } = await supabase
+    .from('users')
+    .upsert({ ...user, email }, { onConflict: 'email' });
+  if (error) throw error;
 }
 
 async function updateById(id, changes) {
-  const col = await getCollection();
-  // Nếu changes có operator ($set, $inc, ...) thì dùng trực tiếp, không bọc thêm
-  const hasOperator = Object.keys(changes).some(k => k.startsWith('$'));
-  const update = hasOperator ? changes : { $set: changes };
-  await col.updateOne({ id }, update);
+  // Strip MongoDB-style operators ($set, $inc) — Supabase takes plain object
+  const updates = {};
+  for (const [k, v] of Object.entries(changes)) {
+    if (k.startsWith('$')) {
+      Object.assign(updates, v);
+    } else {
+      updates[k] = v;
+    }
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', id);
+  if (error) throw error;
 }
 
 module.exports = { findByEmail, findById, save, updateById, INITIAL_CREDITS };
