@@ -28,6 +28,24 @@ function LoginContent() {
     }
   };
 
+  const handleSignUp = async (name, email, password) => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+        name,
+        email,
+        password,
+      });
+      if (res.data.success) {
+        toast.success(res.data.message);
+        localStorage.setItem("token", res.data.token);
+        if (res.data.user?.name) localStorage.setItem("user_name", res.data.user.name);
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Registration failed");
+    }
+  };
+
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
@@ -53,6 +71,7 @@ function LoginContent() {
     <AuthUI
       initialMode="signin"
       onSignIn={handleSignIn}
+      onSignUp={handleSignUp}
       onGoogleClick={() => googleLogin()}
     />
   );
