@@ -6,12 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { AuthUI } from "../components/ui/auth-fuse";
 
-<<<<<<< HEAD
 const GOOGLE_CLIENT_ID = "599072781636-k48pl9iogbk9qrv0c2952hgipf3ar78v.apps.googleusercontent.com";
-=======
-const GOOGLE_CLIENT_ID =
-  "599072781636-k48pl9iogbk9qrv0c2952hgipf3ar78v.apps.googleusercontent.com";
->>>>>>> 0f7d8957a5161ceb9cae559cf902edbe21368745
 
 function LoginContent() {
   const navigate = useNavigate();

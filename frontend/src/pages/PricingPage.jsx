@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Plane } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import PricingSection2 from "../components/ui/pricing-section-1";
 
 export default function PricingPage() {
@@ -21,9 +21,7 @@ export default function PricingPage() {
             to="/"
             className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white">
-              <Plane className="h-4 w-4 -rotate-45" />
-            </span>
+            <img src="/logo.png" alt="TestPilot" className="h-8 w-8 rounded-md" />
             TestPilot
           </Link>
         </div>
