@@ -3,6 +3,20 @@ const { v4: uuidv4 } = require('uuid');
 const { PORT } = require('../../config/env');
 const { findByEmail, findById, save } = require('../../lib/userStore');
 const { getUserStats } = require('../../lib/tokenTracker');
+const supabase = require('../../lib/supabase');
+
+async function logAuth(action, status, email, userId = null, req = null) {
+  try {
+    await supabase.from('auth_logs').insert([{
+      user_id: userId || null,
+      email: email || null,
+      action,
+      status,
+      ip_address: req?.ip || req?.headers?.['x-forwarded-for'] || null,
+      user_agent: req?.headers?.['user-agent'] || null,
+    }]);
+  } catch (_) {}
+}
 
 function makeToken(userId) {
   return `testpilot_token_${userId}_${uuidv4().slice(0, 8)}`;
@@ -14,6 +28,7 @@ async function register(req, res) {
     return res.status(400).json({ success: false, message: 'Email and password are required' });
   }
   if (await findByEmail(email)) {
+    await logAuth('register', 'failed', email, null, req);
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
@@ -25,6 +40,7 @@ async function register(req, res) {
     password_hash: await bcrypt.hash(password, 10),
   });
 
+  await logAuth('register', 'success', email, userId, req);
   const user = await findByEmail(email);
   return res.status(201).json({
     success: true,
@@ -41,8 +57,10 @@ async function login(req, res) {
   }
   const user = await findByEmail(email);
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    await logAuth('login', 'failed', email, user?.id || null, req);
     return res.status(401).json({ success: false, message: 'Invalid email or password' });
   }
+  await logAuth('login', 'success', email, user.id, req);
   return res.json({
     success: true,
     message: 'Login successful',
@@ -57,24 +75,46 @@ async function googleAuth(req, res) {
     if (!token) return res.status(400).json({ success: false, message: 'Missing Google token' });
 
     const parts = token.split('.');
-    if (parts.length < 2) return res.status(400).json({ success: false, message: 'Invalid Google token' });
+    if (parts.length < 3) return res.status(400).json({ success: false, message: 'Invalid Google token format' });
 
-    const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const { email, name } = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf-8'));
+    // Decode JWT payload với padding chuẩn
+    const raw = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = raw + '='.repeat((4 - raw.length % 4) % 4);
+    let payload;
+    try {
+      payload = JSON.parse(Buffer.from(padded, 'base64').toString('utf-8'));
+    } catch {
+      return res.status(400).json({ success: false, message: 'Cannot decode Google token payload' });
+    }
+
+    const { email, name, sub: googleId } = payload;
     if (!email) return res.status(400).json({ success: false, message: 'Cannot get email from Google token' });
+
+    console.log(`[Google Auth] email=${email}, name=${name}`);
 
     let user = await findByEmail(email);
     if (!user) {
       const userId = uuidv4();
-      await save(email, {
+      const { error: saveError } = await supabase.from('users').insert([{
         id: userId,
         name: name || email.split('@')[0],
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10),
-      });
+        created_at: new Date().toISOString(),
+      }]);
+
+      if (saveError) {
+        console.error('[Google Auth] Insert user failed:', saveError.message);
+        return res.status(500).json({ success: false, message: `Cannot create account: ${saveError.message}` });
+      }
+
       user = await findByEmail(email);
+      if (!user) {
+        return res.status(500).json({ success: false, message: 'User created but could not be retrieved' });
+      }
     }
 
+    await logAuth('google_login', 'success', user.email, user.id, req);
     return res.json({
       success: true,
       message: 'Google login successful',
@@ -82,6 +122,7 @@ async function googleAuth(req, res) {
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
+    console.error('[Google Auth] Error:', err.message);
     return res.status(500).json({ success: false, message: `Google auth error: ${err.message}` });
   }
 }

@@ -6,15 +6,13 @@ const AdmZip = require('adm-zip');
 const { createJob, updateJob, getJobByProject, getJob } = require('../../lib/jobStore');
 const Pipeline = require('../../pipeline/Pipeline');
 const { addUserTokens } = require('../../lib/tokenTracker');
+const supabase = require('../../lib/supabase');
 const {
   SOURCE_WORKSPACE_BASE_PATH,
   UPLOAD_ARCHIVE_BASE_PATH,
   TARGET_BASE_URL,
   AI_DEBUG,
 } = require('../../config/env');
-
-// In-memory test history
-const testHistoryDb = [];
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -125,6 +123,24 @@ async function uploadSource(req, res) {
     fs.copyFileSync(req.file.path, archivePath);
     fs.rmSync(req.file.path, { force: true });
 
+    const fileSizeBytes = req.file.size || 0;
+
+    // Ghi project vào Supabase
+    await supabase.from('projects').insert([{
+      project_id: projectId,
+      user_id: userId,
+      project_name: path.basename(req.file.originalname, '.zip'),
+      description: `Uploaded from ${req.file.originalname}`,
+    }]).then(() => {});
+
+    // Ghi log upload file zip vào Supabase
+    await supabase.from('uploaded_files').insert([{
+      project_id: projectId,
+      file_name: req.file.originalname,
+      file_path: archivePath,
+      file_size: fileSizeBytes,
+    }]).then(() => {});
+
     return res.json({
       success: true,
       message: 'Source uploaded successfully',
@@ -197,22 +213,32 @@ function getTestStatus(req, res) {
   return res.json({ success: true, data: job });
 }
 
-function addTestHistory(req, res) {
-  const { filename } = req.body;
+async function addTestHistory(req, res) {
+  const { filename, test_type, status, detail_report } = req.body;
   if (!filename) return res.status(400).json({ success: false, message: 'Filename is required' });
 
-  const timestamp = new Date().toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).replace(',', '');
+  const record = {
+    user_id: req.user.id,
+    filename,
+    test_type: test_type || null,
+    status: status || 'pending',
+    detail_report: detail_report || null,
+  };
 
-  const record = { id: uuidv4(), user_id: req.user.id, filename, timestamp };
-  testHistoryDb.unshift(record);
-  return res.json({ success: true, data: record });
+  const { data, error } = await supabase.from('test_reports').insert([record]).select().single();
+  if (error) return res.status(500).json({ success: false, message: error.message });
+
+  return res.json({ success: true, data });
 }
 
-function getTestHistory(req, res) {
-  return res.json({ success: true, data: testHistoryDb.filter(r => r.user_id === req.user.id) });
+async function getTestHistory(req, res) {
+  const { data, error } = await supabase
+    .from('test_reports')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ success: false, message: error.message });
+  return res.json({ success: true, data: data || [] });
 }
 
 async function startTestFromGithub(req, res) {
