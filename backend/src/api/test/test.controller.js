@@ -28,7 +28,7 @@ function displayNameFromSource(sourcePath, fallback = 'source_project') {
   return safeName(path.basename(sourcePath || ''), fallback);
 }
 
-function createTestHistory({
+async function createTestHistory({
   userId,
   projectId,
   jobId,
@@ -39,38 +39,33 @@ function createTestHistory({
   status = 'queued',
   timestamp = null,
 }) {
-  const existing = testHistoryDb.find(record =>
-    (jobId && record.job_id === jobId) ||
-    (projectId && record.project_id === projectId)
-  );
-  const record = existing || {
-    id: uuidv4(),
-    user_id: userId,
-  };
+  const displayTs = timestamp || new Date().toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).replace(',', '');
 
-  Object.assign(record, {
+  const record = {
     user_id: userId,
-    project_id: projectId || record.project_id || null,
-    job_id: jobId || record.job_id || null,
+    project_id: projectId || null,
+    job_id: jobId || null,
     filename,
-    start_time: startTime || record.start_time || new Date().toISOString(),
+    start_time: startTime || new Date().toISOString(),
     end_time: endTime,
     score,
     status,
-    timestamp: timestamp || record.timestamp || new Date().toLocaleString('vi-VN', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-    }).replace(',', ''),
-  });
+    display_ts: displayTs,
+  };
 
-  if (!existing) testHistoryDb.unshift(record);
+  const { error } = await supabase.from('test_reports').upsert(record, { onConflict: 'job_id', ignoreDuplicates: false });
+  if (error) console.error('[createTestHistory] Supabase error:', error.message);
   return record;
 }
 
-function updateTestHistoryByJob(jobId, changes) {
-  const record = testHistoryDb.find(item => item.job_id === jobId);
-  if (record) Object.assign(record, changes);
-  return record || null;
+async function updateTestHistoryByJob(jobId, changes) {
+  if (!jobId) return null;
+  const { error } = await supabase.from('test_reports').update(changes).eq('job_id', jobId);
+  if (error) console.error('[updateTestHistoryByJob] Supabase error:', error.message);
+  return null;
 }
 
 function isPathInside(parentDir, candidatePath) {
@@ -106,7 +101,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     sub_progress: null,
     started_at: startedAt,
   });
-  updateTestHistoryByJob(jobId, { start_time: startedAt, status: 'running' });
+  await updateTestHistoryByJob(jobId, { start_time: startedAt, status: 'running' });
 
   const job = getJob(jobId);
 
@@ -140,7 +135,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       tokens_used: tokensUsed,
       result,
     });
-    updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'completed', score });
+    await updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'completed', score });
   } catch (err) {
     const error = { type: err.constructor.name, message: err.message };
     if (AI_DEBUG) error.stack = err.stack;
@@ -155,7 +150,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       finished_at: finishedAt,
       error,
     });
-    updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'failed', score: null });
+    await updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'failed', score: null });
   }
 }
 
@@ -248,7 +243,7 @@ async function startTest(req, res) {
   }
 
   const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
-  createTestHistory({
+  await createTestHistory({
     userId: authenticatedUserId,
     projectId: project_id,
     jobId: job.job_id,
@@ -270,11 +265,11 @@ function getTestStatus(req, res) {
   return res.json({ success: true, data: job });
 }
 
-function addTestHistory(req, res) {
+async function addTestHistory(req, res) {
   const { filename, project_id, job_id, start_time, end_time, score, status, timestamp } = req.body;
   if (!filename) return res.status(400).json({ success: false, message: 'Filename is required' });
 
-  const record = createTestHistory({
+  const record = await createTestHistory({
     userId: req.user.id,
     projectId: project_id,
     jobId: job_id,
@@ -336,7 +331,7 @@ async function startTestFromGithub(req, res) {
   }
 
   const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url });
-  createTestHistory({
+  await createTestHistory({
     userId,
     projectId,
     jobId: job.job_id,
