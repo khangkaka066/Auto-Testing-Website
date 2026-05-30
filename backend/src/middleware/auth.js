@@ -1,10 +1,11 @@
 const { findById } = require('../lib/userStore');
 
 async function getUserByToken(token) {
-  if (!token?.startsWith('testpilot_mock_token_')) return null;
+  if (!token?.startsWith('testpilot_token_')) return null;
+  // format: testpilot_token_<userId>_<random8>
   const parts = token.split('_');
   if (parts.length < 4) return null;
-  return findById(parts[3]);
+  return findById(parts[2]);
 }
 
 async function authMiddleware(req, res, next) {
