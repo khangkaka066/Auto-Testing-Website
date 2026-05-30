@@ -1,28 +1,24 @@
 const { AsyncLocalStorage } = require('async_hooks');
+const { updateById, findById, INITIAL_CREDITS } = require('./userStore');
 
-// Dùng AsyncLocalStorage để track tokens per job run, không cần truyền context qua params
 const jobTokenStorage = new AsyncLocalStorage();
 
-// Per-user stats: { [userId]: { tokens_used, credits } }
-const userStats = {};
-const INITIAL_CREDITS = 500_000; // 500k tokens miễn phí mỗi account
-
-function getUserStats(userId) {
-  if (!userStats[userId]) {
-    userStats[userId] = { tokens_used: 0, credits: INITIAL_CREDITS };
-  }
-  return { ...userStats[userId] };
+async function getUserStats(userId) {
+  const user = await findById(userId);
+  return {
+    tokens_used: user?.tokens_used ?? 0,
+    credits:     user?.credits     ?? INITIAL_CREDITS,
+  };
 }
 
-function addUserTokens(userId, count) {
-  if (!userStats[userId]) {
-    userStats[userId] = { tokens_used: 0, credits: INITIAL_CREDITS };
-  }
-  userStats[userId].tokens_used += count;
-  userStats[userId].credits = Math.max(0, userStats[userId].credits - count);
+async function addUserTokens(userId, count) {
+  if (!count || count <= 0) return;
+  // Bỏ qua lỗi DB — không để token tracking làm crash pipeline
+  await updateById(userId, {
+    $inc: { tokens_used: count, credits: -count },
+  }).catch(err => console.error('[tokenTracker] updateById error:', err.message));
 }
 
-// Chạy fn trong context của một job, tự track tổng tokens tiêu thụ
 function runWithTracking(fn) {
   const store = { total: 0 };
   return jobTokenStorage.run(store, async () => {
@@ -31,7 +27,6 @@ function runWithTracking(fn) {
   });
 }
 
-// Gọi từ openai.js sau mỗi API call để cộng tokens vào context hiện tại
 function recordTokens(usageObj) {
   const store = jobTokenStorage.getStore();
   if (store && usageObj?.total_tokens) {

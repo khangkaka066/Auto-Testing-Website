@@ -161,12 +161,12 @@ export default function Navbar() {
                 <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-slate-400 transition-all duration-300 group-hover/si:w-full" />
               </Link>
 
-              {/* Start free — shimmer sweep */}
+              {/* Start — shimmer sweep */}
               <Link
                 to="/register"
                 className="group/sf relative overflow-hidden text-sm font-medium bg-slate-900 text-white px-4 py-2 rounded-md transition-all duration-200 hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-900/20 hover:scale-[1.03] active:scale-100"
               >
-                <span className="relative z-10">Start free</span>
+                <span className="relative z-10">Start</span>
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-500 ease-in-out group-hover/sf:translate-x-full" />
               </Link>
             </>
@@ -206,7 +206,7 @@ export default function Navbar() {
             ) : (
               <>
                 <Link to="/login" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700 text-center border py-2 rounded-md">Sign in</Link>
-                <Link to="/register" onClick={() => setOpen(false)} className="text-sm font-medium bg-slate-900 text-white px-4 py-2 rounded-md text-center">Start free</Link>
+                <Link to="/register" onClick={() => setOpen(false)} className="text-sm font-medium bg-slate-900 text-white px-4 py-2 rounded-md text-center">Start</Link>
               </>
             )}
           </div>
