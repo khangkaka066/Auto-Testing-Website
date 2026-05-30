@@ -68,7 +68,21 @@ export default function TestProgress() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!isMounted || !res.data.success) return;
-        setRunState(res.data.data);
+        const data = res.data.data;
+        setRunState(data);
+
+        // Lưu kết quả vào localStorage khi pipeline hoàn thành
+        if (data.status === "completed" && data.result?.final_report) {
+          const report = data.result.final_report;
+          localStorage.setItem("last_test_result", JSON.stringify({
+            project_id:   data.project_id,
+            run_id:       data.run_id,
+            finished_at:  data.finished_at,
+            health_score: report.health_score,
+            summary:      report.summary,
+            issues:       report.issues || [],
+          }));
+        }
       } catch (err) {
         if (!isMounted) return;
         setRunState((current) => ({

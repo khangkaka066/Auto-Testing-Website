@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { WORKSPACE_BASE_PATH } = require('../config/env');
+const { runWithTracking } = require('../lib/tokenTracker');
 
 const detector  = require('./stages/detector');
 const analyzer  = require('./stages/analyzer');
@@ -135,43 +136,45 @@ class Pipeline {
   async execute(baseUrl) {
     console.log('\n=== AI PIPELINE STARTED ===');
 
-    const detectorOut = await this.runDetector();
-    await this.runAnalyzer(detectorOut);
-    await this.runPlanner('UI Testing');
-    this.runFilter();
-    await this.runCoder(baseUrl);
+    // runWithTracking tự đo tổng tokens tiêu thụ trong toàn bộ pipeline
+    this.tokensUsed = await runWithTracking(async () => {
+      const detectorOut = await this.runDetector();
+      await this.runAnalyzer(detectorOut);
+      await this.runPlanner('UI Testing');
+      this.runFilter();
+      await this.runCoder(baseUrl);
 
-    const MAX_RETRIES = 3;
-    let isValid = this.runValidator();
+      const MAX_RETRIES = 3;
+      let isValid = this.runValidator();
 
-    for (let attempt = 1; attempt <= MAX_RETRIES && !isValid; attempt++) {
-      console.log(`\n--- Auto-healing attempt ${attempt}/${MAX_RETRIES} ---`);
-      await this.runDebugger();
-      isValid = this.runValidator();
-    }
-
-    if (!isValid) {
-      console.log('[FALLBACK] Removing failed specs...');
-      const removed = validator.removeFailedSpecs(this.specsDir, this.dirs.validator);
-      if (removed.length > 0) isValid = true;
-    }
-
-    if (isValid) {
-      const remaining = fs.existsSync(this.specsDir)
-        ? fs.readdirSync(this.specsDir).filter(f => f.endsWith('.spec.ts'))
-        : [];
-
-      if (remaining.length === 0) {
-        console.log('[FAILED] No valid spec files remaining.');
-      } else {
-        this.runExecutor(baseUrl);
-        await this.runReporter();
+      for (let attempt = 1; attempt <= MAX_RETRIES && !isValid; attempt++) {
+        console.log(`\n--- Auto-healing attempt ${attempt}/${MAX_RETRIES} ---`);
+        await this.runDebugger();
+        isValid = this.runValidator();
       }
-    } else {
-      console.log('[FAILED] Pipeline failed after max retries.');
-    }
 
-    console.log('=== AI PIPELINE COMPLETED ===\n');
+      if (!isValid) {
+        console.log('[FALLBACK] Removing failed specs...');
+        const removed = validator.removeFailedSpecs(this.specsDir, this.dirs.validator);
+        if (removed.length > 0) isValid = true;
+      }
+
+      if (isValid) {
+        const remaining = fs.existsSync(this.specsDir)
+          ? fs.readdirSync(this.specsDir).filter(f => f.endsWith('.spec.ts'))
+          : [];
+        if (remaining.length === 0) {
+          console.log('[FAILED] No valid spec files remaining.');
+        } else {
+          this.runExecutor(baseUrl);
+          await this.runReporter();
+        }
+      } else {
+        console.log('[FAILED] Pipeline failed after max retries.');
+      }
+    });
+
+    console.log(`=== AI PIPELINE COMPLETED — tokens used: ${this.tokensUsed} ===\n`);
   }
 
   loadFinalReport() {

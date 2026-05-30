@@ -1,7 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '..', '..', '.env') });
 
 module.exports = {
-  PORT: parseInt(process.env.PORT || '5000', 10),
+  PORT: parseInt(process.env.PORT || '5001', 10),
   MONGO_URL: process.env.MONGO_URL || '',
   DB_NAME: process.env.DB_NAME || 'testpilot_db',
   CORS_ORIGINS: process.env.CORS_ORIGINS || '*',
@@ -14,7 +14,15 @@ module.exports = {
   SOURCE_WORKSPACE_BASE_PATH: process.env.SOURCE_WORKSPACE_BASE_PATH || 'uploaded_sources',
   UPLOAD_ARCHIVE_BASE_PATH: process.env.UPLOAD_ARCHIVE_BASE_PATH || 'uploaded_archives',
   TARGET_BASE_URL: process.env.TARGET_BASE_URL || 'http://localhost:5173',
+<<<<<<< HEAD
   AI_PYTHON_URL: process.env.AI_PYTHON_URL || 'http://localhost:8001',
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+=======
+  // GitHub OAuth
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || '',
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || '',
+  GITHUB_CALLBACK_URL: process.env.GITHUB_CALLBACK_URL || 'http://localhost:5001/api/auth/github/callback',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+>>>>>>> b876666ed3a6dade5494b6e9a98ff6ae1668d454
 };
