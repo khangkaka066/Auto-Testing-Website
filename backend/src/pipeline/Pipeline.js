@@ -205,7 +205,7 @@ class Pipeline {
     });
   }
 
-  runExecutor(baseUrl) {
+  async runExecutor(baseUrl) {
     this._reportProgress('executor', 'Running generated tests in Playwright');
     console.log('[STAGE 5] Executor...');
     const specFiles = fs.existsSync(this.specsDir)
@@ -284,7 +284,7 @@ class Pipeline {
         if (remaining.length === 0) {
           console.log('[FAILED] No valid spec files remaining.');
         } else {
-          this.runExecutor(baseUrl);
+          await this.runExecutor(baseUrl);
           await this.runReporter();
         }
       } else {

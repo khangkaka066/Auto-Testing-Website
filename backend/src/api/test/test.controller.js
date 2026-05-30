@@ -8,6 +8,7 @@ const Pipeline = require('../../pipeline/Pipeline');
 const { addUserTokens } = require('../../lib/tokenTracker');
 const {
   WORKSPACE_BASE_PATH,
+  SOURCE_WORKSPACE_BASE_PATH,
   TARGET_BASE_URL,
   AI_DEBUG,
 } = require('../../config/env');
@@ -23,6 +24,55 @@ function safeName(value, fallback = 'source') {
 
 function projectNameFromZip(zipFilename) {
   return safeName(path.basename(zipFilename, path.extname(zipFilename)), 'source_project');
+}
+
+function displayNameFromSource(sourcePath, fallback = 'source_project') {
+  return safeName(path.basename(sourcePath || ''), fallback);
+}
+
+function createTestHistory({
+  userId,
+  projectId,
+  jobId,
+  filename,
+  startTime,
+  endTime = null,
+  score = null,
+  status = 'queued',
+  timestamp = null,
+}) {
+  const existing = testHistoryDb.find(record =>
+    (jobId && record.job_id === jobId) ||
+    (projectId && record.project_id === projectId)
+  );
+  const record = existing || {
+    id: uuidv4(),
+    user_id: userId,
+  };
+
+  Object.assign(record, {
+    user_id: userId,
+    project_id: projectId || record.project_id || null,
+    job_id: jobId || record.job_id || null,
+    filename,
+    start_time: startTime || record.start_time || new Date().toISOString(),
+    end_time: endTime,
+    score,
+    status,
+    timestamp: timestamp || record.timestamp || new Date().toLocaleString('vi-VN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).replace(',', ''),
+  });
+
+  if (!existing) testHistoryDb.unshift(record);
+  return record;
+}
+
+function updateTestHistoryByJob(jobId, changes) {
+  const record = testHistoryDb.find(item => item.job_id === jobId);
+  if (record) Object.assign(record, changes);
+  return record || null;
 }
 
 function isPathInside(parentDir, candidatePath) {
@@ -49,14 +99,16 @@ function extractZipSafely(zipPath, extractRoot) {
 // ── Background job runner ─────────────────────────────────────────
 
 async function runPipelineJob(jobId, sourcePath, baseUrl) {
+  const startedAt = new Date().toISOString();
   updateJob(jobId, {
     status: 'running',
     stage: 'initializing',
     progress_percent: 12,
     message: 'Preparing the AI pipeline',
     sub_progress: null,
-    started_at: new Date().toISOString(),
+    started_at: startedAt,
   });
+  updateTestHistoryByJob(jobId, { start_time: startedAt, status: 'running' });
 
   const job = getJob(jobId);
 
@@ -74,19 +126,27 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     const tokensUsed = pipeline.tokensUsed || 0;
     addUserTokens(job.user_id, tokensUsed);
 
+    const finishedAt = new Date().toISOString();
+    const result = pipeline.loadFinalReport();
+    const score = result.final_report && result.final_report.health_score != null
+      ? result.final_report.health_score
+      : null;
+
     updateJob(jobId, {
       status: 'completed',
       stage: 'completed',
       progress_percent: 100,
       message: 'AI pipeline completed',
       sub_progress: null,
-      finished_at: new Date().toISOString(),
+      finished_at: finishedAt,
       tokens_used: tokensUsed,
-      result: pipeline.loadFinalReport(),
+      result,
     });
+    updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'completed', score });
   } catch (err) {
     const error = { type: err.constructor.name, message: err.message };
     if (AI_DEBUG) error.stack = err.stack;
+    const finishedAt = new Date().toISOString();
     updateJob(jobId, {
       success: false,
       status: 'failed',
@@ -94,9 +154,10 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       progress_percent: 100,
       message: 'AI pipeline failed',
       sub_progress: null,
-      finished_at: new Date().toISOString(),
+      finished_at: finishedAt,
       error,
     });
+    updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'failed', score: null });
   }
 }
 
@@ -148,7 +209,7 @@ async function uploadSource(req, res) {
 }
 
 async function startTest(req, res) {
-  const { user_id, project_id, source_path, base_url } = req.body;
+  const { user_id, project_id, source_path, base_url, source_name } = req.body;
   const authenticatedUserId = req.user.id;
 
   if (!user_id || !project_id || !source_path) {
@@ -171,6 +232,14 @@ async function startTest(req, res) {
   }
 
   const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
+  createTestHistory({
+    userId: authenticatedUserId,
+    projectId: project_id,
+    jobId: job.job_id,
+    filename: source_name || displayNameFromSource(resolvedSourcePath),
+    startTime: job.started_at || job.created_at,
+    status: job.status,
+  });
   setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url));
 
   return res.json({ success: true, data: job });
@@ -186,7 +255,7 @@ function getTestStatus(req, res) {
 }
 
 function addTestHistory(req, res) {
-  const { filename } = req.body;
+  const { filename, project_id, job_id, start_time, end_time, score, status } = req.body;
   if (!filename) return res.status(400).json({ success: false, message: 'Filename is required' });
 
   const timestamp = new Date().toLocaleString('vi-VN', {
@@ -194,8 +263,17 @@ function addTestHistory(req, res) {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   }).replace(',', '');
 
-  const record = { id: uuidv4(), user_id: req.user.id, filename, timestamp };
-  testHistoryDb.unshift(record);
+  const record = createTestHistory({
+    userId: req.user.id,
+    projectId: project_id,
+    jobId: job_id,
+    filename,
+    startTime: start_time,
+    endTime: end_time,
+    score,
+    status,
+    timestamp,
+  });
   return res.json({ success: true, data: record });
 }
 
@@ -241,6 +319,14 @@ async function startTestFromGithub(req, res) {
   }
 
   const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url });
+  createTestHistory({
+    userId,
+    projectId,
+    jobId: job.job_id,
+    filename: repo_full_name,
+    startTime: job.started_at || job.created_at,
+    status: job.status,
+  });
   setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url));
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }

@@ -78,18 +78,13 @@ export default function TestRunner() {
       );
       const uploadedSource = uploadRes.data.data;
 
-      await axios.post(
-        `${API_BASE_URL}/api/test/history`,
-        { filename: zipFile.name },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
       const runRes = await axios.post(
         `${API_BASE_URL}/api/test/run`,
         {
           user_id: uploadedSource.user_id,
           project_id: uploadedSource.project_id,
           source_path: uploadedSource.source_path,
+          source_name: uploadedSource.project_name,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );

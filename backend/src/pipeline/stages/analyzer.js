@@ -7,6 +7,8 @@ const { optimizeCodeForLLM } = require('../../lib/astParser');
 const { AI_MAX_WORKERS } = require('../../config/env');
 const { mapConcurrent } = require('../../lib/concurrency');
 
+const ANALYZER_FILE_LIMIT = 15;
+
 const UIElementSchema = z.object({
   element_type: z.string(),
   selector: z.string(),
@@ -89,7 +91,7 @@ async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
 
 async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir, options = {}) {
   const detectorData = JSON.parse(fs.readFileSync(detectorResultsPath, 'utf-8'));
-  const filesToAnalyze = detectorData.source_files || [];
+  const filesToAnalyze = (detectorData.source_files || []).slice(0, ANALYZER_FILE_LIMIT);
   if (filesToAnalyze.length === 0) return;
 
   const prompt = loadPrompt('Analyzer');

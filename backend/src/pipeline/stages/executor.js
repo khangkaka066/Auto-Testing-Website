@@ -1,4 +1,4 @@
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -71,22 +71,46 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
   return summary;
 }
 
-function run(specsDir, reportFile, workingDir, baseUrl) {
+function runCommand(command, args, options) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, options);
+    let stdout = '';
+    let stderr = '';
+
+    if (child.stdout) {
+      child.stdout.on('data', chunk => {
+        stdout += chunk.toString();
+      });
+    }
+    if (child.stderr) {
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString();
+      });
+    }
+
+    child.on('error', error => {
+      resolve({ stdout, stderr, status: null, error });
+    });
+    child.on('close', status => {
+      resolve({ stdout, stderr, status, error: null });
+    });
+  });
+}
+
+async function run(specsDir, reportFile, workingDir, baseUrl) {
   fs.mkdirSync(path.dirname(reportFile), { recursive: true });
 
   const env = Object.assign({}, process.env);
   if (baseUrl) env.BASE_URL = baseUrl;
   const playwrightJsonPath = path.join(workingDir, 'playwright-report.json');
 
-  const result = spawnSync(
+  const result = await runCommand(
     'npx',
     ['playwright', 'test'],
     {
       cwd: workingDir,
       env,
-      encoding: 'utf-8',
       shell: process.platform === 'win32',
-      maxBuffer: 50 * 1024 * 1024,
     }
   );
 
