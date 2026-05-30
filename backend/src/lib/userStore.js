@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const { MongoClient } = require('mongodb');
 const { MONGO_URL, DB_NAME } = require('../config/env');
 
@@ -33,14 +34,53 @@ async function save(email, user) {
   if (user.tokens_used === undefined) user.tokens_used = 0;
   if (user.credits === undefined) user.credits = INITIAL_CREDITS;
   await col.updateOne({ email }, { $set: user }, { upsert: true });
+=======
+const supabase = require('./supabase');
+
+const INITIAL_CREDITS = 500_000;
+
+async function findByEmail(email) {
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email.trim())
+    .maybeSingle();
+  return data || null;
+}
+
+async function findById(id) {
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  return data || null;
+}
+
+async function save(email, user) {
+  const userWithTimestamp = {
+    ...user,
+    created_at: user.created_at || new Date().toISOString(),
+  };
+  await supabase.from('users').insert([userWithTimestamp]);
+>>>>>>> 6183f3a (updates)
 }
 
 async function updateById(id, changes) {
-  const col = await getCollection();
-  // Nếu changes có operator ($set, $inc, ...) thì dùng trực tiếp, không bọc thêm
-  const hasOperator = Object.keys(changes).some(k => k.startsWith('$'));
-  const update = hasOperator ? changes : { $set: changes };
-  await col.updateOne({ id }, update);
+  // Handle MongoDB-style $inc operator used by tokenTracker
+  if (changes.$inc) {
+    const user = await findById(id);
+    if (!user) return;
+    const updates = {};
+    for (const [key, val] of Object.entries(changes.$inc)) {
+      updates[key] = (user[key] ?? 0) + val;
+    }
+    await supabase.from('users').update(updates).eq('id', id);
+  } else if (changes.$set) {
+    await supabase.from('users').update(changes.$set).eq('id', id);
+  } else {
+    await supabase.from('users').update(changes).eq('id', id);
+  }
 }
 
 module.exports = { findByEmail, findById, save, updateById, INITIAL_CREDITS };
