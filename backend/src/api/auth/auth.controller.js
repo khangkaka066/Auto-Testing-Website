@@ -1,12 +1,7 @@
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
-<<<<<<< HEAD
 const { PORT, GOOGLE_CLIENT_ID } = require('../../config/env');
-const { findByEmail, findById, save, updateById } = require('../../lib/userStore');
-=======
-const { PORT } = require('../../config/env');
 const { findByEmail, findById, save } = require('../../lib/userStore');
->>>>>>> 6183f3a (updates)
 const { getUserStats } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
 
@@ -33,10 +28,7 @@ async function register(req, res) {
     return res.status(400).json({ success: false, message: 'Email and password are required' });
   }
   if (await findByEmail(email)) {
-<<<<<<< HEAD
-=======
     await logAuth('register', 'failed', email, null, req);
->>>>>>> 6183f3a (updates)
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
@@ -48,10 +40,7 @@ async function register(req, res) {
     password_hash: await bcrypt.hash(password, 10),
   });
 
-<<<<<<< HEAD
-=======
   await logAuth('register', 'success', email, userId, req);
->>>>>>> 6183f3a (updates)
   return res.status(201).json({
     success: true,
     message: 'Registration successful',
@@ -100,34 +89,24 @@ async function googleAuth(req, res) {
     const { email, name } = payload;
     if (!email) return res.status(400).json({ success: false, message: 'Cannot get email from Google token' });
 
-<<<<<<< HEAD
-    if (!(await findByEmail(email))) {
-      const userId = uuidv4();
-      await save(email, {
-=======
     console.log(`[Google Auth] email=${email}, name=${name}`);
 
     let user = await findByEmail(email);
     if (!user) {
       const userId = uuidv4();
-      const { error: saveError } = await supabase.from('users').insert([{
->>>>>>> 6183f3a (updates)
+      const { error: insertError } = await supabase.from('users').insert([{
         id: userId,
         name: name || email.split('@')[0],
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10),
         created_at: new Date().toISOString(),
-      });
+      }]);
+      if (insertError) throw new Error(`Failed to create user: ${insertError.message}`);
+      user = await findByEmail(email);
+      if (!user) throw new Error('User created but could not be retrieved');
     }
 
-<<<<<<< HEAD
-    const user = await findByEmail(email);
-    if (!user) {
-      return res.status(500).json({ success: false, message: 'User created but could not be retrieved' });
-    }
-=======
     await logAuth('google_login', 'success', user.email, user.id, req);
->>>>>>> 6183f3a (updates)
     return res.json({
       success: true,
       message: 'Google login successful',
@@ -157,15 +136,6 @@ async function updateProfile(req, res) {
   if (!name?.trim()) {
     return res.status(400).json({ success: false, message: 'Name cannot be empty' });
   }
-<<<<<<< HEAD
-  const changes = { name: name.trim() };
-  if (password?.trim()) {
-    changes.password_hash = await bcrypt.hash(password, 10);
-  }
-  await updateById(req.user.id, changes);
-  Object.assign(req.user, changes);
-  return res.json({ success: true, message: 'Profile updated', user: { name: req.user.name, email: req.user.email } });
-=======
 
   const updateData = { name: name.trim() };
   if (password?.trim()) {
@@ -176,7 +146,6 @@ async function updateProfile(req, res) {
   if (error) return res.status(400).json({ success: false, message: error.message });
 
   return res.json({ success: true, message: 'Profile updated', user: { name: updateData.name, email: req.user.email } });
->>>>>>> 6183f3a (updates)
 }
 
 function uploadAvatar(upload) {
@@ -188,14 +157,9 @@ function uploadAvatar(upload) {
       const host = req.headers.host || `localhost:${PORT}`;
       const protocol = req.protocol || 'http';
       const avatarUrl = `${protocol}://${host}/static/avatars/${req.file.filename}`;
-<<<<<<< HEAD
-      await updateById(req.user.id, { avatar: avatarUrl });
-      req.user.avatar = avatarUrl;
-=======
 
       await supabase.from('users').update({ avatar: avatarUrl }).eq('id', req.user.id);
 
->>>>>>> 6183f3a (updates)
       return res.json({ success: true, message: 'Avatar uploaded', avatar_url: avatarUrl });
     });
   };

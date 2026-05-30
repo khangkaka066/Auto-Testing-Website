@@ -265,12 +265,7 @@ function getTestStatus(req, res) {
   return res.json({ success: true, data: job });
 }
 
-<<<<<<< HEAD
 async function addTestHistory(req, res) {
-=======
-<<<<<<< HEAD
-function addTestHistory(req, res) {
->>>>>>> 23cdd77fca004870ebd36a2f5013e7f6e25df8c2
   const { filename, project_id, job_id, start_time, end_time, score, status, timestamp } = req.body;
   if (!filename) return res.status(400).json({ success: false, message: 'Filename is required' });
 
@@ -286,24 +281,6 @@ function addTestHistory(req, res) {
     timestamp,
   });
   return res.json({ success: true, data: record });
-=======
-async function addTestHistory(req, res) {
-  const { filename, test_type, status, detail_report } = req.body;
-  if (!filename) return res.status(400).json({ success: false, message: 'Filename is required' });
-
-  const record = {
-    user_id: req.user.id,
-    filename,
-    test_type: test_type || null,
-    status: status || 'pending',
-    detail_report: detail_report || null,
-  };
-
-  const { data, error } = await supabase.from('test_reports').insert([record]).select().single();
-  if (error) return res.status(500).json({ success: false, message: error.message });
-
-  return res.json({ success: true, data });
->>>>>>> 6183f3a (updates)
 }
 
 async function getTestHistory(req, res) {
