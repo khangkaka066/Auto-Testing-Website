@@ -30,19 +30,19 @@ const STATUS_META = {
 };
 
 const STAGE_LABELS = {
-  queued: "Đang chờ",
-  initializing: "Khởi tạo",
-  detector: "Dò cấu trúc",
-  analyzer: "Phân tích source",
-  planner: "Lập kế hoạch",
-  filter: "Lọc test case",
-  coder: "Sinh test",
-  validator: "Kiểm tra test",
-  debugger: "Tự sửa test",
-  executor: "Chạy test",
-  reporter: "Tổng hợp báo cáo",
-  completed: "Hoàn tất",
-  failed: "Thất bại",
+  queued: "Queued",
+  initializing: "Initializing",
+  detector: "Detector",
+  analyzer: "Analyzer",
+  planner: "Planner",
+  filter: "Filter",
+  coder: "Coder",
+  validator: "Validator",
+  debugger: "Debugger",
+  executor: "Executor",
+  reporter: "Reporter",
+  completed: "Completed",
+  failed: "Failed",
 };
 
 export default function TestProgress() {
@@ -59,6 +59,14 @@ export default function TestProgress() {
   const [runState, setRunState] = useState({
     status: "queued",
     message: "Initializing test pipeline.",
+    stage: "queued",
+    sub_progress: {
+      label: "Waiting for a worker",
+      completed: 0,
+      total: 9,
+      percent: 0,
+      current_item: "Queued",
+    },
     progress_percent: 10,
     project_id: projectId,
     source_path: location.state?.sourcePath || latestProgress.sourcePath || "",
@@ -67,7 +75,7 @@ export default function TestProgress() {
   const meta = useMemo(() => STATUS_META[runState.status] || STATUS_META.queued, [runState.status]);
   const StatusIcon = meta.icon;
   const progressPercent = Math.max(0, Math.min(100, runState.progress_percent || 0));
-  const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "-";
+  const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "Queued";
   const subProgress = runState.sub_progress;
   const showSubProgress = subProgress && Number(subProgress.total) > 0;
   const subProgressPercent = showSubProgress
@@ -152,7 +160,7 @@ export default function TestProgress() {
           <div className="mt-8">
             <div className="mb-3 flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Stage hiện tại</p>
+                <p className="text-sm font-medium text-slate-500">Current stage</p>
                 <p className="text-lg font-bold text-slate-900">{stageLabel}</p>
               </div>
               <p className="text-2xl font-bold text-slate-900 tabular-nums">{progressPercent}%</p>
@@ -181,7 +189,7 @@ export default function TestProgress() {
                   ) : null}
                 </div>
                 <p className="text-sm font-bold text-orange-800 tabular-nums">
-                  {subProgress.completed}/{subProgress.total} file
+                  {subProgress.completed}/{subProgress.total} steps
                 </p>
               </div>
               <div className="h-3 w-full rounded-full bg-white overflow-hidden">
@@ -192,13 +200,6 @@ export default function TestProgress() {
               </div>
             </div>
           ) : null}
-
-          <div className="mt-8 grid grid-cols-1 gap-4 text-sm">
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-              <p className="font-semibold text-slate-700 mb-1">Stage</p>
-              <p className="font-mono text-xs text-slate-500 break-all">{runState.stage || "-"}</p>
-            </div>
-          </div>
 
           {runState.dry_run ? (
             <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 p-4 text-sm text-orange-700">
@@ -220,7 +221,7 @@ export default function TestProgress() {
                   onClick={() => navigate(`/test-report/${runState.job_id || runState.run_id}`)}
                   className="bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-orange-700 transition-colors"
                 >
-                  Xem báo cáo
+                  View report
                 </button>
               ) : null}
               <button

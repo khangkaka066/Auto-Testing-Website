@@ -37,7 +37,7 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
         const outcome = (test.outcome || 'unknown').toLowerCase();
         const durationMs = (test.results || []).reduce((s, r) => s + (r.duration || 0), 0);
         const errors = (test.results || [])
-          .map(r => r.error?.message)
+          .map(r => (r.error && r.error.message) || null)
           .filter(Boolean)
           .map(m => m.trim());
         testCases.push({ title: specTitle, status: outcome, duration_ms: durationMs, errors });
@@ -52,7 +52,9 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
   const failed = testCases.filter(t => t.errors.length > 0).length;
   const skipped = testCases.filter(t => t.status === 'skipped').length;
   const timedOut = testCases.filter(t => t.status === 'timedout').length;
-  const durationMs = (data.stats?.duration) ?? testCases.reduce((s, t) => s + t.duration_ms, 0);
+  const durationMs = data.stats && data.stats.duration != null
+    ? data.stats.duration
+    : testCases.reduce((s, t) => s + t.duration_ms, 0);
 
   summary.stats = { total, passed: total - failed, failed, skipped, timed_out: timedOut, duration_ms: Math.round(durationMs) };
   summary.test_cases = testCases;
@@ -62,7 +64,7 @@ function parsePlaywrightOutput(stdout, stderr, returnCode) {
 function run(specsDir, reportFile, workingDir, baseUrl) {
   fs.mkdirSync(path.dirname(reportFile), { recursive: true });
 
-  const env = { ...process.env };
+  const env = Object.assign({}, process.env);
   if (baseUrl) env.BASE_URL = baseUrl;
 
   const result = spawnSync(
@@ -77,7 +79,7 @@ function run(specsDir, reportFile, workingDir, baseUrl) {
     }
   );
 
-  const summary = parsePlaywrightOutput(result.stdout, result.stderr, result.status ?? 1);
+  const summary = parsePlaywrightOutput(result.stdout, result.stderr, result.status == null ? 1 : result.status);
   summary.specs_dir = specsDir;
 
   fs.writeFileSync(reportFile, JSON.stringify(summary, null, 2), 'utf-8');

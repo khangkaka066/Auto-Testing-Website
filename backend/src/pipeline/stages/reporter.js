@@ -17,8 +17,28 @@ const ReporterOutputSchema = z.object({
     page: z.string(),
     error: z.string(),
     severity: z.enum(['Critical', 'High', 'Medium', 'Low']),
-  })).default([]),
+  })),
 });
+
+function normalizeReporterOutput(result) {
+  const summary = result.summary || {};
+  return {
+    health_score: result.health_score || '0/100',
+    summary: {
+      passed: Number.isInteger(summary.passed) ? summary.passed : 0,
+      failed: Number.isInteger(summary.failed) ? summary.failed : 0,
+      total: Number.isInteger(summary.total) ? summary.total : 0,
+      duration: summary.duration || '0 seconds',
+    },
+    issues: Array.isArray(result.issues)
+      ? result.issues.map(issue => ({
+        page: issue.page || 'Unknown page',
+        error: issue.error || 'No issue details were provided.',
+        severity: ['Critical', 'High', 'Medium', 'Low'].includes(issue.severity) ? issue.severity : 'Low',
+      }))
+      : [],
+  };
+}
 
 function optimizeReportForLLM(rawReport) {
   const optimized = { summary: rawReport.stats || {}, failed_tests: [] };
@@ -50,7 +70,7 @@ async function run(executorJsonPath, outputDir) {
 
   let result;
   try {
-    result = await parseStructured(model, systemPrompt, userPrompt, ReporterOutputSchema, 'ReporterOutput');
+    result = normalizeReporterOutput(await parseStructured(model, systemPrompt, userPrompt, ReporterOutputSchema, 'ReporterOutput'));
   } catch (err) {
     console.error(`[Reporter] Parse error: ${err.message}`);
     result = {

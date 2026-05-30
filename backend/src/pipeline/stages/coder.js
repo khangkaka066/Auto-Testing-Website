@@ -8,11 +8,11 @@ const { AI_MAX_WORKERS } = require('../../config/env');
 const GeneratedSpecSchema = z.object({
   spec_file: z.string(),
   content: z.string(),
-  test_case_count: z.number().int().default(0),
+  test_case_count: z.number().int(),
 });
 
 const CoderBatchOutputSchema = z.object({
-  generated: z.array(GeneratedSpecSchema).default([]),
+  generated: z.array(GeneratedSpecSchema),
 });
 
 const FORBIDDEN_PATTERNS = [
@@ -39,6 +39,18 @@ function validateOutput(output) {
     }
   }
   return violations;
+}
+
+function normalizeCoderOutput(output) {
+  return {
+    generated: Array.isArray(output.generated)
+      ? output.generated.map(item => ({
+        spec_file: item.spec_file || 'generated.spec.ts',
+        content: item.content || '',
+        test_case_count: Number.isInteger(item.test_case_count) ? item.test_case_count : 0,
+      }))
+      : [],
+  };
 }
 
 async function generateOne(item, prompt, baseUrl, cacheDir) {
@@ -81,13 +93,13 @@ async function generateOne(item, prompt, baseUrl, cacheDir) {
     if (parsed.success) return parsed.data;
   }
 
-  let output = await parseStructured(
+  let output = normalizeCoderOutput(await parseStructured(
     prompt.model,
     prompt.systemPrompt,
     userPrompt,
     CoderBatchOutputSchema,
     'CoderBatchOutput'
-  );
+  ));
 
   const violations = validateOutput(output);
   if (violations.length > 0) {
@@ -101,13 +113,13 @@ async function generateOne(item, prompt, baseUrl, cacheDir) {
       'Return ONLY JSON matching the CoderBatchOutput schema.\n' +
       JSON.stringify(repairPayload, null, 2);
 
-    output = await parseStructured(
+    output = normalizeCoderOutput(await parseStructured(
       prompt.model,
       prompt.systemPrompt,
       repairPrompt,
       CoderBatchOutputSchema,
       'CoderBatchOutput'
-    );
+    ));
   }
 
   writeCache(cacheDir, cacheKey, output);

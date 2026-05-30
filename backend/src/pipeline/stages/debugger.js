@@ -26,7 +26,8 @@ async function pLimit(items, maxConcurrent, fn) {
     const batch = items.slice(i, i + maxConcurrent);
     const batchResults = await Promise.allSettled(batch.map(fn));
     for (const r of batchResults) {
-      results.push(r.status === 'fulfilled' ? r.value : { status: 'failed', reason: r.reason?.message });
+      const reason = r.reason && r.reason.message ? r.reason.message : 'Unknown error';
+      results.push(r.status === 'fulfilled' ? r.value : { status: 'failed', reason });
     }
   }
   return results;

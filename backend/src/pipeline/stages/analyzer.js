@@ -14,20 +14,41 @@ const UIElementSchema = z.object({
 
 const APIEndpointSchema = z.object({
   function_name: z.string(),
-  method: z.string().default('GET'),
+  method: z.string(),
   route_or_target: z.string(),
-  required_payload_fields: z.array(z.string()).default([]),
+  required_payload_fields: z.array(z.string()),
 });
 
 const TechnicalAnalysisOutputSchema = z.object({
   component_name: z.string(),
   module_type: z.string(),
   impact_level: z.string(),
-  interactive_elements: z.array(UIElementSchema).default([]),
-  extracted_endpoints: z.array(APIEndpointSchema).default([]),
-  dependencies: z.array(z.string()).default([]),
-  has_conditional_rendering: z.boolean().default(false),
+  interactive_elements: z.array(UIElementSchema),
+  extracted_endpoints: z.array(APIEndpointSchema),
+  dependencies: z.array(z.string()),
+  has_conditional_rendering: z.boolean(),
 });
+
+function normalizeAnalysis(result) {
+  return {
+    component_name: result.component_name || 'UnknownComponent',
+    module_type: result.module_type || 'Unknown',
+    impact_level: result.impact_level || 'Low',
+    interactive_elements: Array.isArray(result.interactive_elements) ? result.interactive_elements : [],
+    extracted_endpoints: Array.isArray(result.extracted_endpoints)
+      ? result.extracted_endpoints.map(endpoint => ({
+        function_name: endpoint.function_name || '',
+        method: endpoint.method || 'GET',
+        route_or_target: endpoint.route_or_target || '',
+        required_payload_fields: Array.isArray(endpoint.required_payload_fields)
+          ? endpoint.required_payload_fields
+          : [],
+      }))
+      : [],
+    dependencies: Array.isArray(result.dependencies) ? result.dependencies : [],
+    has_conditional_rendering: Boolean(result.has_conditional_rendering),
+  };
+}
 
 async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
   const fullPath = path.join(workspaceDir, fileInfo.file_path);
@@ -60,7 +81,7 @@ async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
     'TechnicalAnalysisOutput'
   );
 
-  const data = { ...result, file_path: fileInfo.file_path };
+  const data = { ...normalizeAnalysis(result), file_path: fileInfo.file_path };
   writeCache(cacheDir, cacheKey, data);
   return data;
 }

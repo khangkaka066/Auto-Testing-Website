@@ -5,8 +5,7 @@ const AdmZip = require('adm-zip');
 const { createJob, updateJob, getJobByProject, getJob } = require('../../lib/jobStore');
 const Pipeline = require('../../pipeline/Pipeline');
 const {
-  SOURCE_WORKSPACE_BASE_PATH,
-  UPLOAD_ARCHIVE_BASE_PATH,
+  WORKSPACE_BASE_PATH,
   TARGET_BASE_URL,
   AI_DEBUG,
 } = require('../../config/env');
@@ -17,21 +16,11 @@ const testHistoryDb = [];
 // ── Helpers ────────────────────────────────────────────────────────
 
 function safeName(value, fallback = 'source') {
-  return (value || '').replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._-]+|[._-]+$/g, '') || fallback;
+  return String(value || '').replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._-]+|[._-]+$/g, '') || fallback;
 }
 
-function buildUniqueExtractDir(rootDir, zipFilename) {
-  const base = path.basename(zipFilename, path.extname(zipFilename))
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/^[._-]+|[._-]+$/g, '') || 'source_project';
-
-  let dir = path.join(rootDir, base);
-  if (fs.existsSync(dir)) {
-    const ts = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
-    dir = path.join(rootDir, `${base}_${ts}`);
-  }
-  return dir;
+function projectNameFromZip(zipFilename) {
+  return safeName(path.basename(zipFilename, path.extname(zipFilename)), 'source_project');
 }
 
 function isPathInside(parentDir, candidatePath) {
@@ -60,8 +49,16 @@ function extractZipSafely(zipPath, extractRoot) {
 async function runPipelineJob(jobId, sourcePath, baseUrl) {
   updateJob(jobId, {
     status: 'running',
-    progress_percent: 40,
-    message: 'AI pipeline is running',
+    stage: 'initializing',
+    progress_percent: 12,
+    message: 'Preparing the AI pipeline',
+    sub_progress: {
+      label: 'Initializing workspace',
+      completed: 0,
+      total: 9,
+      percent: 0,
+      current_item: path.basename(sourcePath),
+    },
     started_at: new Date().toISOString(),
   });
 
@@ -72,6 +69,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       userId: job.user_id,
       projectId: job.project_id,
       sourceCodePath: sourcePath,
+      onProgress: (progress) => updateJob(jobId, progress),
     });
 
     updateJob(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
@@ -79,8 +77,16 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
 
     updateJob(jobId, {
       status: 'completed',
+      stage: 'completed',
       progress_percent: 100,
       message: 'AI pipeline completed',
+      sub_progress: {
+        label: 'Pipeline completed',
+        completed: 9,
+        total: 9,
+        percent: 100,
+        current_item: 'Final report is ready',
+      },
       finished_at: new Date().toISOString(),
       result: pipeline.loadFinalReport(),
     });
@@ -90,8 +96,16 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     updateJob(jobId, {
       success: false,
       status: 'failed',
+      stage: 'failed',
       progress_percent: 100,
       message: 'AI pipeline failed',
+      sub_progress: {
+        label: 'Pipeline failed',
+        completed: 0,
+        total: 9,
+        percent: 100,
+        current_item: err.message,
+      },
       finished_at: new Date().toISOString(),
       error,
     });
@@ -107,76 +121,68 @@ async function uploadSource(req, res) {
 
   const userId = req.user.id;
   const projectId = uuidv4();
-  const sourceRoot = path.resolve(SOURCE_WORKSPACE_BASE_PATH);
-  const archiveRoot = path.resolve(UPLOAD_ARCHIVE_BASE_PATH);
-  const extractDir = buildUniqueExtractDir(path.join(sourceRoot, userId, 'source'), req.file.originalname);
-  const archiveDir = path.join(archiveRoot, userId);
-  const archivePath = path.join(archiveDir, `${projectId}-${path.basename(req.file.filename)}`);
+  const workspaceRoot = path.resolve(WORKSPACE_BASE_PATH);
+  const projectsDir = path.join(workspaceRoot, safeName(userId), 'projects');
+  const projectName = projectNameFromZip(req.file.originalname);
+  const extractDir = path.join(projectsDir, projectName);
+  const tempExtractDir = path.join(projectsDir, `.${projectName}_${projectId}_extracting`);
+  const archivePath = req.file.path;
 
   try {
-    fs.mkdirSync(extractDir, { recursive: true });
-    fs.mkdirSync(archiveDir, { recursive: true });
-    fs.copyFileSync(req.file.path, archivePath);
-    fs.rmSync(req.file.path, { force: true });
+    if (!isPathInside(projectsDir, archivePath)) {
+      throw new Error('Invalid upload path');
+    }
+
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
+    fs.mkdirSync(tempExtractDir, { recursive: true });
+    extractZipSafely(archivePath, tempExtractDir);
+    fs.rmSync(extractDir, { recursive: true, force: true });
+    fs.renameSync(tempExtractDir, extractDir);
+    fs.rmSync(archivePath, { force: true });
 
     return res.json({
       success: true,
-      message: 'Source uploaded successfully',
+      message: 'Source uploaded and extracted successfully',
       data: {
         user_id: userId,
         project_id: projectId,
-        workspace_path: path.join(sourceRoot, userId),
+        project_name: projectName,
+        workspace_path: path.join(workspaceRoot, safeName(userId)),
         source_path: extractDir,
-        source_archive_path: archivePath,
+        source_archive_path: null,
       },
     });
   } catch (err) {
-    fs.rmSync(extractDir, { recursive: true, force: true });
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
     fs.rmSync(archivePath, { force: true });
     return res.status(400).json({ success: false, message: err.message });
   }
 }
 
 async function startTest(req, res) {
-  const { user_id, project_id, source_path, source_archive_path, base_url } = req.body;
+  const { user_id, project_id, source_path, base_url } = req.body;
+  const authenticatedUserId = req.user.id;
 
-  if (!user_id || !project_id || (!source_path && !source_archive_path)) {
+  if (!user_id || !project_id || !source_path) {
     return res.status(400).json({
       success: false,
-      message: 'Required: user_id, project_id, and source_path or source_archive_path',
+      message: 'Required: user_id, project_id, and source_path',
     });
   }
-
-  let resolvedSourcePath;
-
-  if (source_archive_path) {
-    const archivePath = path.resolve(source_archive_path);
-    const archiveRoot = path.resolve(UPLOAD_ARCHIVE_BASE_PATH);
-    if (!isPathInside(archiveRoot, archivePath) || !fs.existsSync(archivePath)) {
-      return res.status(400).json({ success: false, message: 'Invalid or missing source_archive_path' });
-    }
-
-    const extractDir = path.join(
-      path.resolve(SOURCE_WORKSPACE_BASE_PATH),
-      safeName(user_id), safeName(project_id),
-      `source_${uuidv4().replace(/-/g, '').slice(0, 12)}`
-    );
-    try {
-      fs.mkdirSync(extractDir, { recursive: true });
-      extractZipSafely(archivePath, extractDir);
-      resolvedSourcePath = extractDir;
-    } catch (err) {
-      fs.rmSync(extractDir, { recursive: true, force: true });
-      return res.status(400).json({ success: false, message: `Zip extraction failed: ${err.message}` });
-    }
-  } else {
-    resolvedSourcePath = path.resolve(source_path);
-    if (!fs.existsSync(resolvedSourcePath) || !fs.statSync(resolvedSourcePath).isDirectory()) {
-      return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
-    }
+  if (String(user_id) !== String(authenticatedUserId)) {
+    return res.status(403).json({ success: false, message: 'user_id does not match the authenticated user' });
   }
 
-  const job = createJob({ userId: user_id, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
+  const resolvedSourcePath = path.resolve(source_path);
+  const projectsDir = path.join(path.resolve(WORKSPACE_BASE_PATH), safeName(authenticatedUserId), 'projects');
+  if (!isPathInside(projectsDir, resolvedSourcePath)) {
+    return res.status(400).json({ success: false, message: 'source_path must be inside the user projects workspace' });
+  }
+  if (!fs.existsSync(resolvedSourcePath) || !fs.statSync(resolvedSourcePath).isDirectory()) {
+    return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
+  }
+
+  const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
   setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url));
 
   return res.json({ success: true, data: job });
