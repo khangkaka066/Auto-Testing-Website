@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useId, useEffect } from "react";
+import { useState, useId, useEffect, type ComponentRef, type SyntheticEvent } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -67,7 +67,7 @@ export function Typewriter({
     );
 
     return () => clearTimeout(timeout);
-  }, [currentIndex, isDeleting, currentText, loop, speed, deleteSpeed, delay, displayText, text]);
+  }, [currentIndex, isDeleting, currentText, loop, speed, deleteSpeed, delay, displayText, text, textArray.length]);
 
   return (
     <span className={className}>
@@ -84,7 +84,7 @@ const labelVariants = cva(
 );
 
 const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
+  ComponentRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
     VariantProps<typeof labelVariants>
 >(({ className, ...props }, ref) => (
@@ -211,7 +211,7 @@ interface SignInFormProps {
 function SignInForm({ onSubmit }: SignInFormProps) {
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignIn = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
@@ -276,7 +276,7 @@ interface SignUpFormProps {
 function SignUpForm({ onSubmit }: SignUpFormProps) {
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignUp = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;

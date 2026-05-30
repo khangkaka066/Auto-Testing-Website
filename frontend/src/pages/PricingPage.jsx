@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import PricingSection2 from "../components/ui/pricing-section-1";
