@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import API_BASE_URL from "../config";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
@@ -7,22 +8,22 @@ import { toast } from "sonner";
 
 const STATUS_META = {
   queued: {
-    label: "Đang chờ",
+    label: "Queued",
     icon: Circle,
     tone: "text-slate-500",
   },
   running: {
-    label: "Đang chạy",
+    label: "Running",
     icon: Loader2,
     tone: "text-orange-600",
   },
   completed: {
-    label: "Hoàn tất",
+    label: "Completed",
     icon: CheckCircle2,
     tone: "text-emerald-600",
   },
   failed: {
-    label: "Thất bại",
+    label: "Failed",
     icon: XCircle,
     tone: "text-red-600",
   },
@@ -57,7 +58,7 @@ export default function TestProgress() {
   }, []);
   const [runState, setRunState] = useState({
     status: "queued",
-    message: "Đang khởi tạo tiến trình test.",
+    message: "Initializing test pipeline.",
     progress_percent: 10,
     project_id: projectId,
     source_path: location.state?.sourcePath || latestProgress.sourcePath || "",
@@ -76,7 +77,7 @@ export default function TestProgress() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Vui lòng đăng nhập để xem tiến trình test");
+      toast.error("Please sign in to view test progress");
       navigate("/login");
       return undefined;
     }
@@ -86,10 +87,9 @@ export default function TestProgress() {
 
     const fetchStatus = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/run-test/${projectId}`, {
+        const res = await axios.get(`${API_BASE_URL}/api/test/run/${projectId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         if (!isMounted || !res.data.success) return;
         setRunState(res.data.data);
         if (res.data.data.status === "completed" || res.data.data.status === "failed") {
@@ -100,7 +100,7 @@ export default function TestProgress() {
         setRunState((current) => ({
           ...current,
           status: "failed",
-          message: err.response?.data?.message || "Không thể tải trạng thái pipeline.",
+          message: err.response?.data?.message || "Failed to load pipeline status.",
         }));
       }
     };
@@ -126,12 +126,12 @@ export default function TestProgress() {
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lại Workspace
+          Back to Workspace
         </button>
 
         <div className="mb-8 text-left">
           <h1 className="text-3xl font-bold font-display tracking-tight text-slate-900">
-            Tiến trình Auto Test
+            Auto Test Progress
           </h1>
           <p className="text-slate-500 mt-2">
             {runState.project_id}
@@ -144,6 +144,7 @@ export default function TestProgress() {
               <StatusIcon className={`h-6 w-6 ${meta.tone} ${runState.status === "running" ? "animate-spin" : ""}`} />
             </div>
             <div>
+<<<<<<< HEAD
               <p className="text-sm font-medium text-slate-500">Trạng thái</p>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
@@ -151,6 +152,10 @@ export default function TestProgress() {
                   <span className="text-sm font-semibold text-orange-600 animate-pulse">Loading...</span>
                 ) : null}
               </div>
+=======
+              <p className="text-sm font-medium text-slate-500">Status</p>
+              <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
+>>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
             </div>
           </div>
 
@@ -207,7 +212,7 @@ export default function TestProgress() {
 
           {runState.dry_run ? (
             <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 p-4 text-sm text-orange-700">
-              Đang chạy chế độ giả lập để test giao diện, chưa gọi pipeline thật.
+              Running in dry-run mode — no real pipeline has been triggered.
             </div>
           ) : null}
 
@@ -232,7 +237,7 @@ export default function TestProgress() {
                 onClick={() => navigate("/dashboard")}
                 className="bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
               >
-                Xem Workspace
+                Go to Workspace
               </button>
             </div>
           ) : null}

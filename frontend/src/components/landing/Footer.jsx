@@ -22,7 +22,7 @@ const cols = [
 
 export default function Footer() {
   return (
-    <footer data-testid="site-footer" className="bg-white border-t border-slate-200">
+    <footer data-testid="site-footer" className="bg-white/85 backdrop-blur-sm border-t border-slate-200">
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
           <div className="col-span-2 md:col-span-2">

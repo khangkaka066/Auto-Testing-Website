@@ -7,8 +7,13 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile"; 
 import TestRunner from "./pages/TestRunner"; // 1. Import trang TestRunner
 import TestProgress from "./pages/TestProgress";
+<<<<<<< HEAD
 import TestReport from "./pages/TestReport";
+=======
+import PricingPage from "./pages/PricingPage";
+>>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
 import { Toaster } from "./components/ui/sonner";
+import ChatWidget from "./components/ui/ChatWidget";
 
 function App() {
   return (
@@ -22,10 +27,15 @@ function App() {
           <Route path="/profile" element={<Profile />} /> 
           <Route path="/run-test" element={<TestRunner />} /> {/* 2. Khai báo route */}
           <Route path="/test-progress/:projectId" element={<TestProgress />} />
+<<<<<<< HEAD
           <Route path="/test-report/:historyId" element={<TestReport />} />
+=======
+          <Route path="/pricing" element={<PricingPage />} />
+>>>>>>> e702576315e3fafcd977835b0c1704e8db1c3369
         </Routes>
       </BrowserRouter>
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-left" />
+      <ChatWidget />
     </div>
   );
 }

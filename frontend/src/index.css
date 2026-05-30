@@ -60,6 +60,78 @@ code, .font-mono {
     }
 }
 
+/* ── Story page cinematic reveals ─────────────────────────── */
+
+/* 1. Line-reveal: text slides up from behind clip boundary */
+.story-line-wrap { overflow: hidden; display: block; }
+.story-line {
+    display: block;
+    transform: translateY(108%);
+    will-change: transform;
+}
+.story-line.animate-in {
+    animation: stLineReveal 0.88s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes stLineReveal {
+    to { transform: translateY(0); }
+}
+
+/* 2. Blur-fade: body text / badge / cards */
+.story-fade {
+    opacity: 0;
+    transform: translateY(38px);
+    filter: blur(6px);
+    will-change: opacity, transform, filter;
+}
+.story-fade.animate-in {
+    animation: stFadeReveal 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes stFadeReveal {
+    0%   { opacity: 0; transform: translateY(38px); filter: blur(6px); }
+    55%  { filter: blur(0px); }
+    100% { opacity: 1; transform: translateY(0);    filter: blur(0px); }
+}
+
+/* 3. Draw: horizontal accent line */
+.story-draw {
+    width: 0;
+    opacity: 0;
+    will-change: width;
+}
+.story-draw.animate-in {
+    animation: stDrawLine 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes stDrawLine {
+    from { width: 0;    opacity: 1; }
+    to   { width: 100%; opacity: 1; }
+}
+
+/* 4. Scale-pop: step cards */
+.story-scale {
+    opacity: 0;
+    transform: scale(0.86) translateY(22px);
+}
+.story-scale.animate-in {
+    animation: stScalePop 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes stScalePop {
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* legacy – keep in case still referenced */
+.story-item { opacity: 0; transform: translateY(48px); }
+.story-item.animate-in { animation: stFadeReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Hero entrance — plays on page load */
+@keyframes heroFadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.hero-fade-in {
+    opacity: 0;
+    animation: heroFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Floating animation for hero image */
 @keyframes float {
     0%, 100% { transform: translateY(0px); }
