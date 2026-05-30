@@ -1,17 +1,29 @@
-// In-memory user store.
-// Shape: { [email]: { id, name, email, password_hash, avatar } }
-const usersDb = {};
+const supabase = require('./supabase');
 
-function findByEmail(email) {
-  return usersDb[email] || null;
+async function findByEmail(email) {
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email.trim())
+    .maybeSingle();
+  return data || null;
 }
 
-function findById(id) {
-  return Object.values(usersDb).find(u => u.id === id) || null;
+async function findById(id) {
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  return data || null;
 }
 
-function save(email, user) {
-  usersDb[email] = user;
+async function save(email, user) {
+  const userWithTimestamp = {
+    ...user,
+    created_at: user.created_at || new Date().toISOString(),
+  };
+  await supabase.from('users').insert([userWithTimestamp]);
 }
 
-module.exports = { usersDb, findByEmail, findById, save };
+module.exports = { findByEmail, findById, save };

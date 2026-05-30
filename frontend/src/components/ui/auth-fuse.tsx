@@ -354,6 +354,7 @@ interface AuthFormContainerProps {
   onSignIn?: (email: string, password: string) => Promise<void>;
   onSignUp?: (name: string, email: string, password: string) => Promise<void>;
   onGoogleClick?: () => void;
+  googleButton?: React.ReactNode;
 }
 
 function AuthFormContainer({
@@ -362,7 +363,10 @@ function AuthFormContainer({
   onSignIn,
   onSignUp,
   onGoogleClick,
+  googleButton,
 }: AuthFormContainerProps) {
+  const showGoogleSection = onGoogleClick || googleButton;
+
   return (
     <div className="mx-auto grid w-[350px] gap-2">
       {isSignIn ? (
@@ -378,21 +382,25 @@ function AuthFormContainer({
         </Button>
       </div>
 
-      {onGoogleClick && (
+      {showGoogleSection && (
         <>
           <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
             <span className="relative z-10 bg-background px-2 text-muted-foreground">
               Or continue with
             </span>
           </div>
-          <Button variant="outline" type="button" onClick={onGoogleClick}>
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              alt="Google"
-              className="h-4 w-4"
-            />
-            Continue with Google
-          </Button>
+          {googleButton ? (
+            <div className="flex justify-center">{googleButton}</div>
+          ) : (
+            <Button variant="outline" type="button" onClick={onGoogleClick}>
+              <img
+                src="https://www.svgrepo.com/show/475656/google-color.svg"
+                alt="Google"
+                className="h-4 w-4"
+              />
+              Continue with Google
+            </Button>
+          )}
         </>
       )}
     </div>
@@ -411,6 +419,7 @@ export interface AuthUIProps {
   onSignIn?: (email: string, password: string) => Promise<void>;
   onSignUp?: (name: string, email: string, password: string) => Promise<void>;
   onGoogleClick?: () => void;
+  googleButton?: React.ReactNode;
   signInContent?: AuthContentProps;
   signUpContent?: AuthContentProps;
 }
@@ -442,6 +451,7 @@ export function AuthUI({
   onSignIn,
   onSignUp,
   onGoogleClick,
+  googleButton,
   signInContent = {},
   signUpContent = {},
 }: AuthUIProps) {
@@ -482,6 +492,7 @@ export function AuthUI({
           onSignIn={onSignIn}
           onSignUp={onSignUp}
           onGoogleClick={onGoogleClick}
+          googleButton={googleButton}
         />
       </div>
 
