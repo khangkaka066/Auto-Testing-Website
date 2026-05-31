@@ -76,7 +76,6 @@ async function googleAuth(req, res) {
     const parts = token.split('.');
     if (parts.length < 3) return res.status(400).json({ success: false, message: 'Invalid Google token format' });
 
-    // Decode JWT payload với padding chuẩn
     const raw = parts[1].replace(/-/g, '+').replace(/_/g, '/');
     const padded = raw + '='.repeat((4 - raw.length % 4) % 4);
     let payload;
@@ -86,8 +85,13 @@ async function googleAuth(req, res) {
       return res.status(400).json({ success: false, message: 'Cannot decode Google token payload' });
     }
 
-    const { email, name } = payload;
+    const { email, name, sub: googleId } = payload;
     if (!email) return res.status(400).json({ success: false, message: 'Cannot get email from Google token' });
+
+    // Verify token expiry
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      return res.status(401).json({ success: false, message: 'Google token has expired' });
+    }
 
     console.log(`[Google Auth] email=${email}, name=${name}`);
 
@@ -99,9 +103,13 @@ async function googleAuth(req, res) {
         name: name || email.split('@')[0],
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10),
+        credits: 500000,
         created_at: new Date().toISOString(),
       }]);
-      if (insertError) throw new Error(`Failed to create user: ${insertError.message}`);
+      if (insertError) {
+        console.error('[Google Auth] Supabase insert error:', insertError);
+        throw new Error(`Failed to create user: ${insertError.message}`);
+      }
       user = await findByEmail(email);
       if (!user) throw new Error('User created but could not be retrieved');
     }

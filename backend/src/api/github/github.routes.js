@@ -8,11 +8,13 @@ const router = express.Router();
 const { findById } = require('../../lib/userStore');
 router.get('/connect', async (req, res, next) => {
   const token = req.query._token || req.headers['authorization']?.replace('Bearer ', '').trim();
-  if (!token?.startsWith('testpilot_mock_token_')) {
+  if (!token?.startsWith('testpilot_token_')) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
+  // token format: testpilot_token_{uuid}_{random8}
   const parts = token.split('_');
-  const user = parts.length >= 4 ? await findById(parts[3]) : null;
+  const userId = parts.slice(2, parts.length - 1).join('_');
+  const user = userId ? await findById(userId) : null;
   if (!user) return res.status(401).json({ success: false, message: 'Invalid token' });
   req.user = user;
   next();

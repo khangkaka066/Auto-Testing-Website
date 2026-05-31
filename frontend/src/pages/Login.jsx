@@ -41,6 +41,8 @@ function LoginContent({ enableGoogle = true }) {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
+      console.log('[Google Auth] credential received:', !!credentialResponse.credential);
+      console.log('[Google Auth] calling backend at:', API_BASE_URL);
       const res = await axios.post(`${API_BASE_URL}/api/auth/google`, {
         token: credentialResponse.credential,
       });
@@ -51,6 +53,7 @@ function LoginContent({ enableGoogle = true }) {
         navigate("/dashboard");
       }
     } catch (err) {
+      console.error('[Google Auth] error:', err.message, err.response?.data);
       toast.error(err.response?.data?.message || "Google authentication failed");
     }
   };
@@ -64,7 +67,10 @@ function LoginContent({ enableGoogle = true }) {
         enableGoogle ? (
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
-            onError={() => toast.error("An error occurred connecting to Google")}
+            onError={(err) => {
+              console.error('[Google Auth] Google OAuth error:', err);
+              toast.error("An error occurred connecting to Google");
+            }}
           />
         ) : null
       }
