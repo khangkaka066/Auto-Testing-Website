@@ -71,7 +71,7 @@ export default function Navbar() {
 
         {/* ── Logo ── */}
         <a
-          href={isLoggedIn ? "/dashboard" : "/"}
+          href="/"
           className="group flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900"
         >
           <img
