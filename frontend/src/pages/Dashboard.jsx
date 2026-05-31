@@ -183,7 +183,7 @@ export default function Dashboard() {
     if (uploadMode === "github" && githubStatus?.connected && repos.length === 0) {
       loadRepos();
     }
-  }, [uploadMode, githubStatus]);
+  }, [uploadMode, githubStatus, repos.length]);
 
   // ── ZIP handlers ─────────────────────────────────────────────
   const selectZip = (file) => {
