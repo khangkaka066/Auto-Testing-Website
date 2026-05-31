@@ -1,9 +1,11 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { PORT, GOOGLE_CLIENT_ID } = require('../../config/env');
-const { findByEmail, findById, save } = require('../../lib/userStore');
+const { PORT, GOOGLE_CLIENT_ID, FRONTEND_URL } = require('../../config/env');
+const { findByEmail, findById } = require('../../lib/userStore');
 const { getUserStats } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
+const { sendVerificationEmail, sendWelcomeEmail } = require('../../lib/email');
 
 async function logAuth(action, status, email, userId = null, req = null) {
   try {
@@ -22,6 +24,21 @@ function makeToken(userId) {
   return `testpilot_token_${userId}_${uuidv4().slice(0, 8)}`;
 }
 
+async function createVerificationToken(userId, email) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  const { error } = await supabase.from('email_verifications').insert([{
+    user_id: userId,
+    email,
+    token,
+    expires_at: expiresAt.toISOString(),
+  }]);
+
+  if (error) throw new Error(`Failed to create verification token: ${error.message}`);
+  return token;
+}
+
 async function register(req, res) {
   const { email, password, name } = req.body;
   if (!email?.trim() || !password) {
@@ -33,20 +50,88 @@ async function register(req, res) {
   }
 
   const userId = uuidv4();
-  await save(email, {
+  const displayName = name?.trim() || email.split('@')[0];
+
+  const { error: insertError } = await supabase.from('users').insert([{
     id: userId,
-    name: name || email.split('@')[0],
+    name: displayName,
     email: email.trim(),
     password_hash: await bcrypt.hash(password, 10),
-  });
+    credits: 500_000,
+    email_verified: false,
+    created_at: new Date().toISOString(),
+  }]);
+
+  if (insertError) {
+    console.error('[Register] Insert error:', insertError);
+    return res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
+  }
 
   await logAuth('register', 'success', email, userId, req);
+
+  try {
+    const verifyToken = await createVerificationToken(userId, email.trim());
+    await sendVerificationEmail(email.trim(), displayName, verifyToken);
+  } catch (emailErr) {
+    console.error('[Register] Email error:', emailErr.message);
+  }
+
   return res.status(201).json({
     success: true,
-    message: 'Registration successful',
-    token: makeToken(userId),
-    user: { id: userId, name: name || email.split('@')[0], email },
+    requiresVerification: true,
+    message: 'Email xác thực đã được gửi! Vui lòng kiểm tra hộp thư để hoàn tất đăng ký.',
   });
+}
+
+async function verifyEmail(req, res) {
+  const { token } = req.query;
+  const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
+
+  if (!token) {
+    return res.redirect(`${frontendUrl}/login?error=missing_token`);
+  }
+
+  const { data: verification, error } = await supabase
+    .from('email_verifications')
+    .select('*')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (error || !verification) {
+    return res.redirect(`${frontendUrl}/login?error=invalid_token`);
+  }
+
+  if (verification.verified_at) {
+    // Already verified — just send them to login
+    return res.redirect(`${frontendUrl}/login?verified=true`);
+  }
+
+  if (new Date(verification.expires_at) < new Date()) {
+    return res.redirect(`${frontendUrl}/login?error=token_expired`);
+  }
+
+  await supabase
+    .from('email_verifications')
+    .update({ verified_at: new Date().toISOString() })
+    .eq('id', verification.id);
+
+  await supabase
+    .from('users')
+    .update({ email_verified: true })
+    .eq('id', verification.user_id);
+
+  const user = await findById(verification.user_id);
+  if (user) {
+    try {
+      await sendWelcomeEmail(user.email, user.name);
+    } catch (emailErr) {
+      console.error('[Verify] Welcome email error:', emailErr.message);
+    }
+  }
+
+  await logAuth('email_verified', 'success', verification.email, verification.user_id, req);
+
+  return res.redirect(`${frontendUrl}/login?verified=true`);
 }
 
 async function login(req, res) {
@@ -59,6 +144,16 @@ async function login(req, res) {
     await logAuth('login', 'failed', email, user?.id || null, req);
     return res.status(401).json({ success: false, message: 'Invalid email or password' });
   }
+
+  // Block unverified email/password users (only if explicitly false — null/undefined = old user, let through)
+  if (user.email_verified === false) {
+    return res.status(403).json({
+      success: false,
+      requiresVerification: true,
+      message: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+    });
+  }
+
   await logAuth('login', 'success', email, user.id, req);
   return res.json({
     success: true,
@@ -88,7 +183,6 @@ async function googleAuth(req, res) {
     const { email, name, sub: googleId } = payload;
     if (!email) return res.status(400).json({ success: false, message: 'Cannot get email from Google token' });
 
-    // Verify token expiry
     if (payload.exp && Date.now() / 1000 > payload.exp) {
       return res.status(401).json({ success: false, message: 'Google token has expired' });
     }
@@ -96,14 +190,18 @@ async function googleAuth(req, res) {
     console.log(`[Google Auth] email=${email}, name=${name}`);
 
     let user = await findByEmail(email);
+    const isNewUser = !user;
+
     if (!user) {
       const userId = uuidv4();
+      const displayName = name || email.split('@')[0];
       const { error: insertError } = await supabase.from('users').insert([{
         id: userId,
-        name: name || email.split('@')[0],
+        name: displayName,
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10),
-        credits: 500000,
+        credits: 500_000,
+        email_verified: true, // Google already verified the email
         created_at: new Date().toISOString(),
       }]);
       if (insertError) {
@@ -112,6 +210,14 @@ async function googleAuth(req, res) {
       }
       user = await findByEmail(email);
       if (!user) throw new Error('User created but could not be retrieved');
+    }
+
+    if (isNewUser) {
+      try {
+        await sendWelcomeEmail(user.email, user.name);
+      } catch (emailErr) {
+        console.error('[Google Auth] Welcome email error:', emailErr.message);
+      }
     }
 
     await logAuth('google_login', 'success', user.email, user.id, req);
@@ -178,4 +284,14 @@ async function getStats(req, res) {
   return res.json({ success: true, data: stats });
 }
 
-module.exports = { register, login, googleAuth, getGoogleClientConfig, getProfile, updateProfile, uploadAvatar, getStats };
+module.exports = {
+  register,
+  verifyEmail,
+  login,
+  googleAuth,
+  getGoogleClientConfig,
+  getProfile,
+  updateProfile,
+  uploadAvatar,
+  getStats,
+};

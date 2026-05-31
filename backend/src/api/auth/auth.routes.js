@@ -22,9 +22,10 @@ const avatarUpload = multer({
   },
 });
 
-router.post('/register',          ctrl.register);
-router.post('/login',             ctrl.login);
-router.post('/google',            ctrl.googleAuth);
+router.post('/register',            ctrl.register);
+router.get('/verify',              ctrl.verifyEmail);
+router.post('/login',              ctrl.login);
+router.post('/google',             ctrl.googleAuth);
 router.get('/google-client-config', ctrl.getGoogleClientConfig);
 router.get('/profile',  authMiddleware, ctrl.getProfile);
 router.put('/profile',  authMiddleware, ctrl.updateProfile);
