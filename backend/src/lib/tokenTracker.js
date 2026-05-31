@@ -13,10 +13,19 @@ async function getUserStats(userId) {
 
 async function addUserTokens(userId, count) {
   if (!count || count <= 0) return;
-  // Bỏ qua lỗi DB — không để token tracking làm crash pipeline
-  await updateById(userId, {
-    $inc: { tokens_used: count, credits: -count },
-  }).catch(err => console.error('[tokenTracker] updateById error:', err.message));
+  // Dùng Supabase RPC để atomic increment — tránh race condition khi nhiều job chạy song song
+  const supabase = require('./supabase');
+  const { error } = await supabase.rpc('increment_user_tokens', {
+    p_user_id: userId,
+    p_tokens: count,
+  }).catch(() => ({ error: { message: 'rpc_failed' } }));
+
+  if (error) {
+    // Fallback về read-modify-write nếu RPC chưa được tạo
+    await updateById(userId, {
+      $inc: { tokens_used: count, credits: -count },
+    }).catch(err => console.error('[tokenTracker] fallback error:', err.message));
+  }
 }
 
 function runWithTracking(fn) {

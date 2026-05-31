@@ -4,8 +4,49 @@ const { v4: uuidv4 } = require('uuid');
 const { PORT, GOOGLE_CLIENT_ID, FRONTEND_URL } = require('../../config/env');
 const { findByEmail, findById } = require('../../lib/userStore');
 const { getUserStats } = require('../../lib/tokenTracker');
+const { invalidateUserCache } = require('../../middleware/auth');
+const { sendMail } = require('../../lib/mailer');
+const { welcomeEmail, loginNotificationEmail } = require('../../lib/emailTemplates');
 const supabase = require('../../lib/supabase');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../../lib/email');
+
+// Kiểm tra lịch sử đăng nhập và gửi email phù hợp (chạy bất đồng bộ, không block response)
+async function handleLoginEmail(user, req) {
+  try {
+    const ip = req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim()
+      || req?.socket?.remoteAddress
+      || req?.ip
+      || '';
+    const ua = req?.headers?.['user-agent'] || '';
+    const now = new Date().toISOString();
+
+    // Đếm số lần đăng nhập thành công trước đây (không tính lần này)
+    const { count } = await supabase
+      .from('auth_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('action', 'login')
+      .eq('status', 'success');
+
+    const isFirstLogin = !count || count === 0;
+
+    if (isFirstLogin) {
+      await sendMail({
+        to: user.email,
+        subject: '🚀 Chào mừng đến với TestPilot!',
+        html: welcomeEmail({ name: user.name, email: user.email }),
+      });
+    } else {
+      await sendMail({
+        to: user.email,
+        subject: '🔐 Đăng nhập mới vào tài khoản TestPilot',
+        html: loginNotificationEmail({ name: user.name, email: user.email, ip, ua, time: now }),
+      });
+    }
+  } catch (err) {
+    console.error('[handleLoginEmail] error:', err.message);
+  }
+}
 
 async function logAuth(action, status, email, userId = null, req = null) {
   try {
@@ -68,6 +109,7 @@ async function register(req, res) {
   }
 
   await logAuth('register', 'success', email, userId, req);
+<<<<<<< HEAD
 
   try {
     const verifyToken = await createVerificationToken(userId, email.trim());
@@ -80,6 +122,20 @@ async function register(req, res) {
     success: true,
     requiresVerification: true,
     message: 'Email xác thực đã được gửi! Vui lòng kiểm tra hộp thư để hoàn tất đăng ký.',
+=======
+  // Welcome email khi đăng ký — first login sẽ không gửi lại vì auth_log đã có 1 record
+  const newUser = { id: userId, name: name || email.split('@')[0], email };
+  setImmediate(() => sendMail({
+    to: email,
+    subject: '🚀 Chào mừng đến với TestPilot!',
+    html: welcomeEmail({ name: newUser.name, email }),
+  }));
+  return res.status(201).json({
+    success: true,
+    message: 'Registration successful',
+    token: makeToken(userId),
+    user: newUser,
+>>>>>>> 8732c2e (updates)
   });
 }
 
@@ -155,6 +211,8 @@ async function login(req, res) {
   }
 
   await logAuth('login', 'success', email, user.id, req);
+  // Gửi email bất đồng bộ — không làm chậm response
+  setImmediate(() => handleLoginEmail(user, req));
   return res.json({
     success: true,
     message: 'Login successful',
@@ -221,6 +279,7 @@ async function googleAuth(req, res) {
     }
 
     await logAuth('google_login', 'success', user.email, user.id, req);
+    setImmediate(() => handleLoginEmail(user, req));
     return res.json({
       success: true,
       message: 'Google login successful',
@@ -259,6 +318,7 @@ async function updateProfile(req, res) {
   const { error } = await supabase.from('users').update(updateData).eq('id', req.user.id);
   if (error) return res.status(400).json({ success: false, message: error.message });
 
+  invalidateUserCache(req.user.id);
   return res.json({ success: true, message: 'Profile updated', user: { name: updateData.name, email: req.user.email } });
 }
 

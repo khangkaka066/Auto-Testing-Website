@@ -4,8 +4,11 @@
 .idea/
 .vscode/
 
-#Agent test
+# Claude Code / AI tools
 .agent
+.claude
+.codegraph
+CLAUDE.md
 
 # Dependencies
 node_modules/

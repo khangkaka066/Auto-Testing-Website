@@ -275,6 +275,8 @@ interface SignUpFormProps {
 
 function SignUpForm({ onSubmit }: SignUpFormProps) {
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [generalError, setGeneralError] = useState("");
 
   const handleSignUp = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -282,10 +284,26 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+
+    setEmailError("");
+    setGeneralError("");
+
+    if (password.length < 8) {
+      setGeneralError("Password must be at least 8 characters.");
+      return;
+    }
+
     if (!onSubmit) return;
     setLoading(true);
     try {
       await onSubmit(name, email, password);
+    } catch (err: any) {
+      const msg: string = err?.message || "Registration failed. Please try again.";
+      if (msg.toLowerCase().includes("email")) {
+        setEmailError(msg);
+      } else {
+        setGeneralError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -324,7 +342,17 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
             placeholder="you@example.com"
             required
             autoComplete="email"
+            className={emailError ? "border-red-500 focus-visible:ring-red-500" : ""}
+            onChange={() => setEmailError("")}
           />
+          {emailError && (
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-0.5">
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+              {emailError}
+            </p>
+          )}
         </div>
         <PasswordInput
           name="password"
@@ -332,7 +360,16 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
           required
           autoComplete="new-password"
           placeholder="Min. 8 characters"
+          onChange={() => setGeneralError("")}
         />
+        {generalError && (
+          <p className="text-xs text-red-500 flex items-center gap-1 -mt-2">
+            <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            {generalError}
+          </p>
+        )}
         <Button
           type="submit"
           variant="default"

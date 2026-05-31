@@ -69,6 +69,59 @@ async function updateTestHistoryByJob(jobId, changes) {
   return null;
 }
 
+async function getDashboardStats(userId) {
+  const { data, error } = await supabase
+    .from('test_reports')
+    .select('score, status, start_time, end_time, result_summary')
+    .eq('user_id', userId);
+
+  if (error || !data) return null;
+
+  const total = data.length;
+  const completed = data.filter(r => r.status === 'completed').length;
+  const failed = data.filter(r => r.status === 'failed').length;
+
+  const scores = data.map(r => {
+    const raw = r.result_summary?.health_score ?? r.score;
+    if (raw === null || raw === undefined) return null;
+    const n = Number(String(raw).match(/\d+/)?.[0]);
+    return isNaN(n) ? null : Math.min(100, Math.max(0, n));
+  }).filter(s => s !== null);
+
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const bestScore = scores.length ? Math.max(...scores) : null;
+  const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const startOfWeek = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const testsThisMonth = data.filter(r => r.start_time && r.start_time >= startOfMonth).length;
+  const testsThisWeek = data.filter(r => r.start_time && r.start_time >= startOfWeek).length;
+
+  const durations = data
+    .filter(r => r.start_time && r.end_time)
+    .map(r => (new Date(r.end_time) - new Date(r.start_time)) / 1000)
+    .filter(d => d > 0 && d < 3600);
+  const avgDurationSec = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+
+  const totalPassed = data.reduce((sum, r) => sum + (r.result_summary?.passed ?? 0), 0);
+  const totalFailed = data.reduce((sum, r) => sum + (r.result_summary?.failed ?? 0), 0);
+
+  return {
+    total_tests: total,
+    completed_tests: completed,
+    failed_tests: failed,
+    success_rate: successRate,
+    avg_score: avgScore,
+    best_score: bestScore,
+    tests_this_month: testsThisMonth,
+    tests_this_week: testsThisWeek,
+    avg_duration_sec: avgDurationSec,
+    total_passed: totalPassed,
+    total_failed: totalFailed,
+  };
+}
+
 function isPathInside(parentDir, candidatePath) {
   const parent = path.resolve(parentDir);
   const candidate = path.resolve(candidatePath);
@@ -136,7 +189,24 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       tokens_used: tokensUsed,
       result,
     });
-    await updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'completed', score });
+
+    const finalReport = result?.final_report;
+    const resultSummary = finalReport ? {
+      health_score: finalReport.health_score ?? null,
+      passed: finalReport.summary?.passed ?? 0,
+      failed: finalReport.summary?.failed ?? 0,
+      total: finalReport.summary?.total ?? 0,
+      duration: finalReport.summary?.duration ?? null,
+      issues_count: (finalReport.issues ?? []).length,
+      issues: (finalReport.issues ?? []).slice(0, 20),
+    } : null;
+
+    await updateTestHistoryByJob(jobId, {
+      end_time: finishedAt,
+      status: 'completed',
+      score,
+      result_summary: resultSummary,
+    });
   } catch (err) {
     const error = { type: err.constructor.name, message: err.message };
     if (AI_DEBUG) error.stack = err.stack;
@@ -309,6 +379,12 @@ async function getTestHistory(req, res) {
   return res.json({ success: true, data: data || [] });
 }
 
+async function getTestDashboardStats(req, res) {
+  const stats = await getDashboardStats(req.user.id);
+  if (!stats) return res.status(500).json({ success: false, message: 'Failed to compute stats' });
+  return res.json({ success: true, data: stats });
+}
+
 async function startTestFromGithub(req, res) {
   const { repo_full_name, branch = 'main', base_url } = req.body;
   const userId = req.user.id;
@@ -359,4 +435,4 @@ async function startTestFromGithub(req, res) {
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }
 
-module.exports = { uploadSource, startTest, startTestFromGithub, getTestStatus, addTestHistory, getTestHistory };
+module.exports = { uploadSource, startTest, startTestFromGithub, getTestStatus, addTestHistory, getTestHistory, getTestDashboardStats };

@@ -9,6 +9,7 @@ import TestRunner from "./pages/TestRunner"; // 1. Import trang TestRunner
 import TestProgress from "./pages/TestProgress";
 import TestReport from "./pages/TestReport";
 import PricingPage from "./pages/PricingPage";
+import BillingPage from "./pages/BillingPage";
 import { Toaster } from "./components/ui/sonner";
 import ChatWidget from "./components/ui/ChatWidget";
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/test-progress/:projectId" element={<TestProgress />} />
           <Route path="/test-report/:projectId" element={<TestReport />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/billing" element={<BillingPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-left" />
