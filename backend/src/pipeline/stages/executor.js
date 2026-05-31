@@ -97,10 +97,10 @@ function runCommand(command, args, options) {
   });
 }
 
-async function run(specsDir, reportFile, workingDir, baseUrl) {
+async function run(specsDir, reportFile, workingDir, baseUrl, envOverrides = {}) {
   fs.mkdirSync(path.dirname(reportFile), { recursive: true });
 
-  const env = Object.assign({}, process.env);
+  const env = Object.assign({}, process.env, envOverrides);
   if (baseUrl) env.BASE_URL = baseUrl;
   const playwrightJsonPath = path.join(workingDir, 'playwright-report.json');
 

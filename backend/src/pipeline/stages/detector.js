@@ -104,6 +104,106 @@ function detectFrontendRunConfig(rootPath, pkg, allDeps, framework) {
   };
 }
 
+function detectBackendFramework(allDeps, scripts) {
+  const lowerScripts = Object.values(scripts || {}).join(' ').toLowerCase();
+  if (hasDep(allDeps, '@nestjs/core') || lowerScripts.includes('nest start')) return 'NestJS';
+  if (hasDep(allDeps, 'fastify')) return 'Fastify';
+  if (hasDep(allDeps, 'koa')) return 'Koa';
+  if (hasDep(allDeps, 'express')) return 'Express';
+  if (hasDep(allDeps, 'hapi') || hasDep(allDeps, '@hapi/hapi')) return 'Hapi';
+  return 'Node';
+}
+
+function detectPortFromScripts(scripts) {
+  const joined = Object.values(scripts || {}).join(' ');
+  const envMatch = joined.match(/(?:^|\s)(?:PORT|APP_PORT|SERVER_PORT)=(\d{2,5})(?:\s|$)/);
+  if (envMatch) return Number(envMatch[1]);
+
+  const flagMatch = joined.match(/(?:--port|-p)\s+(\d{2,5})/);
+  if (flagMatch) return Number(flagMatch[1]);
+
+  const localhostMatch = joined.match(/localhost:(\d{2,5})/);
+  if (localhostMatch) return Number(localhostMatch[1]);
+
+  return null;
+}
+
+function detectPortFromSource(rootPath, pkg) {
+  const candidates = [
+    pkg.main,
+    'server.js',
+    'src/server.js',
+    'src/app.js',
+    'index.js',
+    'app.js',
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const filePath = path.join(rootPath, candidate);
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) continue;
+
+    let content = '';
+    try {
+      content = fs.readFileSync(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
+
+    const envFallbackMatch = content.match(/process\.env\.(?:PORT|APP_PORT|SERVER_PORT)\s*\|\|\s*(\d{2,5})/);
+    if (envFallbackMatch) return Number(envFallbackMatch[1]);
+
+    const constMatch = content.match(/(?:const|let|var)\s+(?:PORT|APP_PORT|SERVER_PORT)\s*=\s*(\d{2,5})/);
+    if (constMatch) return Number(constMatch[1]);
+
+    const listenMatch = content.match(/\.listen\(\s*(\d{2,5})/);
+    if (listenMatch) return Number(listenMatch[1]);
+  }
+
+  return null;
+}
+
+function detectBackendRunConfig(rootPath, pkg, allDeps, framework) {
+  const scripts = pkg.scripts || {};
+  const packageManager = getPackageManager(rootPath);
+  const scriptName = chooseScript(scripts, ['start', 'start:dev', 'dev', 'serve']);
+  const notes = [];
+  const detectedPort = detectPortFromScripts(scripts) || detectPortFromSource(rootPath, pkg);
+  let port = detectedPort || 3001;
+  let confidence = detectedPort ? 'high' : 'medium';
+
+  if (framework === 'NestJS') {
+    port = detectedPort || 3000;
+    confidence = detectedPort ? 'high' : 'medium';
+  } else if (framework === 'Express' || framework === 'Fastify' || framework === 'Koa' || framework === 'Hapi') {
+    port = detectedPort || 5001;
+  }
+
+  if (!scriptName) {
+    notes.push('No backend start script was detected.');
+    return {
+      package_manager: packageManager,
+      install_command: installCommand(packageManager),
+      start_command: null,
+      url: null,
+      port: null,
+      health_path: null,
+      confidence: 'low',
+      notes,
+    };
+  }
+
+  return {
+    package_manager: packageManager,
+    install_command: installCommand(packageManager),
+    start_command: packageCommand(packageManager, scriptName),
+    url: `http://localhost:${port}`,
+    port,
+    health_path: '/health',
+    confidence,
+    notes,
+  };
+}
+
 function detectFramework(allDeps, scripts) {
   const lowerScripts = Object.values(scripts || {}).join(' ').toLowerCase();
   if (hasDep(allDeps, 'next')) return 'Next.js';
@@ -185,13 +285,16 @@ function extractProjectMetadata(rootPath) {
               hasDep(allDeps, 'astro') ||
               fs.existsSync(path.join(dir, 'index.html'))
             );
+          const backendFramework = detectBackendFramework(allDeps, pkg.scripts || {});
           projects.push({
             project_name: pkg.name || 'unknown-project',
             root_path: dir,
-            framework,
-            type: isFrontend ? 'frontend' : 'node',
+            framework: isFrontend ? framework : backendFramework,
+            type: isFrontend ? 'frontend' : 'backend',
             has_playwright: !!allDeps['@playwright/test'],
-            run_config: isFrontend ? detectFrontendRunConfig(dir, pkg, allDeps, framework) : null,
+            run_config: isFrontend
+              ? detectFrontendRunConfig(dir, pkg, allDeps, framework)
+              : detectBackendRunConfig(dir, pkg, allDeps, backendFramework),
           });
         }
       } catch {

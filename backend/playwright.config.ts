@@ -6,7 +6,7 @@ const frontendStartCommand = process.env.FRONTEND_COMMAND;
 const frontendDir = process.env.FRONTEND_DIR;
 const frontendUrl = process.env.BASE_URL || process.env.FRONTEND_URL;
 const frontendCommand = [frontendInstallCommand, frontendStartCommand].filter(Boolean).join(' && ');
-const webServer = frontendCommand && frontendDir && frontendUrl
+const webServer = process.env.PLAYWRIGHT_MANAGED_SERVICES !== 'true' && frontendCommand && frontendDir && frontendUrl
   ? [
       {
         command: frontendCommand,

@@ -54,10 +54,12 @@ function normalizeCoderOutput(output) {
   };
 }
 
-async function generateOne(item, prompt, baseUrl, cacheDir) {
+async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}) {
   const planner = item.planner_output || {};
   const promptPayload = {
     base_url: baseUrl,
+    api_base_url: runtimeUrls.apiBaseUrl || null,
+    backend_url: runtimeUrls.backendUrl || runtimeUrls.apiBaseUrl || null,
     component: {
       name: item.component_name,
       source_file: planner.file_path || '',
@@ -85,6 +87,7 @@ async function generateOne(item, prompt, baseUrl, cacheDir) {
     model: prompt.model,
     system_prompt: prompt.systemPrompt,
     base_url: baseUrl,
+    runtime_urls: runtimeUrls,
     item,
   });
 
@@ -153,7 +156,7 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
 
   const outputs = await mapConcurrent(items, maxWorkers, async (item) => {
     try {
-      return await generateOne(item, prompt, baseUrl, coderCacheDir);
+      return await generateOne(item, prompt, baseUrl, coderCacheDir, options.runtimeUrls || {});
     } catch (err) {
       console.error(`[Coder] Error generating spec for ${item.source_file}: ${err.message}`);
       return { generated: [] };

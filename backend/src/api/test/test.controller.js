@@ -7,6 +7,7 @@ const { createJob, updateJob, getJobByProject, getJob } = require('../../lib/job
 const Pipeline = require('../../pipeline/Pipeline');
 const { addUserTokens } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
+const { uploadSourceArchiveWithManifest } = require('../../lib/r2Storage');
 const {
   WORKSPACE_BASE_PATH,
   SOURCE_WORKSPACE_BASE_PATH,
@@ -180,9 +181,16 @@ async function uploadSource(req, res) {
     extractZipSafely(archivePath, tempExtractDir);
     fs.rmSync(extractDir, { recursive: true, force: true });
     fs.renameSync(tempExtractDir, extractDir);
-    fs.rmSync(archivePath, { force: true });
 
     const fileSizeBytes = req.file.size || 0;
+    const sourceStorage = await uploadSourceArchiveWithManifest({
+      archivePath,
+      originalFilename: req.file.originalname,
+      userId,
+      projectId,
+      projectName,
+    });
+    fs.rmSync(archivePath, { force: true });
 
     // Ghi project vào Supabase
     await supabase.from('projects').insert([{
@@ -196,7 +204,7 @@ async function uploadSource(req, res) {
     await supabase.from('uploaded_files').insert([{
       project_id: projectId,
       file_name: req.file.originalname,
-      file_path: archivePath,
+      file_path: sourceStorage.archiveKey,
       file_size: fileSizeBytes,
     }]).then(() => {});
 
@@ -209,7 +217,15 @@ async function uploadSource(req, res) {
         project_name: projectName,
         workspace_path: path.join(workspaceRoot, safeName(userId)),
         source_path: extractDir,
-        source_archive_path: null,
+        source_archive_path: sourceStorage.archiveKey,
+        source_manifest_path: sourceStorage.manifestKey,
+        source_storage: {
+          provider: 'cloudflare-r2',
+          bucket: sourceStorage.bucket,
+          prefix: sourceStorage.prefix,
+          archive_key: sourceStorage.archiveKey,
+          manifest_key: sourceStorage.manifestKey,
+        },
       },
     });
   } catch (err) {

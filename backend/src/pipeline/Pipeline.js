@@ -12,6 +12,7 @@ const validator = require('./stages/validator');
 const debugger_ = require('./stages/debugger');
 const executor  = require('./stages/executor');
 const reporter  = require('./stages/reporter');
+const { startRuntimeServices } = require('./runtime/serviceManager');
 
 const PROGRESS_STAGES = [
   { key: 'detector', label: 'Scanning project files', percent: 18 },
@@ -86,6 +87,8 @@ class Pipeline {
     };
 
     this._setupDirectories();
+    this.infrastructure = null;
+    this.runtimeUrls = {};
   }
 
   _reportProgress(stageKey, message) {
@@ -135,6 +138,7 @@ class Pipeline {
     this._reportProgress('detector', 'Scanning project files and folders');
     console.log('[STAGE 1] Detector...');
     const results = detector.run(this.sourceCodePath);
+    this.infrastructure = results.infrastructure || null;
     const outPath = path.join(this.dirs.detector, 'detector_results.json');
     fs.writeFileSync(outPath, JSON.stringify(results, null, 2), 'utf-8');
     console.log(`  → ${results.source_files.length} source files found`);
@@ -171,6 +175,7 @@ class Pipeline {
     this._reportProgress('coder', 'Generating Playwright test files');
     console.log('[STAGE 4] Coder...');
     const manifest = await coder.run(this.dirs.filter, this.specsDir, baseUrl, this.cacheDir, {
+      runtimeUrls: this.runtimeUrls,
       onProgress: ({ completed, total }) => {
         this._reportSubProgress('coder', 'Generating test specs', completed, total);
       },
@@ -215,8 +220,10 @@ class Pipeline {
 
     const detectorPath = path.join(this.dirs.detector, 'detector_results.json');
     let detectedBaseUrl = null;
+    let infrastructure = this.infrastructure;
     if (fs.existsSync(detectorPath)) {
       const infra = JSON.parse(fs.readFileSync(detectorPath, 'utf-8')).infrastructure;
+      infrastructure = infrastructure || infra;
       const frontend = (infra.projects || []).find(p =>
         p.type === 'frontend' &&
         p.run_config &&
@@ -227,10 +234,7 @@ class Pipeline {
         ['client', 'frontend'].includes(p.root_path.split('/').pop().toLowerCase())
       );
       if (frontend) {
-        process.env.FRONTEND_DIR = path.resolve(frontend.root_path);
         if (frontend.run_config) {
-          process.env.FRONTEND_COMMAND = frontend.run_config.start_command || '';
-          process.env.FRONTEND_INSTALL_COMMAND = frontend.run_config.install_command || '';
           detectedBaseUrl = frontend.run_config.url || null;
         }
       }
@@ -238,7 +242,13 @@ class Pipeline {
 
     const reportFile = path.join(this.dirs.executor, 'test_report.json');
     const executorBaseUrl = baseUrl && baseUrl !== TARGET_BASE_URL ? baseUrl : (detectedBaseUrl || baseUrl);
-    return executor.run(this.specsDir, reportFile, this.runWorkspaceDir, executorBaseUrl);
+    const runtime = await startRuntimeServices(infrastructure, this.dirs.executor);
+    const finalBaseUrl = runtime.env.BASE_URL || executorBaseUrl;
+    try {
+      return await executor.run(this.specsDir, reportFile, this.runWorkspaceDir, finalBaseUrl, runtime.env);
+    } finally {
+      await runtime.stop();
+    }
   }
 
   async runReporter() {
@@ -257,10 +267,11 @@ class Pipeline {
     // runWithTracking tự đo tổng tokens tiêu thụ trong toàn bộ pipeline
     this.tokensUsed = await runWithTracking(async () => {
       const detectorOut = await this.runDetector();
+      this.runtimeUrls = buildRuntimeUrls(this.infrastructure, baseUrl);
       await this.runAnalyzer(detectorOut);
       await this.runPlanner('UI Testing');
       this.runFilter();
-      await this.runCoder(baseUrl);
+      await this.runCoder(this.runtimeUrls.baseUrl || baseUrl);
 
       const MAX_RETRIES = 3;
       let isValid = this.runValidator();
@@ -298,15 +309,30 @@ class Pipeline {
   loadFinalReport() {
     const finalReportPath  = path.join(this.dirs.reporter, 'final_report.json');
     const executorReportPath = path.join(this.dirs.executor, 'test_report.json');
+    const runtimeServicesPath = path.join(this.dirs.executor, 'runtime_services.json');
     return {
       run_workspace_dir:    this.runWorkspaceDir,
       final_report_path:   fs.existsSync(finalReportPath)   ? finalReportPath   : null,
       executor_report_path: fs.existsSync(executorReportPath) ? executorReportPath : null,
+      runtime_services_path: fs.existsSync(runtimeServicesPath) ? runtimeServicesPath : null,
       final_report: fs.existsSync(finalReportPath)
         ? JSON.parse(fs.readFileSync(finalReportPath, 'utf-8'))
         : null,
     };
   }
+}
+
+function buildRuntimeUrls(infrastructure, fallbackBaseUrl) {
+  const projects = infrastructure && Array.isArray(infrastructure.projects)
+    ? infrastructure.projects
+    : [];
+  const frontend = projects.find(project => project.type === 'frontend' && project.run_config && project.run_config.url);
+  const backend = projects.find(project => project.type === 'backend' && project.run_config && project.run_config.url);
+  return {
+    baseUrl: (frontend && frontend.run_config.url) || fallbackBaseUrl || null,
+    apiBaseUrl: (backend && backend.run_config.url) || null,
+    backendUrl: (backend && backend.run_config.url) || null,
+  };
 }
 
 module.exports = Pipeline;
