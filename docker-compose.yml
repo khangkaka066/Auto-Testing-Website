@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - WORKSPACE_BASE_PATH=workspaces
+      - SOURCE_WORKSPACE_BASE_PATH=uploaded_sources
+      - UPLOAD_ARCHIVE_BASE_PATH=uploaded_archives
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Mount host Docker socket so the pipeline can spin up temporary DB containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist workspaces across restarts
+      - ./workspaces:/app/workspaces
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

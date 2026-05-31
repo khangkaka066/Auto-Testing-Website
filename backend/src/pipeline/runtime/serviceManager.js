@@ -292,7 +292,7 @@ async function startRuntimeServices(infrastructure, outputDir, extraBackendEnv =
     try {
       const port = await choosePort(selected.backend.run_config.port, usedPorts);
       const service = buildService(selected.backend, 'backend', port);
-      const env = { ...process.env, ...extraBackendEnv, PORT: String(port), API_PORT: String(port), BACKEND_PORT: String(port) };
+      const env = { ...DUMMY_THIRD_PARTY_ENV, ...process.env, ...extraBackendEnv, PORT: String(port), API_PORT: String(port), BACKEND_PORT: String(port) };
       const started = await startService(service, logsDir, env);
       running.push(started);
       manifest.backend = withoutChild(started);
@@ -368,6 +368,41 @@ function buildExecutorEnv(manifest) {
   }
   return env;
 }
+
+// Dummy values for third-party services that throw on missing env vars at module load time.
+// Real values in process.env or extraBackendEnv always take precedence.
+const DUMMY_THIRD_PARTY_ENV = {
+  // PayOS
+  PAYOS_CLIENT_ID:      'dummy-payos-client-id',
+  PAYOS_API_KEY:        'dummy-payos-api-key',
+  PAYOS_CHECKSUM_KEY:   'dummy-payos-checksum-key',
+  // Stripe
+  STRIPE_SECRET_KEY:        'sk_test_dummy',
+  STRIPE_PUBLISHABLE_KEY:   'pk_test_dummy',
+  STRIPE_WEBHOOK_SECRET:    'whsec_dummy',
+  // VNPay
+  VNPAY_TMN_CODE:           'DUMMY',
+  VNPAY_SECURE_HASH_SECRET: 'dummy-vnpay-secret',
+  VNPAY_URL:                'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+  VNPAY_RETURN_URL:         'http://localhost/vnpay-return',
+  // Momo
+  MOMO_PARTNER_CODE:  'DUMMY',
+  MOMO_ACCESS_KEY:    'dummy-momo-access-key',
+  MOMO_SECRET_KEY:    'dummy-momo-secret-key',
+  // ZaloPay
+  ZALOPAY_APP_ID: '0',
+  ZALOPAY_KEY1:   'dummy-zalopay-key1',
+  ZALOPAY_KEY2:   'dummy-zalopay-key2',
+  // Generic / catch-all
+  JWT_SECRET:         'dummy-jwt-secret-for-testing',
+  SESSION_SECRET:     'dummy-session-secret',
+  SENDGRID_API_KEY:   'SG.dummy',
+  MAILGUN_API_KEY:    'dummy-mailgun-key',
+  FIREBASE_API_KEY:   'dummy-firebase-key',
+  GOOGLE_CLIENT_ID:   'dummy-google-client-id',
+  GOOGLE_CLIENT_SECRET: 'dummy-google-client-secret',
+  CLOUDINARY_URL:     'cloudinary://dummy:dummy@dummy',
+};
 
 function withoutChild(service) {
   const { child, ...rest } = service;

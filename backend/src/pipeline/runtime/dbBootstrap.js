@@ -25,7 +25,7 @@ const DB_CONFIGS = {
       '--rm',
       'mysql:8.0',
     ],
-    readyArgs: (name) => ['exec', name, 'mysqladmin', 'ping', '-uroot', '-ptestpass', '--silent'],
+    readyArgs: (name) => ['exec', name, 'mysql', '-h', '127.0.0.1', '-uroot', '-ptestpass', '-e', 'SELECT 1', 'testdb'],
     buildEnv: (port) => ({
       DB_HOST: '127.0.0.1', DB_PORT: String(port),
       DB_NAME: 'testdb', DB_DATABASE: 'testdb',
@@ -126,7 +126,12 @@ function isDockerAvailable() {
   try {
     execSync('docker info --format "{{.ID}}"', { stdio: 'pipe', timeout: 5000 });
     return true;
-  } catch {
+  } catch (err) {
+    const msg = err.stderr ? err.stderr.toString() : String(err);
+    if (msg.includes('permission denied') || msg.includes('docker.sock')) {
+      console.warn('[DbBootstrap] Docker is installed but current user lacks permission.');
+      console.warn('[DbBootstrap] Fix: run "sudo usermod -aG docker $USER" then re-login (or "newgrp docker").');
+    }
     return false;
   }
 }
@@ -146,72 +151,150 @@ function resolveDbType(databaseTypes) {
   return null;
 }
 
-// ── Source scanning ─────────────────────────────────────────────────────────
+// ── SQL file discovery (Priority 1) ─────────────────────────────────────────
 
-const SCHEMA_FILE_DIRS = [
-  'prisma', 'models', 'src/models', 'src/entities', 'entities',
-  'migrations', 'db/migrations', 'database/migrations',
-  'src/db', 'db', 'src/database', 'database', 'sql',
+// Directories to scan for .sql files (checked at both backendRoot and its parent)
+const SQL_SCAN_DIRS = [
+  'sql_scripts', 'sql', 'scripts', 'db/scripts', 'database/scripts',
+  'schema', 'schemas', 'migrations', 'db', 'database',
+  'seed', 'seeds', 'scripts/sql', 'config/sql',
 ];
 
-const SCHEMA_EXTS = new Set(['.js', '.ts', '.sql', '.prisma']);
-const MAX_FILES = 10;
-const MAX_LINES_PER_FILE = 200;
-const MAX_TOTAL_CHARS = 6000;
+const SEED_NAME_KEYWORDS   = ['insert', 'seed', 'data', 'fixture', 'mock', 'sample', 'populate'];
+const SCHEMA_NAME_KEYWORDS = ['create', 'schema', 'init', 'setup', 'structure', 'ddl', 'table', 'migration'];
 
-function scanSchemaFiles(backendRoot) {
+function categorizeSqlFile(filename) {
+  const base = path.basename(filename, '.sql').toLowerCase();
+  if (SEED_NAME_KEYWORDS.some(kw => base.includes(kw))) return 'seed';
+  if (SCHEMA_NAME_KEYWORDS.some(kw => base.includes(kw))) return 'schema';
+  return 'schema'; // default: treat unknown .sql files as schema
+}
+
+function collectSqlFromDir(dir, schemaFiles, seedFiles, seen) {
+  if (!fs.existsSync(dir)) return;
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (!e.isFile() || path.extname(e.name).toLowerCase() !== '.sql') continue;
+    const full = path.join(dir, e.name);
+    if (seen.has(full)) continue;
+    seen.add(full);
+    if (categorizeSqlFile(e.name) === 'seed') seedFiles.push(full);
+    else schemaFiles.push(full);
+  }
+}
+
+function findSqlFiles(backendRoot) {
+  const schemaFiles = [];
+  const seedFiles   = [];
+  const seen        = new Set();
+
+  // Scan at backendRoot AND its parent (handles monorepos: server/ inside project/)
+  const roots = [backendRoot, path.dirname(backendRoot)];
+
+  for (const root of roots) {
+    collectSqlFromDir(root, schemaFiles, seedFiles, seen);          // root-level .sql files
+    for (const dir of SQL_SCAN_DIRS) {
+      collectSqlFromDir(path.join(root, dir), schemaFiles, seedFiles, seen);
+    }
+  }
+
+  return { schemaFiles, seedFiles };
+}
+
+function cleanAndSplitSql(sql) {
+  // Strip block comments and line comments
+  const clean = sql
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/--[^\n]*/g, '');
+
+  return clean
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => {
+      if (!s) return false;
+      const upper = s.toUpperCase();
+      // Drop database-level statements — we apply into the pre-created testdb
+      if (upper.startsWith('CREATE DATABASE') || upper.startsWith('DROP DATABASE') || upper.startsWith('USE ')) return false;
+      return true;
+    });
+}
+
+// ── Source scanning for AI fallback (Priority 2) ────────────────────────────
+
+const SOURCE_SCAN_DIRS = [
+  'src/services', 'src/service', 'services',
+  'src/controllers', 'src/controller', 'controllers',
+  'src/config', 'src/repositories', 'repositories',
+  'src/models', 'models', 'src/entities', 'entities',
+  'prisma',
+];
+
+const SOURCE_EXTS   = new Set(['.js', '.ts', '.prisma']);
+const MAX_SRC_FILES = 10;
+const MAX_SRC_LINES = 200;
+const MAX_SRC_CHARS = 6000;
+
+function scanSourceFiles(backendRoot) {
   const collected = [];
   const seen = new Set();
 
   function tryFile(filePath) {
-    if (seen.has(filePath) || collected.length >= MAX_FILES) return;
+    if (seen.has(filePath) || collected.length >= MAX_SRC_FILES) return;
     if (!fs.existsSync(filePath)) return;
-    const stat = fs.statSync(filePath);
-    if (!stat.isFile()) return;
-    const ext = path.extname(filePath).toLowerCase();
-    if (!SCHEMA_EXTS.has(ext)) return;
+    if (!fs.statSync(filePath).isFile()) return;
+    if (!SOURCE_EXTS.has(path.extname(filePath).toLowerCase())) return;
     seen.add(filePath);
-    const lines = fs.readFileSync(filePath, 'utf-8').split('\n').slice(0, MAX_LINES_PER_FILE).join('\n');
+    const lines = fs.readFileSync(filePath, 'utf-8').split('\n').slice(0, MAX_SRC_LINES).join('\n');
     collected.push({ rel: path.relative(backendRoot, filePath), content: lines });
   }
 
   function tryDir(dir) {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) return;
     try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isFile()) tryFile(path.join(dir, entry.name));
-      }
+      fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
+        if (e.isFile()) tryFile(path.join(dir, e.name));
+      });
     } catch { /* ignore */ }
   }
 
-  // Root-level SQL files
-  tryFile(path.join(backendRoot, 'schema.sql'));
-  tryFile(path.join(backendRoot, 'database.sql'));
-  tryFile(path.join(backendRoot, 'init.sql'));
   tryFile(path.join(backendRoot, 'prisma/schema.prisma'));
+  for (const dir of SOURCE_SCAN_DIRS) tryDir(path.join(backendRoot, dir));
 
-  for (const dir of SCHEMA_FILE_DIRS) {
-    tryDir(path.join(backendRoot, dir));
-    if (collected.length >= MAX_FILES) break;
-  }
-
-  // Build content string, capped at MAX_TOTAL_CHARS
   let result = '';
   for (const { rel, content } of collected) {
     const block = `\n## ${rel}\n\`\`\`\n${content}\n\`\`\`\n`;
-    if ((result + block).length > MAX_TOTAL_CHARS) break;
+    if ((result + block).length > MAX_SRC_CHARS) break;
     result += block;
   }
   return result;
 }
 
-// ── AI schema inference ─────────────────────────────────────────────────────
+// ── Schema resolution: SQL files → AI fallback ──────────────────────────────
 
 async function inferSchema(dialect, backendRoot, cacheDir) {
-  const sourceSnippet = scanSchemaFiles(backendRoot);
+  // ── Priority 1: Real SQL files from the project ────────────────────
+  const { schemaFiles, seedFiles } = findSqlFiles(backendRoot);
+
+  if (schemaFiles.length > 0 || seedFiles.length > 0) {
+    const relBase = path.dirname(backendRoot);
+    console.log(`  [DbBootstrap] Found real SQL files:`);
+    schemaFiles.forEach(f => console.log(`    schema: ${path.relative(relBase, f)}`));
+    seedFiles.forEach(f   => console.log(`    seed  : ${path.relative(relBase, f)}`));
+
+    const schemaStatements = schemaFiles
+      .flatMap(f => { try { return cleanAndSplitSql(fs.readFileSync(f, 'utf-8')); } catch { return []; } });
+    const seedStatements = seedFiles
+      .flatMap(f => { try { return cleanAndSplitSql(fs.readFileSync(f, 'utf-8')); } catch { return []; } });
+
+    console.log(`  [DbBootstrap] ${schemaStatements.length} schema + ${seedStatements.length} seed statements parsed`);
+    return { dialect, schema_statements: schemaStatements, seed_statements: seedStatements };
+  }
+
+  // ── Priority 2: AI infers schema from JS/TS source files ──────────
+  const sourceSnippet = scanSourceFiles(backendRoot);
   if (!sourceSnippet.trim()) {
-    console.log('  [DbBootstrap] No schema files found — skipping schema inference');
+    console.log('  [DbBootstrap] No SQL files or source hints found — skipping schema inference');
     return null;
   }
 
@@ -262,7 +345,7 @@ function applyStatementsToMysql(containerName, statements) {
   const sql = statements.join(';\n') + ';';
   const result = spawnSync(
     'docker',
-    ['exec', '-i', containerName, 'mysql', '-uroot', '-ptestpass', 'testdb'],
+    ['exec', '-i', containerName, 'mysql', '-h', '127.0.0.1', '-uroot', '-ptestpass', 'testdb'],
     { input: sql, stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }
   );
   if (result.status !== 0) {
@@ -315,7 +398,7 @@ async function bootstrapDatabase(project, cacheDir, logsDir, containerSuffix) {
   }
 
   const cfg = DB_CONFIGS[dbType];
-  const port = await findFreePort(cfg.defaultPort + 1000); // Use offset to avoid conflicts
+  const port = await findFreePort(cfg.defaultPort); // Prefer default port so projects that hardcode it still connect
   const containerName = `playwright-db-${dbType}-${containerSuffix}`;
 
   const logFile = path.join(logsDir, `db_${dbType}.log`);
