@@ -109,7 +109,6 @@ async function register(req, res) {
   }
 
   await logAuth('register', 'success', email, userId, req);
-<<<<<<< HEAD
 
   try {
     const verifyToken = await createVerificationToken(userId, email.trim());
@@ -122,20 +121,6 @@ async function register(req, res) {
     success: true,
     requiresVerification: true,
     message: 'Email xác thực đã được gửi! Vui lòng kiểm tra hộp thư để hoàn tất đăng ký.',
-=======
-  // Welcome email khi đăng ký — first login sẽ không gửi lại vì auth_log đã có 1 record
-  const newUser = { id: userId, name: name || email.split('@')[0], email };
-  setImmediate(() => sendMail({
-    to: email,
-    subject: '🚀 Chào mừng đến với TestPilot!',
-    html: welcomeEmail({ name: newUser.name, email }),
-  }));
-  return res.status(201).json({
-    success: true,
-    message: 'Registration successful',
-    token: makeToken(userId),
-    user: newUser,
->>>>>>> 8732c2e (updates)
   });
 }
 
