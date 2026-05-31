@@ -13,6 +13,8 @@ const debugger_ = require('./stages/debugger');
 const executor  = require('./stages/executor');
 const reporter  = require('./stages/reporter');
 const { startRuntimeServices } = require('./runtime/serviceManager');
+const { enrichInfrastructureWithAI } = require('./runtime/backendInference');
+const { bootstrapDatabases } = require('./runtime/dbBootstrap');
 
 const PROGRESS_STAGES = [
   { key: 'detector', label: 'Scanning project files', percent: 18 },
@@ -89,6 +91,8 @@ class Pipeline {
     this._setupDirectories();
     this.infrastructure = null;
     this.runtimeUrls = {};
+    this.dbEnvs = {};
+    this._stopDbs = () => {};
   }
 
   _reportProgress(stageKey, message) {
@@ -143,6 +147,43 @@ class Pipeline {
     fs.writeFileSync(outPath, JSON.stringify(results, null, 2), 'utf-8');
     console.log(`  → ${results.source_files.length} source files found`);
     return outPath;
+  }
+
+  async runBackendInference(detectorResultsPath) {
+    if (!this.infrastructure) return;
+    const needsInference = (this.infrastructure.projects || []).some(
+      p => p.type === 'backend' && p.run_config && (!p.run_config.start_command || p.run_config.confidence === 'low')
+    );
+    if (!needsInference) return;
+
+    console.log('[STAGE 1.5] Backend Inference...');
+    this.infrastructure = await enrichInfrastructureWithAI(this.infrastructure, this.cacheDir);
+
+    // Patch detector_results.json so executor re-reads the corrected infrastructure
+    if (fs.existsSync(detectorResultsPath)) {
+      const existing = JSON.parse(fs.readFileSync(detectorResultsPath, 'utf-8'));
+      existing.infrastructure = this.infrastructure;
+      fs.writeFileSync(detectorResultsPath, JSON.stringify(existing, null, 2), 'utf-8');
+    }
+  }
+
+  async runDbBootstrap() {
+    if (!this.infrastructure) return;
+    const needsDb = (this.infrastructure.projects || []).some(
+      p => p.type === 'backend' && p.requires_database && (p.database_types || []).length > 0
+    );
+    if (!needsDb) return;
+
+    console.log('[STAGE 1.8] DB Bootstrap...');
+    const dbLogsDir = path.join(this.dirs.detector, 'db_logs');
+    const result = await bootstrapDatabases(
+      this.infrastructure,
+      this.cacheDir,
+      dbLogsDir,
+      this.runId
+    );
+    this.dbEnvs = result.dbEnvsByProject;
+    this._stopDbs = result.stop;
   }
 
   async runAnalyzer(detectorResultsPath) {
@@ -242,12 +283,17 @@ class Pipeline {
 
     const reportFile = path.join(this.dirs.executor, 'test_report.json');
     const executorBaseUrl = baseUrl && baseUrl !== TARGET_BASE_URL ? baseUrl : (detectedBaseUrl || baseUrl);
-    const runtime = await startRuntimeServices(infrastructure, this.dirs.executor);
+    // Merge DB env vars for the backend project (if bootstrapped)
+    const backendProject = (infrastructure.projects || []).find(p => p.type === 'backend');
+    const extraBackendEnv = backendProject ? (this.dbEnvs[backendProject.project_name] || {}) : {};
+
+    const runtime = await startRuntimeServices(infrastructure, this.dirs.executor, extraBackendEnv);
     const finalBaseUrl = runtime.env.BASE_URL || executorBaseUrl;
     try {
       return await executor.run(this.specsDir, reportFile, this.runWorkspaceDir, finalBaseUrl, runtime.env);
     } finally {
       await runtime.stop();
+      this._stopDbs();
     }
   }
 
@@ -267,6 +313,8 @@ class Pipeline {
     // runWithTracking tự đo tổng tokens tiêu thụ trong toàn bộ pipeline
     this.tokensUsed = await runWithTracking(async () => {
       const detectorOut = await this.runDetector();
+      await this.runBackendInference(detectorOut);
+      await this.runDbBootstrap();
       this.runtimeUrls = buildRuntimeUrls(this.infrastructure, baseUrl);
       await this.runAnalyzer(detectorOut);
       await this.runPlanner('UI Testing');

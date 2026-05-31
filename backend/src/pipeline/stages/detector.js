@@ -16,6 +16,24 @@ function hasDep(allDeps, name) {
   return Object.prototype.hasOwnProperty.call(allDeps, name);
 }
 
+const DB_SIGNATURES = [
+  { deps: ['mysql', 'mysql2'],                   type: 'mysql'     },
+  { deps: ['pg', 'pg-native'],                   type: 'postgres'  },
+  { deps: ['mongoose', 'mongodb'],               type: 'mongodb'   },
+  { deps: ['redis', 'ioredis'],                  type: 'redis'     },
+  { deps: ['sqlite3', 'better-sqlite3'],         type: 'sqlite'    },
+  { deps: ['typeorm', 'prisma', 'knex'],         type: 'orm'       },
+  { deps: ['sequelize'],                         type: 'sequelize' },
+];
+
+function detectDatabaseDeps(allDeps) {
+  const found = [];
+  for (const sig of DB_SIGNATURES) {
+    if (sig.deps.some(dep => hasDep(allDeps, dep))) found.push(sig.type);
+  }
+  return found;
+}
+
 function getPackageManager(rootPath) {
   if (fs.existsSync(path.join(rootPath, 'pnpm-lock.yaml'))) return 'pnpm';
   if (fs.existsSync(path.join(rootPath, 'yarn.lock'))) return 'yarn';
@@ -286,12 +304,15 @@ function extractProjectMetadata(rootPath) {
               fs.existsSync(path.join(dir, 'index.html'))
             );
           const backendFramework = detectBackendFramework(allDeps, pkg.scripts || {});
+          const dbTypes = !isFrontend ? detectDatabaseDeps(allDeps) : [];
           projects.push({
             project_name: pkg.name || 'unknown-project',
             root_path: dir,
             framework: isFrontend ? framework : backendFramework,
             type: isFrontend ? 'frontend' : 'backend',
             has_playwright: !!allDeps['@playwright/test'],
+            requires_database: dbTypes.length > 0,
+            database_types: dbTypes,
             run_config: isFrontend
               ? detectFrontendRunConfig(dir, pkg, allDeps, framework)
               : detectBackendRunConfig(dir, pkg, allDeps, backendFramework),

@@ -59,22 +59,44 @@ function requestUrl(url) {
   });
 }
 
+function isPortListening(port) {
+  return new Promise(resolve => {
+    const socket = net.connect({ port, host: '127.0.0.1' }, () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.setTimeout(2000);
+    socket.on('timeout', () => { socket.destroy(); resolve(false); });
+    socket.on('error', () => resolve(false));
+  });
+}
+
 async function waitForReady(service, timeoutMs) {
-  const startedAt = Date.now();
-  const urls = service.health_path
+  const httpUrls = service.health_path
     ? [`${service.url}${service.health_path}`, service.url]
     : [service.url];
 
-  while (Date.now() - startedAt < timeoutMs) {
-    for (const url of urls) {
-      if (await requestUrl(url)) {
-        return url;
-      }
-    }
+  // Phase 1: wait for TCP port to open (fast, works on any backend)
+  const tcpDeadline = Date.now() + timeoutMs;
+  while (Date.now() < tcpDeadline) {
+    if (await isPortListening(service.port)) break;
     await sleep(1000);
   }
+  if (!await isPortListening(service.port)) {
+    throw new Error(`Service ${service.name} did not open port ${service.port} within timeout`);
+  }
 
-  throw new Error(`Service ${service.name} did not become ready at ${service.url}`);
+  // Phase 2: try HTTP health check (best-effort, 10 s grace)
+  const httpDeadline = Date.now() + 10000;
+  while (Date.now() < httpDeadline) {
+    for (const url of httpUrls) {
+      if (await requestUrl(url)) return url;
+    }
+    await sleep(500);
+  }
+
+  // Port is open but no HTTP endpoint responded — treat as ready (backend has no /health)
+  return service.url;
 }
 
 function appendLog(logFile, message) {
@@ -251,7 +273,7 @@ async function startService(service, logsDir, env) {
   return { ...service, ready_url: readyUrl, pid: child.pid, status: 'ready', child };
 }
 
-async function startRuntimeServices(infrastructure, outputDir) {
+async function startRuntimeServices(infrastructure, outputDir, extraBackendEnv = {}) {
   fs.mkdirSync(outputDir, { recursive: true });
   const logsDir = path.join(outputDir, 'service_logs');
   fs.mkdirSync(logsDir, { recursive: true });
@@ -265,16 +287,37 @@ async function startRuntimeServices(infrastructure, outputDir) {
     frontend: null,
   };
 
-  try {
-    if (selected.backend) {
+  // ── Start backend (non-fatal: DB-dependent backends may fail) ──
+  if (selected.backend) {
+    try {
       const port = await choosePort(selected.backend.run_config.port, usedPorts);
       const service = buildService(selected.backend, 'backend', port);
-      const env = { ...process.env, PORT: String(port), API_PORT: String(port), BACKEND_PORT: String(port) };
+      const env = { ...process.env, ...extraBackendEnv, PORT: String(port), API_PORT: String(port), BACKEND_PORT: String(port) };
       const started = await startService(service, logsDir, env);
       running.push(started);
       manifest.backend = withoutChild(started);
+    } catch (err) {
+      const dbTypes = selected.backend.database_types || [];
+      const hint = dbTypes.length > 0
+        ? ` (requires database: ${dbTypes.join(', ')})`
+        : '';
+      console.warn(`[serviceManager] Backend failed to start${hint}: ${err.message}`);
+      console.warn('[serviceManager] Continuing with frontend-only mode.');
+      appendLog(
+        path.join(logsDir, 'backend.log'),
+        `\n[startup failed] ${err.message}\n`
+      );
+      manifest.backend = {
+        status: 'failed',
+        error: err.message,
+        requires_database: selected.backend.requires_database || false,
+        database_types: dbTypes,
+      };
     }
+  }
 
+  // ── Start frontend (always attempted) ──────────────────────────
+  try {
     if (selected.frontend) {
       const port = await choosePort(selected.frontend.run_config.port, usedPorts);
       const service = buildService(selected.frontend, 'frontend', port);
@@ -284,7 +327,7 @@ async function startRuntimeServices(infrastructure, outputDir) {
         VITE_PORT: String(port),
         BASE_URL: service.url,
       };
-      if (manifest.backend) {
+      if (manifest.backend && manifest.backend.status !== 'failed') {
         env.API_BASE_URL = manifest.backend.url;
         env.BACKEND_URL = manifest.backend.url;
         env.VITE_API_BASE_URL = manifest.backend.url;
@@ -319,7 +362,7 @@ function buildExecutorEnv(manifest) {
     env.BASE_URL = manifest.frontend.url;
     env.FRONTEND_URL = manifest.frontend.url;
   }
-  if (manifest.backend && manifest.backend.url) {
+  if (manifest.backend && manifest.backend.url && manifest.backend.status !== 'failed') {
     env.API_BASE_URL = manifest.backend.url;
     env.BACKEND_URL = manifest.backend.url;
   }

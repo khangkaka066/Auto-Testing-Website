@@ -118,3 +118,5 @@ backend/api_node/.env
 
 test_project
 tmp
+
+test_*
