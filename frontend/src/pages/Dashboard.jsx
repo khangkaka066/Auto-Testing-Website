@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [testType, setTestType] = useState("UI Testing");
 
   const [githubStatus, setGithubStatus] = useState(null);
   const [repos, setRepos] = useState([]);
@@ -218,6 +219,7 @@ export default function Dashboard() {
           source_path: src.source_path,
           source_archive_path: src.source_archive_path,
           source_name: src.project_name,
+          test_type: testType,
         }, { headers: { Authorization: `Bearer ${token}` } });
 
         const projectId = runRes.data.data.project_id;
@@ -229,6 +231,7 @@ export default function Dashboard() {
         const runRes = await axios.post(`${API_BASE_URL}/api/test/run-github`, {
           repo_full_name: selectedRepo.full_name,
           branch: selectedBranch || selectedRepo.default_branch || "main",
+          test_type: testType,
         }, { headers: { Authorization: `Bearer ${token}` } });
 
         const projectId = runRes.data.data.project_id;
@@ -599,6 +602,34 @@ export default function Dashboard() {
                     </div>
                   )
                 )}
+
+                {/* Test type selector */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 mb-2">Test Type</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "UI Testing", label: "UI Testing", desc: "UI/UX" },
+                      { value: "API Testing", label: "API Testing", desc: "Endpoints" },
+                      { value: "Functional Testing", label: "Functional", desc: "Function" },
+                    ].map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setTestType(t.value)}
+                        className={`flex flex-col items-start px-3 py-2.5 rounded-lg border-2 text-left transition-all ${
+                          testType === t.value
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-slate-200 hover:border-slate-300 bg-white"
+                        }`}
+                      >
+                        <span className={`text-xs font-bold leading-tight ${testType === t.value ? "text-orange-700" : "text-slate-700"}`}>
+                          {t.label}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">{t.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                   <p className="text-xs text-slate-400">AI-powered test generation & execution</p>

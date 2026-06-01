@@ -29,26 +29,41 @@ These are Playwright E2E tests, not component unit tests.
 - NEVER inject `document.body.innerHTML`.
 - NEVER use Jest, Vitest, Sinon, Testing Library, Enzyme, Storybook mount, or component-test APIs.
 
+### Selector Priority Rules (CRITICAL)
+When `component.interactive_elements` is provided in the input:
+1. **Always use the `selector` field** from `interactive_elements` via `page.locator('selector')` for that element.
+2. **Never override** a provided selector with `getByRole`, `getByLabel`, or `getByText` — these fabricate locators that may not match the real DOM.
+3. `getByRole` / `getByText` / `getByLabel` are ONLY allowed for elements NOT listed in `interactive_elements`.
+4. **Do not invent accessible names** for roles. If you don't know the real accessible name, use `page.locator('css-selector')` instead.
+
+### Navigation URL Rules (CRITICAL)
+1. Use `page.goto(BASE_URL + route_context.rendered_at[0])` as the navigation target, taken from `component.route_context`.
+2. If `route_context` is null or `rendered_at` is empty, navigate to `BASE_URL + '/'` as fallback — NEVER skip `page.goto()`.
+3. **Never invent URL patterns** for assertions. Only assert URLs that are:
+   - Explicitly in `route_context.rendered_at`
+   - Explicitly shown as an `href` value in `interactive_elements`
+   - A direct result of clicking a link whose `href` is known
+4. For search/filter actions that use `navigate()` internally (not a link href), DO NOT assert the resulting URL — instead assert visible content on the page.
+
+### Authentication Setup Rules
+When `component.route_context.requires_auth === true`:
+1. Create a `beforeEach` or helper that:
+   a. Navigates to `BASE_URL + '/signin'` (or the known login URL from route context)
+   b. Fills the email field with `process.env.TEST_USER_EMAIL ?? '<valid_user_email>'`
+   c. Fills the password field with `process.env.TEST_USER_PASSWORD ?? '<valid_user_password>'`
+   d. Clicks the submit button
+   e. Waits for navigation away from the signin page
+2. NEVER assume a login form exists on the current page without navigating there first.
+3. After authentication, navigate to `BASE_URL + route_context.rendered_at[0]` to reach the target page.
+
 ### Safe Playwright Style
 1. Use this import style only:
    `import { test, expect, type Page, type Locator } from "@playwright/test";`
 2. Group tests inside:
    `test.describe("ComponentName", () => { ... });`
-3. Use only Playwright-native actions and assertions:
-   - `page.goto(...)`
-   - `page.getByRole(...)`
-   - `page.getByText(...)`
-   - `page.locator(...)`
-   - `locator.click()`
-   - `locator.fill(...)`
-   - `await expect(locator).toBeVisible()`
-   - `await expect(locator).toBeEnabled()`
-   - `await expect(locator).toHaveText(...)`
-   - `expect(numberValue).toBeGreaterThan(...)`
-   - `expect(booleanValue).toBeTruthy()` / `toBeFalsy()`
-4. Prefer role/text selectors first. Use CSS selectors from `test_data` only when explicitly provided.
-5. Always use `.first()` when a locator may match multiple elements.
-6. Use short helper functions only when they reduce duplication. Every helper parameter and return type must be explicitly typed.
+3. Use only Playwright-native actions and assertions.
+4. Always use `.first()` when a locator may match multiple elements.
+5. Use short helper functions only when they reduce duplication. Every helper parameter and return type must be explicitly typed.
 
 ### TypeScript Safety Rules
 - The generated file must compile under strict TypeScript.

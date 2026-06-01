@@ -7,7 +7,7 @@ function _now() {
   return new Date().toISOString();
 }
 
-function createJob({ userId, projectId, sourcePath, baseUrl }) {
+function createJob({ userId, projectId, sourcePath, baseUrl, testType }) {
   const jobId = uuidv4();
   const job = {
     success: true,
@@ -22,6 +22,7 @@ function createJob({ userId, projectId, sourcePath, baseUrl }) {
     project_id: projectId,
     source_path: sourcePath,
     base_url: baseUrl || null,
+    test_type: testType || 'UI Testing',
     created_at: _now(),
     started_at: null,
     finished_at: null,

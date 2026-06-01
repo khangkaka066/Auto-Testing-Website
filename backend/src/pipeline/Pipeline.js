@@ -61,10 +61,11 @@ function buildUniqueRunWorkspace(baseDir, runId) {
 }
 
 class Pipeline {
-  constructor({ userId, projectId, sourceCodePath, onProgress }) {
+  constructor({ userId, projectId, sourceCodePath, testType, onProgress }) {
     this.userId = userId;
     this.projectId = projectId;
     this.sourceCodePath = sourceCodePath;
+    this.testType = testType || 'UI Testing';
     this.onProgress = typeof onProgress === 'function' ? onProgress : () => {};
 
     const base = path.resolve(WORKSPACE_BASE_PATH);
@@ -216,6 +217,8 @@ class Pipeline {
     this._reportProgress('coder', 'Generating Playwright test files');
     console.log('[STAGE 4] Coder...');
     const manifest = await coder.run(this.dirs.filter, this.specsDir, baseUrl, this.cacheDir, {
+      testType: this.testType,
+      analyzerDir: this.dirs.analyzer,
       runtimeUrls: this.runtimeUrls,
       onProgress: ({ completed, total }) => {
         this._reportSubProgress('coder', 'Generating test specs', completed, total);
@@ -317,7 +320,7 @@ class Pipeline {
       await this.runDbBootstrap();
       this.runtimeUrls = buildRuntimeUrls(this.infrastructure, baseUrl);
       await this.runAnalyzer(detectorOut);
-      await this.runPlanner('UI Testing');
+      await this.runPlanner(this.testType);
       this.runFilter();
       await this.runCoder(this.runtimeUrls.baseUrl || baseUrl);
 

@@ -6,8 +6,16 @@ const { stableHash, readCache, writeCache } = require('../../lib/cache');
 const { optimizeCodeForLLM } = require('../../lib/astParser');
 const { AI_MAX_WORKERS } = require('../../config/env');
 const { mapConcurrent } = require('../../lib/concurrency');
+const { scanRoutes } = require('./routeScanner');
 
 const ANALYZER_FILE_LIMIT = 15;
+
+const EMPTY_ROUTE_CONTEXT = {
+  rendered_at: [],
+  requires_auth: false,
+  auth_role: null,
+  is_global_layout: false,
+};
 
 const UIElementSchema = z.object({
   element_type: z.string(),
@@ -53,7 +61,7 @@ function normalizeAnalysis(result) {
   };
 }
 
-async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
+async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir, routeContext) {
   const fullPath = path.join(workspaceDir, fileInfo.file_path);
   let content;
   try {
@@ -70,12 +78,19 @@ async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
     file_path: fileInfo.file_path,
     language: fileInfo.language,
     content: optimized,
+    route_context: routeContext,
   });
 
   const cached = readCache(cacheDir, cacheKey);
   if (cached) return { ...cached, file_path: fileInfo.file_path };
 
-  const userPrompt = `Language: ${fileInfo.language}\nSource Code:\n\`\`\`\n${optimized}\n\`\`\``;
+  // Inject route context into the prompt so the AI has full picture
+  const routeHint = buildRouteHint(routeContext);
+  const userPrompt =
+    `Language: ${fileInfo.language}\n` +
+    (routeHint ? `Route Context:\n${routeHint}\n` : '') +
+    `Source Code:\n\`\`\`\n${optimized}\n\`\`\``;
+
   const result = await parseStructured(
     prompt.model,
     prompt.systemPrompt,
@@ -84,9 +99,39 @@ async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir) {
     'TechnicalAnalysisOutput'
   );
 
-  const data = { ...normalizeAnalysis(result), file_path: fileInfo.file_path };
+  const data = {
+    ...normalizeAnalysis(result),
+    file_path: fileInfo.file_path,
+    route_context: routeContext,
+  };
   writeCache(cacheDir, cacheKey, data);
   return data;
+}
+
+/**
+ * Convert a RouteContext object into a concise natural-language hint for the AI prompt.
+ */
+function buildRouteHint(ctx) {
+  if (!ctx || (ctx.rendered_at.length === 0 && !ctx.is_global_layout)) return '';
+
+  const lines = [];
+  if (ctx.is_global_layout) {
+    lines.push('- This component is a GLOBAL LAYOUT element rendered on every page (e.g. Navbar, Footer, ChatBubble).');
+    lines.push('- Do NOT assume it needs to navigate to a specific URL first.');
+  } else if (ctx.rendered_at.length > 0) {
+    lines.push(`- This component renders at: ${ctx.rendered_at.join(', ')}`);
+  }
+
+  if (ctx.requires_auth) {
+    const role = ctx.auth_role ? ` (role: ${ctx.auth_role})` : '';
+    lines.push(`- Requires authentication${role} before this component is visible.`);
+  }
+
+  if (ctx.inherited_from) {
+    lines.push(`- Route inherited from parent component: ${ctx.inherited_from}`);
+  }
+
+  return lines.join('\n');
 }
 
 async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir, options = {}) {
@@ -94,6 +139,16 @@ async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir, optio
   const filesToAnalyze = (detectorData.source_files || []).slice(0, ANALYZER_FILE_LIMIT);
   if (filesToAnalyze.length === 0) return;
 
+  // ── Pass 1: Route scan (framework-agnostic) ─────────────────────────────────
+  console.log('[Analyzer] Running route scan...');
+  let routeContextMap = {};
+  try {
+    routeContextMap = scanRoutes(detectorData.source_files || [], workspaceDir);
+  } catch (err) {
+    console.warn(`[Analyzer] Route scan failed (non-fatal): ${err.message}`);
+  }
+
+  // ── Pass 2: Per-file AI analysis (with route context injected) ──────────────
   const prompt = loadPrompt('Analyzer');
   const analyzerCacheDir = path.join(cacheDir, 'analyzer');
 
@@ -101,7 +156,10 @@ async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir, optio
 
   const results = await mapConcurrent(filesToAnalyze, maxWorkers, async (fileInfo) => {
     try {
-      return await analyzeFile(workspaceDir, fileInfo, prompt, analyzerCacheDir);
+      // Match by component name (basename without extension) OR exact basename
+      const baseName = path.parse(fileInfo.file_name).name;
+      const routeCtx = routeContextMap[baseName] || EMPTY_ROUTE_CONTEXT;
+      return await analyzeFile(workspaceDir, fileInfo, prompt, analyzerCacheDir, routeCtx);
     } catch (err) {
       console.error(`[Analyzer] Error processing ${fileInfo.file_path}: ${err.message}`);
       return null;

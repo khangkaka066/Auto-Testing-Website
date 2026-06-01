@@ -92,7 +92,7 @@ function extractZipSafely(zipPath, extractRoot) {
 
 // ── Background job runner ─────────────────────────────────────────
 
-async function runPipelineJob(jobId, sourcePath, baseUrl) {
+async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing') {
   const startedAt = new Date().toISOString();
   updateJob(jobId, {
     status: 'running',
@@ -111,6 +111,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       userId: job.user_id,
       projectId: job.project_id,
       sourceCodePath: sourcePath,
+      testType: job.test_type || testType,
       onProgress: (progress) => updateJob(jobId, progress),
     });
 
@@ -236,7 +237,7 @@ async function uploadSource(req, res) {
 }
 
 async function startTest(req, res) {
-  const { user_id, project_id, source_path, base_url, source_name } = req.body;
+  const { user_id, project_id, source_path, base_url, source_name, test_type } = req.body;
   const authenticatedUserId = req.user.id;
 
   if (!user_id || !project_id || !source_path) {
@@ -258,7 +259,7 @@ async function startTest(req, res) {
     return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
   }
 
-  const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url });
+  const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url, testType: test_type });
   await createTestHistory({
     userId: authenticatedUserId,
     projectId: project_id,
@@ -267,7 +268,7 @@ async function startTest(req, res) {
     startTime: job.started_at || job.created_at,
     status: job.status,
   });
-  setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url));
+  setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url, test_type));
 
   return res.json({ success: true, data: job });
 }
@@ -310,7 +311,7 @@ async function getTestHistory(req, res) {
 }
 
 async function startTestFromGithub(req, res) {
-  const { repo_full_name, branch = 'main', base_url } = req.body;
+  const { repo_full_name, branch = 'main', base_url, test_type } = req.body;
   const userId = req.user.id;
   const githubToken = req.user.github_token;
 
@@ -346,7 +347,7 @@ async function startTestFromGithub(req, res) {
     return res.status(400).json({ success: false, message: `Clone failed: ${msg}` });
   }
 
-  const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url });
+  const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url, testType: test_type });
   await createTestHistory({
     userId,
     projectId,
@@ -355,7 +356,7 @@ async function startTestFromGithub(req, res) {
     startTime: job.started_at || job.created_at,
     status: job.status,
   });
-  setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url));
+  setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url, test_type));
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }
 
