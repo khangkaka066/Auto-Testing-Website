@@ -60,20 +60,24 @@ const CODER_PROMPTS = {
   'Functional Testing': 'Generate one Playwright functional test spec file (TypeScript) that tests the business logic and user flows for the component below. Focus on verifiable outcomes, not UI selectors. ',
 };
 
-async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, testType = 'UI Testing') {
-  const planner = item.planner_output || {};
+async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, testType = 'UI Testing', frameworkProfile = null) {
+  const planner   = item.planner_output || {};
+  const testScope = planner.test_scope || 'FULL';
+
   const promptPayload = {
     base_url: baseUrl,
     api_base_url: runtimeUrls.apiBaseUrl || null,
     backend_url: runtimeUrls.backendUrl || runtimeUrls.apiBaseUrl || null,
+    framework_profile: frameworkProfile || null,
     component: {
       name: item.component_name,
       source_file: planner.file_path || '',
       module_type: planner.module_type || '',
       impact_level: planner.impact_level || '',
+      confidence_score: planner.confidence_score ?? null,
+      test_scope: testScope,
       generation_notes: planner.generation_notes || [],
       test_cases: item.test_cases,
-      // Inject analyzer output so Coder can use real selectors & route context
       interactive_elements: item.analyzer_data?.interactive_elements || [],
       route_context: item.analyzer_data?.route_context || null,
     },
@@ -97,8 +101,10 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
     model: prompt.model,
     system_prompt: prompt.systemPrompt,
     test_type: testType,
+    test_scope: testScope,
     base_url: baseUrl,
     runtime_urls: runtimeUrls,
+    framework_profile: frameworkProfile,
     item,
   });
 
@@ -174,12 +180,13 @@ function loadItems(filteredDir, analyzerIndex = {}) {
 }
 
 async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
-  const analyzerIndex = loadAnalyzerData(options.analyzerDir || null);
-  const items = loadItems(filteredDir, analyzerIndex);
+  const analyzerIndex   = loadAnalyzerData(options.analyzerDir || null);
+  const items           = loadItems(filteredDir, analyzerIndex);
   if (items.length === 0) return { generated_count: 0, generated: [] };
 
-  const prompt = loadPrompt('Coder');
-  const coderCacheDir = path.join(cacheDir, 'coder');
+  const prompt          = loadPrompt('Coder');
+  const coderCacheDir   = path.join(cacheDir, 'coder');
+  const frameworkProfile = options.frameworkProfile || null;
   fs.mkdirSync(outputDir, { recursive: true });
 
   const maxWorkers = Math.min(AI_MAX_WORKERS, items.length) || 1;
@@ -187,7 +194,7 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
   const testType = options.testType || 'UI Testing';
   const outputs = await mapConcurrent(items, maxWorkers, async (item) => {
     try {
-      return await generateOne(item, prompt, baseUrl, coderCacheDir, options.runtimeUrls || {}, testType);
+      return await generateOne(item, prompt, baseUrl, coderCacheDir, options.runtimeUrls || {}, testType, frameworkProfile);
     } catch (err) {
       console.error(`[Coder] Error generating spec for ${item.source_file}: ${err.message}`);
       return { generated: [] };
