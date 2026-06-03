@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import API_BASE_URL from "../config";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -49,6 +49,7 @@ export default function TestProgress() {
   const { projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const missedStatusPolls = useRef(0);
   const latestProgress = useMemo(() => {
     try {
       return JSON.parse(sessionStorage.getItem("latest_test_progress") || "{}");
@@ -95,6 +96,7 @@ export default function TestProgress() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!isMounted || !res.data.success) return;
+        missedStatusPolls.current = 0;
         const data = res.data.data;
         setRunState(data);
 
@@ -113,11 +115,25 @@ export default function TestProgress() {
         }
       } catch (err) {
         if (!isMounted) return;
-        setRunState((current) => ({
-          ...current,
-          status: "failed",
-          message: err.response?.data?.message || "Failed to load pipeline status.",
-        }));
+        const statusCode = err.response?.status;
+        setRunState((current) => {
+          const canRetryStatus = current.status === "queued" || current.status === "running";
+          if (canRetryStatus && (statusCode === 404 || !err.response)) {
+            missedStatusPolls.current += 1;
+            if (missedStatusPolls.current < 30) {
+              return {
+                ...current,
+                message: "Reconnecting to the test job status...",
+              };
+            }
+          }
+
+          return {
+            ...current,
+            status: "failed",
+            message: err.response?.data?.message || "Failed to load pipeline status.",
+          };
+        });
       }
     };
 
