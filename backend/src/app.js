@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const compression = require('compression');
-const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+const { rateLimit } = require('express-rate-limit');
 const { CORS_ORIGINS } = require('./config/env');
 const apiRoutes = require('./api/index');
 const { errorMiddleware } = require('./middleware/error');
@@ -38,21 +38,9 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many login attempts. Try again in 15 minutes.' },
 });
 
-// Rate limit cho test run: 10 lần/10 phút mỗi user (chống spam AI pipeline)
-const testRunLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 10,
-  keyGenerator: (req) => req.headers['authorization'] || ipKeyGenerator(req.ip),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many test runs. Wait a few minutes before starting another.' },
-});
-
 app.use(globalLimiter);
 app.use('/api/auth/login',    authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/test/run',         testRunLimiter);
-app.use('/api/test/run-github',  testRunLimiter);
 
 app.get('/',       (req, res) => res.json({ message: 'TestPilot Backend is running' }));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

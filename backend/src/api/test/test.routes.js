@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { authMiddleware } = require('../../middleware/auth');
+const { testRunLimiter } = require('../../middleware/rateLimiters');
 const ctrl = require('./test.controller');
 const { WORKSPACE_BASE_PATH } = require('../../config/env');
 
@@ -46,8 +47,8 @@ router.post('/upload-source', authMiddleware, (req, res, next) => {
 router.post('/history',            authMiddleware, ctrl.addTestHistory);
 router.get('/history',             authMiddleware, ctrl.getTestHistory);
 router.get('/dashboard-stats',     authMiddleware, (req, res, next) => ctrl.getTestDashboardStats(req, res).catch(next));
-router.post('/run',                authMiddleware, (req, res, next) => ctrl.startTest(req, res).catch(next));
-router.post('/run-github',         authMiddleware, (req, res, next) => ctrl.startTestFromGithub(req, res).catch(next));
+router.post('/run',                authMiddleware, testRunLimiter, (req, res, next) => ctrl.startTest(req, res).catch(next));
+router.post('/run-github',         authMiddleware, testRunLimiter, (req, res, next) => ctrl.startTestFromGithub(req, res).catch(next));
 router.get('/run/:project_id',     authMiddleware, ctrl.getTestStatus);
 
 module.exports = router;
