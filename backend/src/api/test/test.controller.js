@@ -111,6 +111,111 @@ async function updateTestHistoryByJob(jobId, changes) {
   return null;
 }
 
+function buildJobState(job) {
+  if (!job) return null;
+  return {
+    success: job.success,
+    job_id: job.job_id,
+    run_id: job.run_id,
+    status: job.status,
+    progress_percent: job.progress_percent,
+    stage: job.stage,
+    message: job.message,
+    sub_progress: job.sub_progress,
+    user_id: job.user_id,
+    project_id: job.project_id,
+    source_path: job.source_path,
+    base_url: job.base_url,
+    created_at: job.created_at,
+    started_at: job.started_at,
+    finished_at: job.finished_at,
+    error: job.error,
+  };
+}
+
+async function persistJobSnapshot(job) {
+  const jobState = buildJobState(job);
+  if (!jobState || !jobState.job_id) return null;
+  const { error } = await supabase
+    .from('test_reports')
+    .update({
+      status: jobState.status,
+      start_time: jobState.started_at || jobState.created_at,
+      end_time: jobState.finished_at || null,
+      result_summary: { job_state: jobState },
+    })
+    .eq('job_id', jobState.job_id);
+  if (error) console.error('[persistJobSnapshot] Supabase error:', error.message);
+  return null;
+}
+
+function updateJobAndSnapshot(jobId, changes) {
+  updateJob(jobId, changes);
+  const job = getJob(jobId);
+  if (job) {
+    persistJobSnapshot(job).catch(err => {
+      console.error('[updateJobAndSnapshot] Supabase error:', err.message);
+    });
+  }
+  return job;
+}
+
+function reportSummaryToFinalReport(summary, score) {
+  if (!summary) return null;
+  if (summary.job_state) return null;
+  return {
+    health_score: summary.health_score ?? score ?? null,
+    summary: {
+      passed: summary.passed ?? 0,
+      failed: summary.failed ?? 0,
+      total: summary.total ?? 0,
+      duration: summary.duration ?? null,
+    },
+    issues: summary.issues || [],
+  };
+}
+
+async function getPersistedJobByProject(projectId, userId) {
+  const { data, error } = await supabase
+    .from('test_reports')
+    .select('project_id, job_id, user_id, start_time, end_time, score, status, result_summary')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .order('start_time', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getPersistedJobByProject] Supabase error:', error.message);
+    return null;
+  }
+  if (!data) return null;
+
+  const jobState = data.result_summary?.job_state;
+  if (jobState) return jobState;
+
+  const finalReport = reportSummaryToFinalReport(data.result_summary, data.score);
+  return {
+    success: true,
+    job_id: data.job_id,
+    run_id: null,
+    status: data.status || (finalReport ? 'completed' : 'queued'),
+    progress_percent: data.status === 'completed' ? 100 : 10,
+    stage: data.status === 'completed' ? 'completed' : data.status || 'queued',
+    message: finalReport ? 'AI pipeline completed' : 'Test job snapshot loaded from history',
+    sub_progress: null,
+    user_id: data.user_id,
+    project_id: data.project_id,
+    source_path: null,
+    base_url: null,
+    created_at: data.start_time,
+    started_at: data.start_time,
+    finished_at: data.end_time,
+    result: finalReport ? { final_report: finalReport } : null,
+    error: null,
+  };
+}
+
 async function getDashboardStats(userId) {
   const { data, error } = await supabase
     .from('test_reports')
@@ -189,7 +294,7 @@ function extractZipSafely(zipPath, extractRoot) {
 
 async function runPipelineJob(jobId, sourcePath, baseUrl) {
   const startedAt = new Date().toISOString();
-  updateJob(jobId, {
+  updateJobAndSnapshot(jobId, {
     status: 'running',
     stage: 'initializing',
     progress_percent: 12,
@@ -206,10 +311,10 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       userId: job.user_id,
       projectId: job.project_id,
       sourceCodePath: sourcePath,
-      onProgress: (progress) => updateJob(jobId, progress),
+      onProgress: (progress) => updateJobAndSnapshot(jobId, progress),
     });
 
-    updateJob(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
+    updateJobAndSnapshot(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
     await pipeline.execute(baseUrl || TARGET_BASE_URL);
 
     const tokensUsed = pipeline.tokensUsed || 0;
@@ -221,7 +326,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
       ? result.final_report.health_score
       : null;
 
-    updateJob(jobId, {
+    updateJobAndSnapshot(jobId, {
       status: 'completed',
       stage: 'completed',
       progress_percent: 100,
@@ -253,7 +358,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl) {
     const error = { type: err.constructor.name, message: err.message };
     if (AI_DEBUG) error.stack = err.stack;
     const finishedAt = new Date().toISOString();
-    updateJob(jobId, {
+    updateJobAndSnapshot(jobId, {
       success: false,
       status: 'failed',
       stage: 'failed',
@@ -379,18 +484,21 @@ async function startTest(req, res) {
     startTime: job.started_at || job.created_at,
     status: job.status,
   });
+  await persistJobSnapshot(job);
   setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url));
 
   return res.json({ success: true, data: job });
 }
 
-function getTestStatus(req, res) {
+async function getTestStatus(req, res) {
   const { project_id } = req.params;
   const job = getJobByProject(project_id);
-  if (!job) {
-    return res.status(404).json({ success: false, message: 'No test job found for this project_id' });
-  }
-  return res.json({ success: true, data: job });
+  if (job) return res.json({ success: true, data: job });
+
+  const persistedJob = await getPersistedJobByProject(project_id, req.user.id);
+  if (persistedJob) return res.json({ success: true, data: persistedJob });
+
+  return res.status(404).json({ success: false, message: 'No test job found for this project_id' });
 }
 
 async function addTestHistory(req, res) {
@@ -480,6 +588,7 @@ async function startTestFromGithub(req, res) {
     startTime: job.started_at || job.created_at,
     status: job.status,
   });
+  await persistJobSnapshot(job);
   setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url));
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }

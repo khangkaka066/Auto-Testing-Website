@@ -49,6 +49,6 @@ router.get('/history',             authMiddleware, ctrl.getTestHistory);
 router.get('/dashboard-stats',     authMiddleware, (req, res, next) => ctrl.getTestDashboardStats(req, res).catch(next));
 router.post('/run',                authMiddleware, testRunLimiter, (req, res, next) => ctrl.startTest(req, res).catch(next));
 router.post('/run-github',         authMiddleware, testRunLimiter, (req, res, next) => ctrl.startTestFromGithub(req, res).catch(next));
-router.get('/run/:project_id',     authMiddleware, ctrl.getTestStatus);
+router.get('/run/:project_id',     authMiddleware, (req, res, next) => ctrl.getTestStatus(req, res).catch(next));
 
 module.exports = router;
