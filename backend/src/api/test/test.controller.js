@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const AdmZip = require('adm-zip');
 const { createJob, updateJob, getJobByProject, getJob } = require('../../lib/jobStore');
@@ -27,6 +27,48 @@ function projectNameFromZip(zipFilename) {
 
 function displayNameFromSource(sourcePath, fallback = 'source_project') {
   return safeName(path.basename(sourcePath || ''), fallback);
+}
+
+async function downloadGithubArchive({ repoFullName, branch, githubToken, destinationDir }) {
+  const archiveUrl = `https://api.github.com/repos/${repoFullName}/zipball/${encodeURIComponent(branch)}`;
+  const response = await axios.get(archiveUrl, {
+    responseType: 'arraybuffer',
+    maxContentLength: 250 * 1024 * 1024,
+    maxBodyLength: 250 * 1024 * 1024,
+    headers: {
+      Authorization: `Bearer ${githubToken}`,
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'TestPilot',
+    },
+  });
+
+  const zip = new AdmZip(Buffer.from(response.data));
+  const entries = zip.getEntries();
+  const rootDir = entries.find(entry => entry.entryName.includes('/'))?.entryName.split('/')[0];
+  const destinationRoot = path.resolve(destinationDir);
+
+  fs.mkdirSync(destinationRoot, { recursive: true });
+
+  for (const entry of entries) {
+    const relativeName = rootDir && entry.entryName.startsWith(`${rootDir}/`)
+      ? entry.entryName.slice(rootDir.length + 1)
+      : entry.entryName;
+
+    if (!relativeName) continue;
+
+    const outputPath = path.resolve(destinationRoot, relativeName);
+    if (!outputPath.startsWith(`${destinationRoot}${path.sep}`)) {
+      throw new Error('Archive contains an unsafe file path');
+    }
+
+    if (entry.isDirectory) {
+      fs.mkdirSync(outputPath, { recursive: true });
+      continue;
+    }
+
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, entry.getData());
+  }
 }
 
 async function createTestHistory({
@@ -408,18 +450,25 @@ async function startTestFromGithub(req, res) {
     safeName(userId), `github_${projectId}`
   );
 
-  // Dùng OAuth token để clone — hoạt động với cả private repo
-  const cloneUrl = `https://x-access-token:${githubToken}@github.com/${repo_full_name}.git`;
-
   try {
     fs.mkdirSync(path.dirname(cloneDir), { recursive: true });
-    execSync(
-      `git clone --depth=1 --branch ${branch} ${cloneUrl} ${cloneDir}`,
-      { timeout: 120_000, stdio: 'pipe' }
-    );
+    await downloadGithubArchive({
+      repoFullName: repo_full_name,
+      branch,
+      githubToken,
+      destinationDir: cloneDir,
+    });
   } catch (err) {
-    const msg = (err.stderr || err.stdout || err.message || '').toString().split('\n').find(l => l.trim()) || 'Clone failed';
-    return res.status(400).json({ success: false, message: `Clone failed: ${msg}` });
+    const status = err.response?.status;
+    const githubMessage = Buffer.isBuffer(err.response?.data)
+      ? err.response.data.toString('utf8')
+      : typeof err.response?.data === 'string'
+        ? err.response.data
+        : err.response?.data?.message || '';
+    const reason = status === 404
+      ? `repository or branch not found: ${repo_full_name}@${branch}`
+      : (githubMessage || err.message || 'download failed');
+    return res.status(400).json({ success: false, message: `Clone failed: ${reason}` });
   }
 
   const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url });
