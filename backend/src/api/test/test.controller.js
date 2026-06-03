@@ -29,6 +29,17 @@ function displayNameFromSource(sourcePath, fallback = 'source_project') {
   return safeName(path.basename(sourcePath || ''), fallback);
 }
 
+function parseScoreValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.round(value)))
+    : null;
+  const match = String(value).match(/\d+(\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? Math.min(100, Math.max(0, Math.round(parsed))) : null;
+}
+
 async function downloadGithubArchive({ repoFullName, branch, githubToken, destinationDir }) {
   const archiveUrl = `https://api.github.com/repos/${repoFullName}/zipball/${encodeURIComponent(branch)}`;
   const response = await axios.get(archiveUrl, {
@@ -94,7 +105,7 @@ async function createTestHistory({
     filename,
     start_time: startTime || new Date().toISOString(),
     end_time: endTime,
-    score,
+    score: parseScoreValue(score),
     status,
     display_ts: displayTs,
   };
@@ -324,7 +335,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
     const finishedAt = new Date().toISOString();
     const result = pipeline.loadFinalReport();
     const score = result.final_report && result.final_report.health_score != null
-      ? result.final_report.health_score
+      ? parseScoreValue(result.final_report.health_score)
       : null;
 
     updateJobAndSnapshot(jobId, {

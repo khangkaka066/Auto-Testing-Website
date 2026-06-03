@@ -15,10 +15,16 @@ async function addUserTokens(userId, count) {
   if (!count || count <= 0) return;
   // Dùng Supabase RPC để atomic increment — tránh race condition khi nhiều job chạy song song
   const supabase = require('./supabase');
-  const { error } = await supabase.rpc('increment_user_tokens', {
-    p_user_id: userId,
-    p_tokens: count,
-  }).catch(() => ({ error: { message: 'rpc_failed' } }));
+  let error = null;
+  try {
+    const result = await supabase.rpc('increment_user_tokens', {
+      p_user_id: userId,
+      p_tokens: count,
+    });
+    error = result.error;
+  } catch (err) {
+    error = { message: err.message || 'rpc_failed' };
+  }
 
   if (error) {
     // Fallback về read-modify-write nếu RPC chưa được tạo
