@@ -13,6 +13,25 @@ export default function TestRunner() {
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [testType, setTestType] = useState("UI Testing");
+
+  const TEST_TYPES = [
+    {
+      value: "UI Testing",
+      label: "UI Testing",
+      desc: "Test giao diện người dùng với Playwright",
+    },
+    {
+      value: "API Testing",
+      label: "API Testing",
+      desc: "Test các API endpoint của backend",
+    },
+    {
+      value: "Functional Testing",
+      label: "Functional Testing",
+      desc: "Test luồng nghiệp vụ và chức năng",
+    },
+  ];
 
   const isZipFile = (file) => file && file.name.toLowerCase().endsWith(".zip");
 
@@ -85,6 +104,7 @@ export default function TestRunner() {
           project_id: uploadedSource.project_id,
           source_path: uploadedSource.source_path,
           source_name: uploadedSource.project_name,
+          test_type: testType,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -190,6 +210,30 @@ export default function TestRunner() {
                 </span>
               </>
             )}
+          </div>
+
+          {/* Test type selector */}
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-slate-700 mb-3">Test Type</p>
+            <div className="grid grid-cols-3 gap-3">
+              {TEST_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setTestType(t.value)}
+                  className={`flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all ${
+                    testType === t.value
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <span className={`text-sm font-semibold ${testType === t.value ? "text-orange-700" : "text-slate-800"}`}>
+                    {t.label}
+                  </span>
+                  <span className="text-xs text-slate-500 mt-1">{t.desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Start button */}

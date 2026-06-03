@@ -54,19 +54,32 @@ function normalizeCoderOutput(output) {
   };
 }
 
-async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}) {
-  const planner = item.planner_output || {};
+const CODER_PROMPTS = {
+  'UI Testing': 'Generate one conservative Playwright E2E spec file (TypeScript) for the component below. ',
+  'API Testing': 'Generate one Playwright API test spec file (TypeScript) using `request` from @playwright/test to test the API endpoints below. Do NOT use `page` or any browser interactions — use only `request.get/post/put/delete`. ',
+  'Functional Testing': 'Generate one Playwright functional test spec file (TypeScript) that tests the business logic and user flows for the component below. Focus on verifiable outcomes, not UI selectors. ',
+};
+
+async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, testType = 'UI Testing', frameworkProfile = null) {
+  const planner   = item.planner_output || {};
+  const testScope = planner.test_scope || 'FULL';
+
   const promptPayload = {
     base_url: baseUrl,
     api_base_url: runtimeUrls.apiBaseUrl || null,
     backend_url: runtimeUrls.backendUrl || runtimeUrls.apiBaseUrl || null,
+    framework_profile: frameworkProfile || null,
     component: {
       name: item.component_name,
       source_file: planner.file_path || '',
       module_type: planner.module_type || '',
       impact_level: planner.impact_level || '',
+      confidence_score: planner.confidence_score ?? null,
+      test_scope: testScope,
       generation_notes: planner.generation_notes || [],
       test_cases: item.test_cases,
+      interactive_elements: item.analyzer_data?.interactive_elements || [],
+      route_context: item.analyzer_data?.route_context || null,
     },
     constraints: {
       framework: '@playwright/test',
@@ -77,8 +90,9 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}) {
     },
   };
 
+  const instruction = CODER_PROMPTS[testType] || CODER_PROMPTS['UI Testing'];
   const userPrompt =
-    'Generate one conservative Playwright E2E spec file (TypeScript) for the component below. ' +
+    instruction +
     'Return ONLY JSON matching the CoderBatchOutput schema.\n' +
     JSON.stringify(promptPayload, null, 2);
 
@@ -86,8 +100,11 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}) {
     stage: 'coder',
     model: prompt.model,
     system_prompt: prompt.systemPrompt,
+    test_type: testType,
+    test_scope: testScope,
     base_url: baseUrl,
     runtime_urls: runtimeUrls,
+    framework_profile: frameworkProfile,
     item,
   });
 
@@ -130,33 +147,54 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}) {
   return output;
 }
 
-function loadItems(filteredDir) {
+function loadAnalyzerData(analyzerDir) {
+  if (!analyzerDir || !fs.existsSync(analyzerDir)) return {};
+  const index = {};
+  for (const f of fs.readdirSync(analyzerDir).filter(f => f.endsWith('_analysis.json'))) {
+    try {
+      const d = JSON.parse(fs.readFileSync(path.join(analyzerDir, f), 'utf-8'));
+      // key by the base prefix: remove _analysis.json suffix
+      const key = f.replace('_analysis.json', '');
+      index[key] = d;
+    } catch { /* skip corrupt files */ }
+  }
+  return index;
+}
+
+function loadItems(filteredDir, analyzerIndex = {}) {
   return fs.readdirSync(filteredDir)
     .filter(f => f.endsWith('.json'))
     .map(filename => {
       const content = JSON.parse(fs.readFileSync(path.join(filteredDir, filename), 'utf-8'));
+      // Match analyzer data: plan file is `*_plan.json`, analyzer file is `*_analysis.json`
+      const analyzerKey = filename.replace('_plan.json', '');
+      const analyzerData = analyzerIndex[analyzerKey] || null;
       return {
         source_file: filename,
         component_name: content.component_name || path.parse(filename).name,
         test_cases: content.test_cases || [],
         planner_output: content,
+        analyzer_data: analyzerData,
       };
     });
 }
 
 async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
-  const items = loadItems(filteredDir);
+  const analyzerIndex   = loadAnalyzerData(options.analyzerDir || null);
+  const items           = loadItems(filteredDir, analyzerIndex);
   if (items.length === 0) return { generated_count: 0, generated: [] };
 
-  const prompt = loadPrompt('Coder');
-  const coderCacheDir = path.join(cacheDir, 'coder');
+  const prompt          = loadPrompt('Coder');
+  const coderCacheDir   = path.join(cacheDir, 'coder');
+  const frameworkProfile = options.frameworkProfile || null;
   fs.mkdirSync(outputDir, { recursive: true });
 
   const maxWorkers = Math.min(AI_MAX_WORKERS, items.length) || 1;
 
+  const testType = options.testType || 'UI Testing';
   const outputs = await mapConcurrent(items, maxWorkers, async (item) => {
     try {
-      return await generateOne(item, prompt, baseUrl, coderCacheDir, options.runtimeUrls || {});
+      return await generateOne(item, prompt, baseUrl, coderCacheDir, options.runtimeUrls || {}, testType, frameworkProfile);
     } catch (err) {
       console.error(`[Coder] Error generating spec for ${item.source_file}: ${err.message}`);
       return { generated: [] };

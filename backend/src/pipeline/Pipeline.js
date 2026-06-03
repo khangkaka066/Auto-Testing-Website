@@ -15,6 +15,7 @@ const reporter  = require('./stages/reporter');
 const { startRuntimeServices } = require('./runtime/serviceManager');
 const { enrichInfrastructureWithAI } = require('./runtime/backendInference');
 const { bootstrapDatabases } = require('./runtime/dbBootstrap');
+const { buildFrameworkProfile } = require('../lib/frameworkProfile');
 
 const PROGRESS_STAGES = [
   { key: 'detector', label: 'Scanning project files', percent: 18 },
@@ -61,10 +62,11 @@ function buildUniqueRunWorkspace(baseDir, runId) {
 }
 
 class Pipeline {
-  constructor({ userId, projectId, sourceCodePath, onProgress }) {
+  constructor({ userId, projectId, sourceCodePath, testType, onProgress }) {
     this.userId = userId;
     this.projectId = projectId;
     this.sourceCodePath = sourceCodePath;
+    this.testType = testType || 'UI Testing';
     this.onProgress = typeof onProgress === 'function' ? onProgress : () => {};
 
     const base = path.resolve(WORKSPACE_BASE_PATH);
@@ -89,10 +91,11 @@ class Pipeline {
     };
 
     this._setupDirectories();
-    this.infrastructure = null;
-    this.runtimeUrls = {};
-    this.dbEnvs = {};
-    this._stopDbs = () => {};
+    this.infrastructure    = null;
+    this.frameworkProfile  = null;
+    this.runtimeUrls       = {};
+    this.dbEnvs            = {};
+    this._stopDbs          = () => {};
   }
 
   _reportProgress(stageKey, message) {
@@ -142,7 +145,11 @@ class Pipeline {
     this._reportProgress('detector', 'Scanning project files and folders');
     console.log('[STAGE 1] Detector...');
     const results = detector.run(this.sourceCodePath);
-    this.infrastructure = results.infrastructure || null;
+    this.infrastructure   = results.infrastructure || null;
+    this.frameworkProfile = buildFrameworkProfile(this.infrastructure);
+    if (this.frameworkProfile) {
+      console.log(`  → Framework detected: ${this.frameworkProfile.detected_framework}`);
+    }
     const outPath = path.join(this.dirs.detector, 'detector_results.json');
     fs.writeFileSync(outPath, JSON.stringify(results, null, 2), 'utf-8');
     console.log(`  → ${results.source_files.length} source files found`);
@@ -193,7 +200,7 @@ class Pipeline {
       onProgress: ({ completed, total }) => {
         this._reportSubProgress('analyzer', 'Analyzing source files', completed, total);
       },
-    });
+    }, this.frameworkProfile);
   }
 
   async runPlanner(testType = 'UI Testing') {
@@ -203,20 +210,23 @@ class Pipeline {
       onProgress: ({ completed, total }) => {
         this._reportSubProgress('planner', 'Planning analyzed files', completed, total);
       },
-    });
+    }, this.frameworkProfile);
   }
 
   runFilter() {
     this._reportProgress('filter', 'Selecting test cases that can be generated safely');
     console.log('[STAGE 3.5] Filter...');
-    filter.run(this.dirs.planner, this.dirs.filter);
+    filter.run(this.dirs.planner, this.dirs.filter, { analyzerDir: this.dirs.analyzer });
   }
 
   async runCoder(baseUrl) {
     this._reportProgress('coder', 'Generating Playwright test files');
     console.log('[STAGE 4] Coder...');
     const manifest = await coder.run(this.dirs.filter, this.specsDir, baseUrl, this.cacheDir, {
+      testType: this.testType,
+      analyzerDir: this.dirs.analyzer,
       runtimeUrls: this.runtimeUrls,
+      frameworkProfile: this.frameworkProfile,
       onProgress: ({ completed, total }) => {
         this._reportSubProgress('coder', 'Generating test specs', completed, total);
       },
@@ -317,7 +327,7 @@ class Pipeline {
       await this.runDbBootstrap();
       this.runtimeUrls = buildRuntimeUrls(this.infrastructure, baseUrl);
       await this.runAnalyzer(detectorOut);
-      await this.runPlanner('UI Testing');
+      await this.runPlanner(this.testType);
       this.runFilter();
       await this.runCoder(this.runtimeUrls.baseUrl || baseUrl);
 

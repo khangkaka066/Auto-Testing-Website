@@ -2,7 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 const SUPPORTED_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.vue']);
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'public', '__pycache__', '.emergent', 'venv']);
+const IGNORED_DIRS = new Set([
+  'node_modules', '.git', 'dist', 'build', 'public', '__pycache__', '.emergent', 'venv',
+  // Editor auto-save / version-history folders — contain timestamped duplicates, not real source
+  '.history', '.local-history', '.vscode-history',
+  // Other tooling artifacts
+  'coverage', '.nyc_output', 'storybook-static', '.turbo', '.next', '.nuxt', '.svelte-kit',
+]);
+
+// Files whose names are clearly editor-generated timestamps (e.g. GameVerifyClaims_20260524181924.jsx)
+const TIMESTAMP_FILENAME_RE = /^.+_\d{14}\.(jsx?|tsx?)$/;
 
 function readJson(filePath) {
   try {
@@ -256,7 +265,7 @@ function scanProjectFiles(rootPath) {
         walk(fullPath);
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
-        if (SUPPORTED_EXTENSIONS.has(ext)) {
+        if (SUPPORTED_EXTENSIONS.has(ext) && !TIMESTAMP_FILENAME_RE.test(entry.name)) {
           const lang = ['.ts', '.tsx'].includes(ext) ? 'TypeScript' : 'JavaScript';
           files.push({
             file_name: entry.name,

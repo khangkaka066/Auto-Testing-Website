@@ -132,7 +132,7 @@ function normalizePlannerOutput(result) {
   };
 }
 
-async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testing') {
+async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testing', frameworkProfile = null) {
   const content = JSON.parse(fs.readFileSync(analyzerFilePath, 'utf-8'));
   const { applicable, skipped, notes } = resolveApplicableTypes(content, [testType]);
 
@@ -151,6 +151,7 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
 
   const payload = {
     analyzer_output: content,
+    framework_profile: frameworkProfile || null,
     requested_test_types: applicable,
     original_requested_test_types: [testType],
     skipped_test_types: skipped,
@@ -162,6 +163,7 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
     model: prompt.model,
     system_prompt: prompt.systemPrompt,
     test_type: testType,
+    framework_profile: frameworkProfile,
     analysis: content,
   });
 
@@ -192,7 +194,7 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
   return data;
 }
 
-async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing', options = {}) {
+async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing', options = {}, frameworkProfile = null) {
   const analyzerFiles = fs.readdirSync(analyzerDir).filter(f => f.endsWith('.json'));
   if (analyzerFiles.length === 0) return;
 
@@ -202,7 +204,7 @@ async function run(analyzerDir, outputDir, cacheDir, testType = 'UI Testing', op
 
   const results = await mapConcurrent(analyzerFiles, maxWorkers, async (filename) => {
     try {
-      return await planFile(path.join(analyzerDir, filename), prompt, plannerCacheDir, testType);
+      return await planFile(path.join(analyzerDir, filename), prompt, plannerCacheDir, testType, frameworkProfile);
     } catch (err) {
       console.error(`[Planner] Error processing ${filename}: ${err.message}`);
       return null;

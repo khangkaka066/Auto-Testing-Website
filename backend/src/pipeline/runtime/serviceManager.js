@@ -326,6 +326,11 @@ async function startRuntimeServices(infrastructure, outputDir, extraBackendEnv =
         PORT: String(port),
         VITE_PORT: String(port),
         BASE_URL: service.url,
+        // Prevent CRA / react-scripts / craco from auto-opening a browser tab.
+        // Playwright manages its own browser; an extra tab would open on the host display.
+        BROWSER: 'none',
+        // CI=true also suppresses the browser prompt on some CRA versions, but we set
+        // BROWSER=none explicitly so it works even without CI mode quirks.
       };
       if (manifest.backend && manifest.backend.status !== 'failed') {
         env.API_BASE_URL = manifest.backend.url;
