@@ -77,6 +77,32 @@ function loadLocalReport(projectId) {
   }
 }
 
+function normalizeResultSummary(item) {
+  const s = item?.result_summary;
+  if (!s || s.job_state) return null;
+  return {
+    health_score: s.health_score ?? item.score ?? null,
+    summary: {
+      passed: s.passed ?? 0,
+      failed: s.failed ?? 0,
+      total: s.total ?? 0,
+      duration: s.duration ?? null,
+    },
+    issues: s.issues || [],
+  };
+}
+
+function reportFromHistoryItem(item) {
+  const finalReport = normalizeResultSummary(item);
+  if (!finalReport) return null;
+  return {
+    project_id: item.project_id,
+    job_id: item.job_id,
+    finished_at: item.end_time,
+    result: { final_report: finalReport },
+  };
+}
+
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -136,25 +162,46 @@ export default function TestReport() {
     }
 
     let isMounted = true;
-    axios
-      .get(`${API_BASE_URL}/api/test/run/${projectId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
+
+    const fetchReport = async () => {
+      let nextRun = null;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/test/run/${projectId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!isMounted || !res.data.success) return;
-        setRun(res.data.data);
-      })
-      .catch((err) => {
+        nextRun = res.data.data;
+        setRun(nextRun);
+      } catch (err) {
         const fallback = loadLocalReport(projectId);
         if (fallback) {
+          nextRun = fallback;
           setRun(fallback);
-          return;
+        } else {
+          toast.error(err.response?.data?.message || "Failed to load test report");
         }
-        toast.error(err.response?.data?.message || "Failed to load test report");
-      })
-      .finally(() => {
+      }
+
+      try {
+        if (!isMounted) return;
+        const currentReport = nextRun?.result?.final_report;
+        if (currentReport?.health_score || currentReport?.summary?.total) return;
+        const res = await axios.get(`${API_BASE_URL}/api/test/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!isMounted || !res.data.success) return;
+        const item = (res.data.data || []).find((entry) => String(entry.project_id) === String(projectId));
+        const fromHistory = reportFromHistoryItem(item);
+        if (fromHistory) setRun(fromHistory);
+      } catch (err) {
+        const fallback = loadLocalReport(projectId);
+        if (fallback) setRun(fallback);
+      } finally {
         if (isMounted) setLoading(false);
-      });
+      }
+    };
+
+    fetchReport();
 
     return () => {
       isMounted = false;

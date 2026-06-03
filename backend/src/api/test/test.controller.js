@@ -117,7 +117,11 @@ async function createTestHistory({
 
 async function updateTestHistoryByJob(jobId, changes) {
   if (!jobId) return null;
-  const { error } = await supabase.from('test_reports').update(changes).eq('job_id', jobId);
+  const nextChanges = { ...changes };
+  if (Object.prototype.hasOwnProperty.call(nextChanges, 'score')) {
+    nextChanges.score = parseScoreValue(nextChanges.score);
+  }
+  const { error } = await supabase.from('test_reports').update(nextChanges).eq('job_id', jobId);
   if (error) console.error('[updateTestHistoryByJob] Supabase error:', error.message);
   return null;
 }
@@ -186,7 +190,21 @@ function reportSummaryToFinalReport(summary, score) {
   };
 }
 
-async function getPersistedJobByProject(projectId, userId) {
+function hydrateJobWithPersistedReport(job, persisted) {
+  if (!job || !persisted?.result_summary || persisted.result_summary.job_state) return job;
+  const finalReport = reportSummaryToFinalReport(persisted.result_summary, persisted.score);
+  if (!finalReport) return job;
+  return {
+    ...job,
+    status: persisted.status || job.status,
+    progress_percent: persisted.status === 'completed' ? 100 : job.progress_percent,
+    stage: persisted.status === 'completed' ? 'completed' : job.stage,
+    finished_at: persisted.end_time || job.finished_at,
+    result: job.result || { final_report: finalReport },
+  };
+}
+
+async function getPersistedTestReport(projectId, userId) {
   const { data, error } = await supabase
     .from('test_reports')
     .select('project_id, job_id, user_id, start_time, end_time, score, status, result_summary')
@@ -197,9 +215,14 @@ async function getPersistedJobByProject(projectId, userId) {
     .maybeSingle();
 
   if (error) {
-    console.error('[getPersistedJobByProject] Supabase error:', error.message);
+    console.error('[getPersistedTestReport] Supabase error:', error.message);
     return null;
   }
+  return data || null;
+}
+
+async function getPersistedJobByProject(projectId, userId) {
+  const data = await getPersistedTestReport(projectId, userId);
   if (!data) return null;
 
   const jobState = data.result_summary?.job_state;
@@ -323,14 +346,13 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       projectId: job.project_id,
       sourceCodePath: sourcePath,
       testType: job.test_type || testType,
-      onProgress: (progress) => updateJob(jobId, progress),
+      onProgress: (progress) => updateJobAndSnapshot(jobId, progress),
     });
 
     updateJobAndSnapshot(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
     await pipeline.execute(baseUrl || TARGET_BASE_URL);
 
     const tokensUsed = pipeline.tokensUsed || 0;
-    addUserTokens(job.user_id, tokensUsed);
 
     const finishedAt = new Date().toISOString();
     const result = pipeline.loadFinalReport();
@@ -365,6 +387,9 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       status: 'completed',
       score,
       result_summary: resultSummary,
+    });
+    addUserTokens(job.user_id, tokensUsed).catch(err => {
+      console.error('[runPipelineJob] token accounting error:', err.message);
     });
   } catch (err) {
     const error = { type: err.constructor.name, message: err.message };
@@ -496,6 +521,7 @@ async function startTest(req, res) {
     startTime: job.started_at || job.created_at,
     status: job.status,
   });
+  await persistJobSnapshot(job);
   setImmediate(() => runPipelineJob(job.job_id, resolvedSourcePath, base_url, test_type));
 
   return res.json({ success: true, data: job });
@@ -504,7 +530,10 @@ async function startTest(req, res) {
 async function getTestStatus(req, res) {
   const { project_id } = req.params;
   const job = getJobByProject(project_id);
-  if (job) return res.json({ success: true, data: job });
+  if (job) {
+    const persisted = await getPersistedTestReport(project_id, req.user.id);
+    return res.json({ success: true, data: hydrateJobWithPersistedReport(job, persisted) });
+  }
 
   const persistedJob = await getPersistedJobByProject(project_id, req.user.id);
   if (persistedJob) return res.json({ success: true, data: persistedJob });
@@ -599,6 +628,7 @@ async function startTestFromGithub(req, res) {
     startTime: job.started_at || job.created_at,
     status: job.status,
   });
+  await persistJobSnapshot(job);
   setImmediate(() => runPipelineJob(job.job_id, cloneDir, base_url, test_type));
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }

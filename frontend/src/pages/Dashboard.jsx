@@ -42,9 +42,23 @@ function formatDuration(seconds) {
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
+function normalizeResultSummary(item) {
+  const s = item?.result_summary;
+  if (!s || s.job_state) return null;
+  return {
+    health_score: s.health_score ?? item.score ?? null,
+    passed: s.passed ?? 0,
+    failed: s.failed ?? 0,
+    total: s.total ?? 0,
+    duration: s.duration ?? null,
+    issues_count: s.issues_count ?? (Array.isArray(s.issues) ? s.issues.length : 0),
+    issues: s.issues || [],
+  };
+}
+
 function lastResultFromHistory(item) {
   if (!item) return null;
-  const s = item.result_summary;
+  const s = normalizeResultSummary(item);
   if (s) {
     return {
       project_id: item.project_id,
@@ -820,10 +834,10 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {historyList.map((item) => {
-                      const score = parseScore(item.score ?? item.result_summary?.health_score);
+                      const summary = normalizeResultSummary(item);
+                      const score = parseScore(item.score ?? summary?.health_score);
                       const variant = scoreBadgeVariant(score);
                       const canOpenReport = Boolean(item.project_id);
-                      const summary = item.result_summary;
 
                       const durationSec = item.start_time && item.end_time
                         ? Math.round((new Date(item.end_time) - new Date(item.start_time)) / 1000)
