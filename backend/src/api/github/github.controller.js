@@ -10,6 +10,11 @@ const {
 
 // Lưu tạm state → userId để xác thực callback (xóa sau 10 phút)
 const pendingStates = new Map();
+const frontendBaseUrl = FRONTEND_URL.replace(/\/+$/, '');
+
+function dashboardRedirectUrl(params) {
+  return `${frontendBaseUrl}/dashboard?${params}`;
+}
 
 function redirectToGithub(req, res) {
   const userId = req.user.id;
@@ -36,7 +41,7 @@ async function handleCallback(req, res) {
   const pending = pendingStates.get(state);
   if (!pending || pending.expiresAt < Date.now()) {
     pendingStates.delete(state);
-    return res.redirect(`${FRONTEND_URL}/dashboard?github=error&reason=invalid_state`);
+    return res.redirect(dashboardRedirectUrl('github=error&reason=invalid_state'));
   }
   pendingStates.delete(state);
 
@@ -50,7 +55,7 @@ async function handleCallback(req, res) {
 
     const { access_token, error } = tokenRes.data;
     if (error || !access_token) {
-      return res.redirect(`${FRONTEND_URL}/dashboard?github=error&reason=${error || 'no_token'}`);
+      return res.redirect(dashboardRedirectUrl(`github=error&reason=${error || 'no_token'}`));
     }
 
     // Lấy thông tin GitHub user
@@ -64,9 +69,9 @@ async function handleCallback(req, res) {
       github_avatar: profileRes.data.avatar_url,
     });
 
-    res.redirect(`${FRONTEND_URL}/dashboard?github=connected&login=${profileRes.data.login}`);
+    res.redirect(dashboardRedirectUrl(`github=connected&login=${profileRes.data.login}`));
   } catch (err) {
-    res.redirect(`${FRONTEND_URL}/dashboard?github=error&reason=${encodeURIComponent(err.message)}`);
+    res.redirect(dashboardRedirectUrl(`github=error&reason=${encodeURIComponent(err.message)}`));
   }
 }
 

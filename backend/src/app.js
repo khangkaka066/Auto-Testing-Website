@@ -58,6 +58,7 @@ app.get('/',       (req, res) => res.json({ message: 'TestPilot Backend is runni
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api', apiRoutes);
+app.use('/auth/github', require('./api/github/github.routes'));
 
 app.use(errorMiddleware);
 
