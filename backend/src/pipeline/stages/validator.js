@@ -2,28 +2,51 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const BACKEND_ROOT = path.resolve(__dirname, '../../..');
+
+function resolveTscBin() {
+  try {
+    return require.resolve('typescript/bin/tsc', { paths: [BACKEND_ROOT] });
+  } catch {
+    return null;
+  }
+}
+
 function getSpecFiles(specsDir) {
   if (!fs.existsSync(specsDir)) return [];
   return fs.readdirSync(specsDir)
     .filter(f => f.endsWith('.spec.ts'))
-    .map(f => path.join(specsDir, f));
+    .map(f => path.resolve(specsDir, f));
 }
 
 function run(specsDir, validatorOutputDir) {
   const specFiles = getSpecFiles(specsDir);
   if (specFiles.length === 0) return true;
 
+  const tscBin = resolveTscBin();
+  if (!tscBin) {
+    fs.mkdirSync(validatorOutputDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(validatorOutputDir, 'validator_errors.log'),
+      'TypeScript compiler is not installed in the backend package. Run `npm install` in backend/ before starting the pipeline.',
+      'utf-8'
+    );
+    return false;
+  }
+
   const result = spawnSync(
-    'npx',
+    process.execPath,
     [
-      'tsc', '--noEmit',
+      tscBin,
+      '--noEmit',
       '--target', 'es2022',
+      '--module', 'esnext',
       '--moduleResolution', 'bundler',
       '--skipLibCheck',
       '--lib', 'es2022,dom',
       ...specFiles,
     ],
-    { encoding: 'utf-8', shell: process.platform === 'win32' }
+    { cwd: BACKEND_ROOT, encoding: 'utf-8' }
   );
 
   if (result.status === 0) return true;
