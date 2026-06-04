@@ -1,5 +1,12 @@
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";       
 import Register from "./pages/Register"; 
@@ -10,6 +17,7 @@ import TestProgress from "./pages/TestProgress";
 import TestReport from "./pages/TestReport";
 import PricingPage from "./pages/PricingPage";
 import BillingPage from "./pages/BillingPage";
+import FeaturesPage from "./pages/FeaturesPage";
 import { Toaster } from "./components/ui/sonner";
 import ChatWidget from "./components/ui/ChatWidget";
 
@@ -17,6 +25,7 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />       
@@ -28,6 +37,7 @@ function App() {
           <Route path="/test-report/:projectId" element={<TestReport />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/billing" element={<BillingPage />} />
+          <Route path="/features" element={<FeaturesPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-left" />

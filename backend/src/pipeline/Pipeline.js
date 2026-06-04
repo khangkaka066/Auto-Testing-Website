@@ -321,7 +321,7 @@ class Pipeline {
     console.log('\n=== AI PIPELINE STARTED ===');
 
     // runWithTracking tự đo tổng tokens tiêu thụ trong toàn bộ pipeline
-    this.tokensUsed = await runWithTracking(async () => {
+    const tokenResult = await runWithTracking(async () => {
       const detectorOut = await this.runDetector();
       await this.runBackendInference(detectorOut);
       await this.runDbBootstrap();
@@ -361,7 +361,16 @@ class Pipeline {
       }
     });
 
-    console.log(`=== AI PIPELINE COMPLETED — tokens used: ${this.tokensUsed} ===\n`);
+    this.tokensUsed   = tokenResult.total;
+    this.inputTokens  = tokenResult.input;
+    this.outputTokens = tokenResult.output;
+
+    // gpt-5-nano pricing (update if model changes)
+    const PRICE_INPUT  = 1.10 / 1_000_000; // $1.10 per 1M input tokens
+    const PRICE_OUTPUT = 4.40 / 1_000_000; // $4.40 per 1M output tokens
+    this.costUsd = this.inputTokens * PRICE_INPUT + this.outputTokens * PRICE_OUTPUT;
+
+    console.log(`=== AI PIPELINE COMPLETED — input: ${this.inputTokens}, output: ${this.outputTokens}, total: ${this.tokensUsed}, cost: $${this.costUsd.toFixed(6)} ===\n`);
   }
 
   loadFinalReport() {

@@ -1,5 +1,11 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Twitter, Github, Linkedin } from "lucide-react";
+
+const ROUTE_MAP = {
+  Features: "/features",
+  Pricing: "/pricing",
+};
 
 const cols = [
   {
@@ -56,12 +62,21 @@ export default function Footer() {
               <ul className="mt-4 space-y-3">
                 {c.links.map((l) => (
                   <li key={l}>
-                    <a
-                      href="#"
-                      className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
-                    >
-                      {l}
-                    </a>
+                    {ROUTE_MAP[l] ? (
+                      <Link
+                        to={ROUTE_MAP[l]}
+                        className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                      >
+                        {l}
+                      </Link>
+                    ) : (
+                      <a
+                        href="#"
+                        className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                      >
+                        {l}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

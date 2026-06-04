@@ -352,7 +352,10 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
     updateJobAndSnapshot(jobId, { run_id: pipeline.runId, run_workspace_dir: pipeline.runWorkspaceDir });
     await pipeline.execute(baseUrl || TARGET_BASE_URL);
 
-    const tokensUsed = pipeline.tokensUsed || 0;
+    const tokensUsed   = pipeline.tokensUsed   || 0;
+    const inputTokens  = pipeline.inputTokens  || 0;
+    const outputTokens = pipeline.outputTokens || 0;
+    const costUsd      = pipeline.costUsd      || 0;
 
     const finishedAt = new Date().toISOString();
     const result = pipeline.loadFinalReport();
@@ -387,6 +390,9 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       status: 'completed',
       score,
       result_summary: resultSummary,
+      input_tokens:  inputTokens,
+      output_tokens: outputTokens,
+      cost_usd:      costUsd,
     });
     addUserTokens(job.user_id, tokensUsed).catch(err => {
       console.error('[runPipelineJob] token accounting error:', err.message);

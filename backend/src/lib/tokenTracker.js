@@ -35,18 +35,19 @@ async function addUserTokens(userId, count) {
 }
 
 function runWithTracking(fn) {
-  const store = { total: 0 };
+  const store = { input: 0, output: 0, total: 0 };
   return jobTokenStorage.run(store, async () => {
     await fn();
-    return store.total;
+    return { input: store.input, output: store.output, total: store.total };
   });
 }
 
 function recordTokens(usageObj) {
   const store = jobTokenStorage.getStore();
-  if (store && usageObj?.total_tokens) {
-    store.total += usageObj.total_tokens;
-  }
+  if (!store || !usageObj) return;
+  store.input  += usageObj.prompt_tokens     || 0;
+  store.output += usageObj.completion_tokens || 0;
+  store.total  += usageObj.total_tokens      || 0;
 }
 
 module.exports = { getUserStats, addUserTokens, runWithTracking, recordTokens };
