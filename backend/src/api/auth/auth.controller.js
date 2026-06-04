@@ -7,6 +7,7 @@ const { getUserStats } = require('../../lib/tokenTracker');
 const { invalidateUserCache } = require('../../middleware/auth');
 const { sendMail } = require('../../lib/mailer');
 const { welcomeEmail, loginNotificationEmail } = require('../../lib/emailTemplates');
+const { joinUrl } = require('../../lib/url');
 const supabase = require('../../lib/supabase');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../../lib/email');
 
@@ -129,7 +130,7 @@ async function verifyEmail(req, res) {
   const frontendUrl = FRONTEND_URL || 'http://localhost:3000';
 
   if (!token) {
-    return res.redirect(`${frontendUrl}/login?error=missing_token`);
+    return res.redirect(joinUrl(frontendUrl, '/login?error=missing_token'));
   }
 
   const { data: verification, error } = await supabase
@@ -139,16 +140,16 @@ async function verifyEmail(req, res) {
     .maybeSingle();
 
   if (error || !verification) {
-    return res.redirect(`${frontendUrl}/login?error=invalid_token`);
+    return res.redirect(joinUrl(frontendUrl, '/login?error=invalid_token'));
   }
 
   if (verification.verified_at) {
     // Already verified — just send them to login
-    return res.redirect(`${frontendUrl}/login?verified=true`);
+    return res.redirect(joinUrl(frontendUrl, '/login?verified=true'));
   }
 
   if (new Date(verification.expires_at) < new Date()) {
-    return res.redirect(`${frontendUrl}/login?error=token_expired`);
+    return res.redirect(joinUrl(frontendUrl, '/login?error=token_expired'));
   }
 
   await supabase
@@ -172,7 +173,7 @@ async function verifyEmail(req, res) {
 
   await logAuth('email_verified', 'success', verification.email, verification.user_id, req);
 
-  return res.redirect(`${frontendUrl}/login?verified=true`);
+  return res.redirect(joinUrl(frontendUrl, '/login?verified=true'));
 }
 
 async function login(req, res) {
