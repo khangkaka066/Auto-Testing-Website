@@ -148,16 +148,32 @@ function buildJobState(job) {
   };
 }
 
+function finalReportToResultSummary(finalReport, score = null) {
+  if (!finalReport) return null;
+  return {
+    health_score: finalReport.health_score ?? score ?? null,
+    passed: finalReport.summary?.passed ?? 0,
+    failed: finalReport.summary?.failed ?? 0,
+    total: finalReport.summary?.total ?? 0,
+    duration: finalReport.summary?.duration ?? null,
+    issues_count: (finalReport.issues ?? []).length,
+    issues: (finalReport.issues ?? []).slice(0, 20),
+  };
+}
+
 async function persistJobSnapshot(job) {
   const jobState = buildJobState(job);
   if (!jobState || !jobState.job_id) return null;
+  const finalReport = job?.result?.final_report;
+  const resultSummary = finalReportToResultSummary(finalReport, job?.score);
   const { error } = await supabase
     .from('test_reports')
     .update({
       status: jobState.status,
       start_time: jobState.started_at || jobState.created_at,
       end_time: jobState.finished_at || null,
-      result_summary: { job_state: jobState },
+      result_summary: resultSummary || { job_state: jobState },
+      ...(resultSummary ? { score: parseScoreValue(resultSummary.health_score) } : {}),
     })
     .eq('job_id', jobState.job_id);
   if (error) console.error('[persistJobSnapshot] Supabase error:', error.message);
@@ -177,7 +193,7 @@ function updateJobAndSnapshot(jobId, changes) {
 
 function reportSummaryToFinalReport(summary, score) {
   if (!summary) return null;
-  if (summary.job_state) return null;
+  if (summary.job_state) return summary.job_state.result?.final_report || null;
   return {
     health_score: summary.health_score ?? score ?? null,
     summary: {
@@ -188,6 +204,25 @@ function reportSummaryToFinalReport(summary, score) {
     },
     issues: summary.issues || [],
   };
+}
+
+function loadFinalReportFromJobState(jobState) {
+  if (!jobState?.run_id || !jobState?.user_id) return null;
+  const reportPath = path.join(
+    path.resolve(WORKSPACE_BASE_PATH),
+    safeName(jobState.user_id),
+    'runs',
+    safeName(jobState.run_id),
+    '7_reporter',
+    'final_report.json'
+  );
+  try {
+    if (!fs.existsSync(reportPath)) return null;
+    return JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+  } catch (err) {
+    console.error('[loadFinalReportFromJobState] Failed to read final report:', err.message);
+    return null;
+  }
 }
 
 function hydrateJobWithPersistedReport(job, persisted) {
@@ -226,7 +261,23 @@ async function getPersistedJobByProject(projectId, userId) {
   if (!data) return null;
 
   const jobState = data.result_summary?.job_state;
-  if (jobState) return jobState;
+  if (jobState) {
+    const finalReport = reportSummaryToFinalReport(data.result_summary, data.score)
+      || loadFinalReportFromJobState(jobState);
+    if (finalReport && !jobState.result?.final_report) {
+      updateTestHistoryByJob(data.job_id, {
+        result_summary: finalReportToResultSummary(finalReport),
+        score: finalReport.health_score,
+      }).catch(err => {
+        console.error('[getPersistedJobByProject] Failed to repair persisted report:', err.message);
+      });
+    }
+    return {
+      ...jobState,
+      progress_percent: jobState.status === 'completed' ? 100 : jobState.progress_percent,
+      result: jobState.result || (finalReport ? { final_report: finalReport } : null),
+    };
+  }
 
   const finalReport = reportSummaryToFinalReport(data.result_summary, data.score);
   return {
@@ -374,16 +425,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       result,
     });
 
-    const finalReport = result?.final_report;
-    const resultSummary = finalReport ? {
-      health_score: finalReport.health_score ?? null,
-      passed: finalReport.summary?.passed ?? 0,
-      failed: finalReport.summary?.failed ?? 0,
-      total: finalReport.summary?.total ?? 0,
-      duration: finalReport.summary?.duration ?? null,
-      issues_count: (finalReport.issues ?? []).length,
-      issues: (finalReport.issues ?? []).slice(0, 20),
-    } : null;
+    const resultSummary = finalReportToResultSummary(result?.final_report);
 
     await updateTestHistoryByJob(jobId, {
       end_time: finishedAt,
