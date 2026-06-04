@@ -82,6 +82,7 @@ const PricingSwitch = ({
 export default function PricingSection2() {
   const [isUpdates, setIsUpdates] = useState(false);
   const [isCorporate, setIsCorporate] = useState(false);
+  const [showQR, setShowQR] = useState(false); // State mở popup QR
   const pricingRef = useRef<HTMLDivElement>(null);
 
   const revealVariants = {
@@ -306,7 +307,8 @@ export default function PricingSection2() {
                   animationNum={6}
                   timelineRef={pricingRef}
                   customVariants={revealVariants}
-                  className="text-white text-xl font-semibold h-10 sm:h-16 w-full rounded-full border-4 shadow-sm shadow-orange-500 border-orange-500 bg-gradient-to-t from-orange-600 via-orange-500 to-orange-600"
+                  onClick={() => setShowQR(true)} // Mở Modal khi click
+                  className="text-white text-xl font-semibold h-10 sm:h-16 w-full rounded-full border-4 shadow-sm shadow-orange-500 border-orange-500 bg-gradient-to-t from-orange-600 via-orange-500 to-orange-600 hover:scale-105 transition-transform"
                 >
                   Purchase
                 </TimelineContent>
@@ -315,6 +317,67 @@ export default function PricingSection2() {
           </div>
         </div>
       </div>
+
+      {/* Modal hiển thị QR Code */}
+      {showQR && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 relative shadow-2xl animate-in fade-in zoom-in duration-200">
+            {/* Nút đóng */}
+            <button 
+              onClick={() => setShowQR(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Thanh toán chuyển khoản</h3>
+              <p className="text-gray-500 text-sm mb-6">Quét mã QR bằng ứng dụng ngân hàng của bạn</p>
+              
+              {/* Box chứa QR */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 inline-block">
+                {/* URL tự tạo ảnh VietQR với thông tin:
+                  - Ngân hàng: TPB (TP Bank)
+                  - Số tài khoản: 50445838579
+                  - Tên: CONG TY TAP DOAN HUU HAN TESTPILOT (Nên bỏ dấu để tương thích VietQR)
+                  - Số tiền: Tự động đổi $1 = 25000 VNĐ
+                */}
+                <img 
+                  src={`https://img.vietqr.io/image/TPB-50445838579-print.png?amount=${currentPrice * 25000}&addInfo=Thanh toan TestPilot&accountName=CONG TY TAP DOAN HUU HAN TESTPILOT`} 
+                  alt="Mã QR Ngân hàng" 
+                  className="w-48 h-48 md:w-64 md:h-64 object-contain mx-auto mix-blend-multiply"
+                />
+              </div>
+
+              {/* Thông tin Text dự phòng */}
+              <div className="space-y-3 text-left bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Ngân hàng:</span>
+                  <span className="font-semibold text-gray-900">TP Bank</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Số tài khoản:</span>
+                  <span className="font-semibold text-gray-900 tracking-wider">5044 5838 579</span>
+                </div>
+                <div className="flex justify-between items-center text-sm gap-4">
+                  <span className="text-gray-500 whitespace-nowrap">Chủ tài khoản:</span>
+                  <span className="font-semibold text-gray-900 text-right">Công Ty Tập Đoàn Hữu Hạn TestPitlot</span>
+                </div>
+                <div className="flex justify-between items-center text-sm pt-2 border-t border-orange-200/50">
+                  <span className="text-gray-500">Số tiền cần chuyển:</span>
+                  <span className="font-bold text-orange-600 text-lg">{(currentPrice * 25000).toLocaleString('vi-VN')} VNĐ</span>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <p className="text-xs text-gray-400 italic">
+                  * Hệ thống sẽ tự động kích hoạt tài khoản của bạn sau 1-3 phút kể từ khi nhận được tiền.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
