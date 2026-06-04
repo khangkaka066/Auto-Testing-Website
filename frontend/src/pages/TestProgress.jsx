@@ -73,6 +73,7 @@ export default function TestProgress() {
   const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "Queued";
   const subProgress = runState.sub_progress;
   const showSubProgress = runState.status === "running" && subProgress && Number(subProgress.total) > 0;
+  const failureError = runState.status === "failed" ? runState.error : null;
   const subProgressPercent = showSubProgress
     ? Math.max(0, Math.min(100, subProgress.percent ?? Math.round((subProgress.completed / subProgress.total) * 100)))
     : 0;
@@ -229,6 +230,16 @@ export default function TestProgress() {
             <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm">
               <p className="font-semibold text-emerald-700 mb-1">Report</p>
               <p className="font-mono text-xs text-emerald-700 break-all">{runState.report_path}</p>
+            </div>
+          ) : null}
+
+          {failureError ? (
+            <div className="mt-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-800">
+              <p className="font-semibold mb-1">Failure details</p>
+              <p className="break-words">
+                {failureError.type ? `${failureError.type}: ` : ""}
+                {failureError.message || "The pipeline stopped before returning an error message."}
+              </p>
             </div>
           ) : null}
 

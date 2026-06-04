@@ -148,6 +148,20 @@ function buildJobState(job) {
   };
 }
 
+function serializePipelineError(err) {
+  const error = {
+    type: err?.constructor?.name || 'Error',
+    message: err?.message || 'Unknown pipeline error',
+  };
+  if (AI_DEBUG && err?.stack) error.stack = err.stack;
+  return error;
+}
+
+function failureMessage(stage, error) {
+  const stageLabel = stage && stage !== 'queued' ? ` at ${stage}` : '';
+  return `AI pipeline failed${stageLabel}: ${error.message}`;
+}
+
 function finalReportToResultSummary(finalReport, score = null) {
   if (!finalReport) return null;
   return {
@@ -434,20 +448,26 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       console.error('[runPipelineJob] token accounting error:', err.message);
     });
   } catch (err) {
-    const error = { type: err.constructor.name, message: err.message };
-    if (AI_DEBUG) error.stack = err.stack;
+    const currentJob = getJob(jobId);
+    const failedStage = currentJob?.stage || 'failed';
+    const error = serializePipelineError(err);
     const finishedAt = new Date().toISOString();
-    updateJobAndSnapshot(jobId, {
+    const failedJob = updateJobAndSnapshot(jobId, {
       success: false,
       status: 'failed',
       stage: 'failed',
       progress_percent: 100,
-      message: 'AI pipeline failed',
+      message: failureMessage(failedStage, error),
       sub_progress: null,
       finished_at: finishedAt,
       error,
     });
-    await updateTestHistoryByJob(jobId, { end_time: finishedAt, status: 'failed', score: null });
+    await updateTestHistoryByJob(jobId, {
+      end_time: finishedAt,
+      status: 'failed',
+      score: null,
+      result_summary: { job_state: buildJobState(failedJob) },
+    });
   }
 }
 
