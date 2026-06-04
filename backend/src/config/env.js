@@ -18,6 +18,7 @@ module.exports = {
   SOURCE_WORKSPACE_BASE_PATH: process.env.SOURCE_WORKSPACE_BASE_PATH || 'uploaded_sources',
   UPLOAD_ARCHIVE_BASE_PATH: process.env.UPLOAD_ARCHIVE_BASE_PATH || 'uploaded_archives',
   TARGET_BASE_URL: process.env.TARGET_BASE_URL || 'http://localhost:5173',
+  SERVICE_INSTALL_TIMEOUT_MS: intFromEnv('SERVICE_INSTALL_TIMEOUT_MS', 600000, 1000),
   SERVICE_START_TIMEOUT_MS: intFromEnv('SERVICE_START_TIMEOUT_MS', 120000, 1000),
   AI_PYTHON_URL: process.env.AI_PYTHON_URL || 'http://localhost:8001',
   SUPABASE_URL: process.env.SUPABASE_URL || '',

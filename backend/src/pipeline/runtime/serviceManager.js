@@ -4,7 +4,7 @@ const http = require('http');
 const https = require('https');
 const net = require('net');
 const { spawn } = require('child_process');
-const { SERVICE_START_TIMEOUT_MS } = require('../../config/env');
+const { SERVICE_INSTALL_TIMEOUT_MS, SERVICE_START_TIMEOUT_MS } = require('../../config/env');
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -249,7 +249,7 @@ async function startService(service, logsDir, env) {
       cwd: service.root_path,
       env: runtimeEnv,
       logFile,
-      timeoutMs: 180000,
+      timeoutMs: SERVICE_INSTALL_TIMEOUT_MS,
     });
     appendLog(logFile, '\n[install complete]\n');
   }
