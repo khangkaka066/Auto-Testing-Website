@@ -121,12 +121,12 @@ export default function TestProgress() {
           const canRetryStatus = current.status === "queued" || current.status === "running";
           if (canRetryStatus && (statusCode === 404 || !err.response)) {
             missedStatusPolls.current += 1;
-            if (missedStatusPolls.current < 30) {
-              return {
-                ...current,
-                message: "Reconnecting to the test job status...",
-              };
-            }
+            return {
+              ...current,
+              message: missedStatusPolls.current < 30
+                ? "Reconnecting to the test job status..."
+                : "Still reconnecting to the test job status. The backend may be waking up or restarting.",
+            };
           }
 
           return {

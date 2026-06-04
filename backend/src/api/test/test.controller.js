@@ -110,8 +110,18 @@ async function createTestHistory({
     display_ts: displayTs,
   };
 
-  const { error } = await supabase.from('test_reports').upsert(record, { onConflict: 'job_id', ignoreDuplicates: false });
-  if (error) console.error('[createTestHistory] Supabase error:', error.message);
+  const { error } = await supabase.from('test_reports').insert([record]);
+  if (error) {
+    if (jobId && error.code === '23505') {
+      const { error: updateError } = await supabase
+        .from('test_reports')
+        .update(record)
+        .eq('job_id', jobId);
+      if (updateError) console.error('[createTestHistory] Supabase update error:', updateError.message);
+    } else {
+      console.error('[createTestHistory] Supabase insert error:', error.message);
+    }
+  }
   return record;
 }
 
@@ -180,17 +190,30 @@ async function persistJobSnapshot(job) {
   if (!jobState || !jobState.job_id) return null;
   const finalReport = job?.result?.final_report;
   const resultSummary = finalReportToResultSummary(finalReport, job?.score);
-  const { error } = await supabase
+  const changes = {
+    status: jobState.status,
+    start_time: jobState.started_at || jobState.created_at,
+    end_time: jobState.finished_at || null,
+    result_summary: resultSummary || { job_state: jobState },
+    ...(resultSummary ? { score: parseScoreValue(resultSummary.health_score) } : {}),
+  };
+  const { data, error } = await supabase
     .from('test_reports')
-    .update({
-      status: jobState.status,
-      start_time: jobState.started_at || jobState.created_at,
-      end_time: jobState.finished_at || null,
-      result_summary: resultSummary || { job_state: jobState },
-      ...(resultSummary ? { score: parseScoreValue(resultSummary.health_score) } : {}),
-    })
-    .eq('job_id', jobState.job_id);
+    .update(changes)
+    .eq('job_id', jobState.job_id)
+    .select('job_id');
   if (error) console.error('[persistJobSnapshot] Supabase error:', error.message);
+  if (!error && (!data || data.length === 0)) {
+    const fallback = {
+      user_id: jobState.user_id,
+      project_id: jobState.project_id,
+      job_id: jobState.job_id,
+      filename: displayNameFromSource(jobState.source_path),
+      ...changes,
+    };
+    const { error: insertError } = await supabase.from('test_reports').insert([fallback]);
+    if (insertError) console.error('[persistJobSnapshot] Supabase fallback insert error:', insertError.message);
+  }
   return null;
 }
 
