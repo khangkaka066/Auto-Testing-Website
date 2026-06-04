@@ -125,6 +125,30 @@ async function createTestHistory({
   return record;
 }
 
+async function ensureProjectRecord({ userId, projectId, projectName, description }) {
+  if (!userId || !projectId) {
+    throw new Error('Cannot create project record without user_id and project_id');
+  }
+
+  const record = {
+    project_id: projectId,
+    user_id: userId,
+    project_name: projectName || safeName(projectId, 'project'),
+    description: description || null,
+  };
+
+  const { error } = await supabase
+    .from('projects')
+    .upsert(record, { onConflict: 'project_id', ignoreDuplicates: false });
+
+  if (error) {
+    console.error('[ensureProjectRecord] Supabase error:', error.message);
+    throw new Error(`Could not create project record: ${error.message}`);
+  }
+
+  return record;
+}
+
 async function updateTestHistoryByJob(jobId, changes) {
   if (!jobId) return null;
   const nextChanges = { ...changes };
@@ -441,10 +465,6 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
     await pipeline.execute(baseUrl || TARGET_BASE_URL);
 
     const tokensUsed   = pipeline.tokensUsed   || 0;
-    const inputTokens  = pipeline.inputTokens  || 0;
-    const outputTokens = pipeline.outputTokens || 0;
-    const costUsd      = pipeline.costUsd      || 0;
-
     const finishedAt = new Date().toISOString();
     const result = pipeline.loadFinalReport();
     const score = result.final_report && result.final_report.health_score != null
@@ -469,9 +489,6 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       status: 'completed',
       score,
       result_summary: resultSummary,
-      input_tokens:  inputTokens,
-      output_tokens: outputTokens,
-      cost_usd:      costUsd,
     });
     addUserTokens(job.user_id, tokensUsed).catch(err => {
       console.error('[runPipelineJob] token accounting error:', err.message);
@@ -537,21 +554,23 @@ async function uploadSource(req, res) {
     });
     fs.rmSync(archivePath, { force: true });
 
-    // Ghi project vào Supabase
-    await supabase.from('projects').insert([{
-      project_id: projectId,
-      user_id: userId,
-      project_name: path.basename(req.file.originalname, '.zip'),
+    await ensureProjectRecord({
+      userId,
+      projectId,
+      projectName: path.basename(req.file.originalname, '.zip'),
       description: `Uploaded from ${req.file.originalname}`,
-    }]).then(() => {});
+    });
 
     // Ghi log upload file zip vào Supabase
-    await supabase.from('uploaded_files').insert([{
+    const { error: uploadedFileError } = await supabase.from('uploaded_files').insert([{
       project_id: projectId,
       file_name: req.file.originalname,
       file_path: sourceStorage.archiveKey,
       file_size: fileSizeBytes,
-    }]).then(() => {});
+    }]);
+    if (uploadedFileError) {
+      throw new Error(`Could not save uploaded file record: ${uploadedFileError.message}`);
+    }
 
     return res.json({
       success: true,
@@ -602,6 +621,13 @@ async function startTest(req, res) {
   if (!fs.existsSync(resolvedSourcePath) || !fs.statSync(resolvedSourcePath).isDirectory()) {
     return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
   }
+
+  await ensureProjectRecord({
+    userId: authenticatedUserId,
+    projectId: project_id,
+    projectName: source_name || displayNameFromSource(resolvedSourcePath),
+    description: `Test run for ${source_name || displayNameFromSource(resolvedSourcePath)}`,
+  });
 
   const job = createJob({ userId: authenticatedUserId, projectId: project_id, sourcePath: resolvedSourcePath, baseUrl: base_url, testType: test_type });
   await createTestHistory({
@@ -709,6 +735,13 @@ async function startTestFromGithub(req, res) {
       : (githubMessage || err.message || 'download failed');
     return res.status(400).json({ success: false, message: `Clone failed: ${reason}` });
   }
+
+  await ensureProjectRecord({
+    userId,
+    projectId,
+    projectName: repo_full_name,
+    description: `GitHub repository ${repo_full_name}@${branch}`,
+  });
 
   const job = createJob({ userId, projectId, sourcePath: cloneDir, baseUrl: base_url, testType: test_type });
   await createTestHistory({
