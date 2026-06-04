@@ -103,6 +103,14 @@ function reportFromHistoryItem(item) {
   };
 }
 
+function hasReportContent(report) {
+  if (!report) return false;
+  const hasScore = report.health_score !== null && report.health_score !== undefined;
+  const hasTotal = report.summary?.total !== null && report.summary?.total !== undefined;
+  const hasIssues = Array.isArray(report.issues) && report.issues.length > 0;
+  return hasScore || hasTotal || hasIssues;
+}
+
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -171,7 +179,10 @@ export default function TestReport() {
         });
         if (!isMounted || !res.data.success) return;
         nextRun = res.data.data;
-        setRun(nextRun);
+        setRun((current) => {
+          if (hasReportContent(nextRun?.result?.final_report)) return nextRun;
+          return hasReportContent(current?.result?.final_report) ? current : nextRun;
+        });
       } catch (err) {
         const fallback = loadLocalReport(projectId);
         if (fallback) {
@@ -185,7 +196,7 @@ export default function TestReport() {
       try {
         if (!isMounted) return;
         const currentReport = nextRun?.result?.final_report;
-        if (currentReport?.health_score || currentReport?.summary?.total) return;
+        if (hasReportContent(currentReport)) return;
         const res = await axios.get(`${API_BASE_URL}/api/test/history`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -231,7 +242,7 @@ export default function TestReport() {
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-slate-500 text-left">
             Loading report...
           </div>
-        ) : !report.health_score && !summary.total && issues.length === 0 ? (
+        ) : !hasReportContent(report) ? (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-left">
             <h1 className="text-2xl font-bold text-slate-900">Report is not available</h1>
             <p className="mt-2 text-slate-500">The test run has not produced a final report yet.</p>
