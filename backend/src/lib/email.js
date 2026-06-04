@@ -1,4 +1,5 @@
 const { RESEND_API_KEY, RESEND_FROM_EMAIL, BACKEND_URL, FRONTEND_URL } = require('../config/env');
+const { joinUrl } = require('./url');
 
 async function callResend(payload) {
   if (!RESEND_API_KEY) {
@@ -21,7 +22,7 @@ async function callResend(payload) {
 const fromAddress = () => RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
 async function sendVerificationEmail(to, name, token) {
-  const link = `${BACKEND_URL || 'http://localhost:5001'}/api/auth/verify?token=${token}`;
+  const link = joinUrl(BACKEND_URL || 'http://localhost:5001', `/api/auth/verify?token=${token}`);
   await callResend({
     from: fromAddress(),
     to: [to],
@@ -32,7 +33,7 @@ async function sendVerificationEmail(to, name, token) {
 }
 
 async function sendWelcomeEmail(to, name) {
-  const dashUrl = `${FRONTEND_URL || 'http://localhost:3000'}/dashboard`;
+  const dashUrl = joinUrl(FRONTEND_URL || 'http://localhost:3000', '/dashboard');
   await callResend({
     from: fromAddress(),
     to: [to],
