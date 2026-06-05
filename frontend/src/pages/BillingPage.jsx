@@ -8,12 +8,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { useLanguage } from "../context/LanguageContext";
-import { billingT } from "../i18n/billing";
+import { billingT } from "../content/billing";
 
 function formatDate(val) {
   if (!val) return "—";
-  return new Date(val).toLocaleString("vi-VN", {
+  return new Date(val).toLocaleString("en-US", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -51,8 +50,7 @@ const PACKAGES = [
 
 export default function BillingPage() {
   const navigate = useNavigate();
-  const { lang } = useLanguage();
-  const t = billingT[lang];
+  const t = billingT;
   const [user, setUser] = useState({ name: "Developer" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
   const [initial, setInitial] = useState(localStorage.getItem("user_name")?.charAt(0).toUpperCase() || "U");

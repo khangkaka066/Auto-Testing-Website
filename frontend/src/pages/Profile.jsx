@@ -5,8 +5,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
 import { User, Mail, Lock, ArrowLeft, Camera } from "lucide-react";
-import { useLanguage } from "../context/LanguageContext";
-import { profileT } from "../i18n/profile";
+import { profileT } from "../content/profile";
 
 export default function Profile() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
@@ -15,8 +14,7 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const { lang } = useLanguage();
-  const t = profileT[lang];
+  const t = profileT;
 
   useEffect(() => {
     const token = localStorage.getItem("token");

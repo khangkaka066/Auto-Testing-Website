@@ -2,12 +2,10 @@ import React, { useRef } from "react";
 import { Check } from "lucide-react";
 import { SectionHeader } from "./Features";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { useLanguage } from "../../context/LanguageContext";
-import { pricingT } from "../../i18n/landing";
+import { pricingT } from "../../content/landing";
 
 export default function Pricing() {
-  const { lang } = useLanguage();
-  const t = pricingT[lang];
+  const t = pricingT;
 
   const headerRef = useRef(null);
   const t1 = useRef(null), t2 = useRef(null), t3 = useRef(null);

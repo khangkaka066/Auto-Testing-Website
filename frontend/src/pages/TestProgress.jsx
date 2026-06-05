@@ -5,8 +5,7 @@ import axios from "axios";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
-import { useLanguage } from "../context/LanguageContext";
-import { testProgressT } from "../i18n/testing";
+import { testProgressT } from "../content/testing";
 
 const STATUS_META = {
   queued: {
@@ -31,14 +30,13 @@ const STATUS_META = {
   },
 };
 
-// STAGE_LABELS moved inside component to support i18n via t.stageLabels
+// STAGE_LABELS stays inside the component so it can use the page copy.
 
 export default function TestProgress() {
   const { projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { lang } = useLanguage();
-  const t = testProgressT[lang];
+  const t = testProgressT;
   const STAGE_LABELS = t.stageLabels;
   const missedStatusPolls = useRef(0);
   const latestProgress = useMemo(() => {

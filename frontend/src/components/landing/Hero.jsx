@@ -1,13 +1,11 @@
 import React from "react";
-import { ArrowRight, Check, Play } from "lucide-react";
+import { ArrowRight, Bot, Check, Play, Sparkles, Timer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Root, Parallax } from "@bsmnt/scrollytelling";
-import { useLanguage } from "../../context/LanguageContext";
-import { heroT } from "../../i18n/landing";
+import { heroT } from "../../content/landing";
 
 export default function Hero() {
-  const { lang } = useLanguage();
-  const t = heroT[lang];
+  const t = heroT;
 
   return (
     <Root start="top 100%" end="top 0%" scrub={1}>
@@ -80,58 +78,98 @@ export default function Hero() {
 
           {/* Right panel */}
           <div className="hero-fade-in relative" style={{ animationDelay: "120ms" }}>
-            <Parallax tween={{ start: 0, end: 100, fromTo: [{ y: 0 }, { y: -30 }] }}>
-              <div className="relative rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 overflow-hidden">
-                <div className="bg-slate-900 px-4 py-3 flex items-center gap-2 border-b border-slate-800">
-                  <div className="flex gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-red-500" />
-                    <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                    <div className="h-3 w-3 rounded-full bg-green-500" />
-                  </div>
-                  <span className="ml-2 text-xs text-slate-400 font-mono">{t.liveRun} · {t.checkoutFlow}</span>
-                  <span className="ml-auto text-xs font-mono text-green-400">{t.passing}</span>
-                </div>
-
-                <div className="p-5 space-y-3 bg-slate-950">
-                  {[
-                    { label: "navigate /cart", status: "pass", dur: "120ms" },
-                    { label: "[data-testid=checkout]", status: "pass", dur: "45ms" },
-                    { label: "expect orderConfirm.toBeVisible", status: "pass", dur: "230ms" },
-                    { label: "expect total.$30.00", status: "pass", dur: "18ms" },
-                  ].map((row, i) => (
-                    <div key={i} className="flex items-center gap-3 text-xs font-mono">
-                      <span className="shrink-0 h-4 w-4 rounded-full bg-green-500/15 border border-green-500/40 flex items-center justify-center">
-                        <Check className="h-2.5 w-2.5 text-green-400" />
+            <Parallax tween={{ start: 0, end: 100, movementY: { value: 30, unit: "px" } }}>
+              <div className="relative mx-auto max-w-xl lg:max-w-none">
+                <div className="absolute -inset-4 rounded-[2rem] bg-orange-200/25 blur-3xl" />
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15">
+                  <div className="border-b border-slate-200 bg-slate-100/90 px-4 pt-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-2">
+                        <span className="h-3 w-3 rounded-full bg-red-400 shadow-inner" />
+                        <span className="h-3 w-3 rounded-full bg-amber-400 shadow-inner" />
+                        <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-inner" />
+                      </div>
+                      <div className="flex min-w-0 flex-1 items-end gap-1">
+                        <div className="min-w-0 rounded-t-lg border border-b-0 border-slate-200 bg-white px-3 py-2 shadow-sm">
+                          <p className="truncate font-mono text-[11px] font-semibold text-slate-700">
+                            {t.checkoutFlow}
+                          </p>
+                        </div>
+                        <div className="hidden rounded-t-lg px-3 py-2 font-mono text-[11px] text-slate-400 sm:block">
+                          {t.liveRun}
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        {t.passing}
                       </span>
-                      <span className="text-slate-300 flex-1 truncate">{row.label}</span>
-                      <span className="text-slate-600">{row.dur}</span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="bg-slate-950 p-4 sm:p-5">
+                    <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-orange-300" />
+                        <span className="font-mono text-xs font-semibold text-slate-200">{t.aiAuthor}</span>
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-500">{t.generated}</span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {[
+                        { label: "navigate /cart", dur: "120ms" },
+                        { label: "[data-testid=checkout]", dur: "45ms" },
+                        { label: "expect orderConfirm.toBeVisible", dur: "230ms" },
+                        { label: "expect total.$30.00", dur: "18ms" },
+                      ].map((row, i) => (
+                        <div key={row.label} className="group flex items-center gap-3 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-3 text-xs font-mono transition-colors hover:border-emerald-400/30 hover:bg-slate-900">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10">
+                            <Check className="h-3 w-3 text-emerald-300" />
+                          </span>
+                          <span className="w-5 shrink-0 text-slate-600">{String(i + 1).padStart(2, "0")}</span>
+                          <span className="min-w-0 flex-1 truncate text-slate-200">{row.label}</span>
+                          <span className="text-slate-500">{row.dur}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 divide-x divide-slate-200 border-t border-slate-200 bg-white">
+                    {[
+                      { label: t.statLabels.tests, value: "12" },
+                      { label: t.statLabels.passed, value: "12", tone: "text-emerald-600" },
+                      { label: t.statLabels.duration, value: "1.4s" },
+                    ].map((stat) => (
+                      <div key={stat.label} className="px-4 py-4">
+                        <p className="text-[11px] font-medium text-slate-500">{stat.label}</p>
+                        <p className={`mt-1 text-lg font-bold tabular-nums ${stat.tone || "text-slate-900"}`}>{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-between text-xs">
-                  <div className="flex gap-5">
-                    <span className="text-slate-500">{t.statLabels.tests} <strong className="text-slate-900 font-semibold">12</strong></span>
-                    <span className="text-slate-500">{t.statLabels.passed} <strong className="text-green-600 font-semibold">12</strong></span>
-                    <span className="text-slate-500">{t.statLabels.duration} <strong className="text-slate-900 font-semibold">1.4s</strong></span>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white">
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900">{t.aiAuthor}</p>
+                      <p className="truncate text-xs text-slate-500">{t.generated}</p>
+                    </div>
                   </div>
-                  <span className="font-mono text-orange-500 font-semibold text-[10px] uppercase tracking-wider">{t.aiAuthor}</span>
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                      <Timer className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">1.4s</p>
+                      <p className="text-xs text-slate-500">Full run completed</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </Parallax>
-
-            {/* Floating badge */}
-            <div className="absolute -bottom-4 -left-4 hidden md:block">
-              <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 shadow-lg flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">AI</span>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">{t.aiAuthor}</div>
-                  <div className="text-[11px] text-slate-500">{t.generated}</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>

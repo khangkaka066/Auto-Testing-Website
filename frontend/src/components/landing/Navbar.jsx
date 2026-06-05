@@ -4,9 +4,7 @@ import { Menu, X, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
-import { useLanguage } from "../../context/LanguageContext";
-import LanguageToggle from "../ui/LanguageToggle";
-import { navbarT } from "../../i18n/landing";
+import { navbarT } from "../../content/landing";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -17,8 +15,7 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
-  const { lang } = useLanguage();
-  const t = navbarT[lang];
+  const t = navbarT;
 
   const fetchNavbarUserData = () => {
     const token = localStorage.getItem("token");
@@ -88,8 +85,6 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3 relative" ref={dropdownRef}>
-          <LanguageToggle />
-
           {isLoggedIn ? (
             <>
               <Link to="/dashboard" className="text-xs font-semibold text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1 transition-colors">
@@ -147,7 +142,6 @@ export default function Navbar() {
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{l.label}</a>
             ))}
             <Link to="/pricing" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{t.pricing}</Link>
-            <LanguageToggle className="self-start" />
             <div className="h-px bg-slate-100" />
             {isLoggedIn ? (
               <>

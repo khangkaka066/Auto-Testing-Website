@@ -10,9 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { useLanguage } from "../context/LanguageContext";
-import LanguageToggle from "../components/ui/LanguageToggle";
-import { dashboardT } from "../i18n/dashboard";
+import { dashboardT } from "../content/dashboard";
 
 function scoreBadgeVariant(score) {
   if (score === null || score === undefined) return { bar: "bg-slate-200", text: "text-slate-400" };
@@ -33,7 +31,7 @@ function formatDateTime(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("vi-VN", {
+  return date.toLocaleString("en-US", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -89,9 +87,7 @@ function lastResultFromRun(data) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-
-  const { lang } = useLanguage();
-  const t = dashboardT[lang];
+  const t = dashboardT;
 
   const [user, setUser] = useState({ name: "Developer", email: "" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
@@ -410,11 +406,6 @@ export default function Dashboard() {
         </nav>
 
         <div className="p-3 border-t border-slate-700/60">
-          {sidebarOpen && (
-            <div className="mb-2 flex justify-center">
-              <LanguageToggle className="border-slate-700 bg-slate-800" />
-            </div>
-          )}
           {sidebarOpen ? (
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 bg-orange-600 text-white font-bold rounded-full flex items-center justify-center text-sm shrink-0 overflow-hidden">
@@ -770,7 +761,7 @@ export default function Dashboard() {
                     {lastResult.finished_at && (
                       <p className="text-[11px] text-slate-400 flex items-center gap-1 border-t pt-2">
                         <Clock className="h-3 w-3" />
-                        {new Date(lastResult.finished_at).toLocaleString("vi-VN")}
+                        {new Date(lastResult.finished_at).toLocaleString("en-US")}
                       </p>
                     )}
                   </div>

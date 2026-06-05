@@ -1,8 +1,7 @@
 import React, { useRef } from "react";
 import { Sparkles, Globe, Eye, GitBranch, Zap, ShieldCheck } from "lucide-react";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { useLanguage } from "../../context/LanguageContext";
-import { featuresT } from "../../i18n/landing";
+import { featuresT } from "../../content/landing";
 
 const ICONS = [
   <Sparkles className="h-5 w-5" />,
@@ -23,8 +22,7 @@ const TESTIDS = [
 ];
 
 export default function Features() {
-  const { lang } = useLanguage();
-  const t = featuresT[lang];
+  const t = featuresT;
 
   const headerRef = useRef(null);
   const c1 = useRef(null), c2 = useRef(null), c3 = useRef(null);

@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
-import { useLanguage } from "../context/LanguageContext";
-import { testReportT } from "../i18n/testing";
+import { testReportT } from "../content/testing";
 
 function parseScore(value) {
   if (typeof value === "number") return Math.max(0, Math.min(100, value));
@@ -117,7 +116,7 @@ function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("vi-VN", {
+  return date.toLocaleString("en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -160,8 +159,7 @@ function ScoreRing({ score }) {
 export default function TestReport() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { lang } = useLanguage();
-  const t = testReportT[lang];
+  const t = testReportT;
   const [run, setRun] = useState(() => loadLocalReport(projectId));
   const [loading, setLoading] = useState(true);
 

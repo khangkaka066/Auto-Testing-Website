@@ -5,14 +5,12 @@ import Navbar from "../components/landing/Navbar";
 import { ArrowLeft, UploadCloud, FileText, Play, X } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { useLanguage } from "../context/LanguageContext";
-import { testRunnerT } from "../i18n/testing";
+import { testRunnerT } from "../content/testing";
 
 export default function TestRunner() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const { lang } = useLanguage();
-  const t = testRunnerT[lang];
+  const t = testRunnerT;
 
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);

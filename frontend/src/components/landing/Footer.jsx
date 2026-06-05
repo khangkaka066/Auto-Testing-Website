@@ -1,8 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { SiFacebook, SiTiktok } from "react-icons/si";
-import { useLanguage } from "../../context/LanguageContext";
-import { footerT } from "../../i18n/landing";
+import { footerT } from "../../content/landing";
 
 const ROUTE_MAP = {
   Features: "/features",
@@ -16,8 +15,7 @@ const ROUTE_MAP = {
 };
 
 export default function Footer() {
-  const { lang } = useLanguage();
-  const t = footerT[lang];
+  const t = footerT;
 
   return (
     <footer className="bg-white/85 backdrop-blur-sm border-t border-slate-200">

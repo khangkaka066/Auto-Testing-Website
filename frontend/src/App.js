@@ -1,6 +1,5 @@
 import "./App.css";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { LanguageProvider } from "./context/LanguageContext";
 import { useEffect } from "react";
 
 function ScrollToTop() {
@@ -27,7 +26,6 @@ import ChatWidget from "./components/ui/ChatWidget";
 
 function App() {
   return (
-    <LanguageProvider>
     <div className="App">
       <BrowserRouter>
         <ScrollToTop />
@@ -51,7 +49,6 @@ function App() {
       <Toaster position="bottom-left" />
       <ChatWidget />
     </div>
-    </LanguageProvider>
   );
 }
 
