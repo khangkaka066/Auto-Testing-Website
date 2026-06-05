@@ -48,8 +48,7 @@ export default function Profile() {
         toast.error(err.response?.data?.message || "Failed to load profile");
         setLoading(false);
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, [navigate, t.signInRequired]);
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];

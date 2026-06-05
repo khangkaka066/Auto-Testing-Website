@@ -221,8 +221,7 @@ export default function TestReport() {
     return () => {
       isMounted = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, navigate]);
+  }, [projectId, navigate, t.toasts.loadFailed, t.toasts.signInRequired]);
 
   const report = run?.result?.final_report || {};
   const score = useMemo(() => parseScore(report.health_score), [report.health_score]);

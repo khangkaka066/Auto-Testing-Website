@@ -95,8 +95,7 @@ export default function BillingPage() {
     axios.get(`${API_BASE_URL}/api/billing/transactions`, { headers })
       .then(r => { if (r.data.success) setTransactions(r.data.data); })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, [navigate, t.toasts.paymentCancelled, t.toasts.paymentSuccess]);
 
   const handleBuy = async (pkgId) => {
     const token = localStorage.getItem("token");

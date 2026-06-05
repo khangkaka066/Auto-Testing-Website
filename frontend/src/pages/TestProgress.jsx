@@ -136,8 +136,14 @@ export default function TestProgress() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate, projectId]);
+  }, [
+    navigate,
+    projectId,
+    t.messages.loadFailed,
+    t.messages.reconnecting,
+    t.messages.stillReconnecting,
+    t.signInRequired,
+  ]);
 
   const isFinished = runState.status === "completed" || runState.status === "failed";
 

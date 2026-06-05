@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import API_BASE_URL from "../config";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -186,15 +186,14 @@ export default function Dashboard() {
       toast.error(`${t.toasts.githubFailed}: ${params.get("reason") || "unknown error"}`);
       window.history.replaceState({}, "", "/dashboard");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t.toasts.githubConnected, t.toasts.githubFailed]);
 
   const connectGithub = () => {
     const token = localStorage.getItem("token");
     window.location.href = `${API_BASE_URL}/api/auth/github/connect?_token=${token}`;
   };
 
-  const loadRepos = async () => {
+  const loadRepos = useCallback(async () => {
     const token = localStorage.getItem("token");
     setLoadingRepos(true);
     try {
@@ -203,7 +202,7 @@ export default function Dashboard() {
     } catch (err) {
       if (err.response?.status === 401) { setGithubStatus({ connected: false }); toast.error(t.toasts.githubExpired); }
     } finally { setLoadingRepos(false); }
-  };
+  }, [t.toasts.githubExpired]);
 
   const handleSelectRepo = async (repo) => {
     setSelectedRepo(repo);
@@ -219,8 +218,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (uploadMode === "github" && githubStatus?.connected && repos.length === 0) loadRepos();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadMode, githubStatus, repos.length]);
+  }, [uploadMode, githubStatus?.connected, repos.length, loadRepos]);
 
   const selectZip = (file) => {
     if (!file?.name.toLowerCase().endsWith(".zip")) { toast.error(t.toasts.selectZip); return; }
