@@ -137,7 +137,7 @@ const categoryBadge = {
   Essential: "bg-green-100 text-green-700",
   Functional: "bg-blue-100 text-blue-700",
   Analytics: "bg-orange-100 text-orange-700",
-  Thiết yếu: "bg-green-100 text-green-700",
+  "Thiết yếu": "bg-green-100 text-green-700",
   "Chức năng": "bg-blue-100 text-blue-700",
   "Phân tích": "bg-orange-100 text-orange-700",
 };
