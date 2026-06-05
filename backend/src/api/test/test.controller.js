@@ -498,6 +498,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
     const currentJob = getJob(jobId);
     const failedStage = currentJob?.stage || 'failed';
     const error = serializePipelineError(err);
+    console.error('[runPipelineJob] pipeline failed:', failureMessage(failedStage, error));
     const finishedAt = new Date().toISOString();
     const failedJob = updateJobAndSnapshot(jobId, {
       success: false,

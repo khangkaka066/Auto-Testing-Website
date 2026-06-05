@@ -16,6 +16,8 @@ const CoderBatchOutputSchema = z.object({
   generated: z.array(GeneratedSpecSchema),
 });
 
+const NO_RETRY = { maxRetries: 0 };
+
 const FORBIDDEN_PATTERNS = [
   'document.body.innerHTML', 'addEventListener(', 'page.$$eval(',
   '.evaluateAll(', 'MouseEvent', 'KeyboardEvent', 'EventListener',
@@ -119,7 +121,8 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
     prompt.systemPrompt,
     userPrompt,
     CoderBatchOutputSchema,
-    'CoderBatchOutput'
+    'CoderBatchOutput',
+    NO_RETRY
   ));
 
   const violations = validateOutput(output);
@@ -139,7 +142,8 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
       prompt.systemPrompt,
       repairPrompt,
       CoderBatchOutputSchema,
-      'CoderBatchOutput'
+      'CoderBatchOutput',
+      NO_RETRY
     ));
   }
 

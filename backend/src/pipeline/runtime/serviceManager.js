@@ -3,8 +3,10 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 const net = require('net');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { SERVICE_INSTALL_TIMEOUT_MS, SERVICE_START_TIMEOUT_MS } = require('../../config/env');
+
+const INSTALL_MARKER = '.testpilot_install_complete';
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -103,6 +105,28 @@ function appendLog(logFile, message) {
   fs.appendFileSync(logFile, message, 'utf-8');
 }
 
+function readLogTail(logFile, maxChars = 6000) {
+  try {
+    if (!fs.existsSync(logFile)) return '';
+    const content = fs.readFileSync(logFile, 'utf-8');
+    return content.slice(Math.max(0, content.length - maxChars)).trim();
+  } catch {
+    return '';
+  }
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function commandExists(command, env) {
+  const result = spawnSync('sh', ['-lc', `command -v ${shellQuote(command)}`], {
+    env,
+    stdio: 'ignore',
+  });
+  return result.status === 0;
+}
+
 function serviceEnv(baseEnv, projectRoot) {
   const nodeBinDir = path.dirname(process.execPath);
   const localBinDir = path.join(path.resolve(projectRoot), 'node_modules', '.bin');
@@ -133,6 +157,30 @@ function resolveStartCommand(command, projectRoot) {
   return command;
 }
 
+function resolvePackageManagerCommand(command, env) {
+  if (!command) return command;
+  const trimmed = command.trim();
+  const yarnMatch = trimmed.match(/^yarn(?:\s+(.*))?$/);
+  if (yarnMatch && !commandExists('yarn', env)) {
+    const args = yarnMatch[1] || '';
+    if (commandExists('corepack', env)) {
+      return `corepack yarn${args ? ` ${args}` : ''}`;
+    }
+    return `npx --yes yarn${args ? ` ${args}` : ''}`;
+  }
+
+  const pnpmMatch = trimmed.match(/^pnpm(?:\s+(.*))?$/);
+  if (pnpmMatch && !commandExists('pnpm', env)) {
+    const args = pnpmMatch[1] || '';
+    if (commandExists('corepack', env)) {
+      return `corepack pnpm${args ? ` ${args}` : ''}`;
+    }
+    return `npx --yes pnpm${args ? ` ${args}` : ''}`;
+  }
+
+  return command;
+}
+
 function runCommand(command, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, {
@@ -144,7 +192,12 @@ function runCommand(command, options) {
 
     const timeout = setTimeout(() => {
       child.kill('SIGTERM');
-      reject(new Error(`Command timed out: ${command}`));
+      const tail = readLogTail(options.logFile);
+      reject(new Error([
+        `Command timed out: ${command}`,
+        `Log file: ${options.logFile}`,
+        tail ? `Log tail:\n${tail}` : null,
+      ].filter(Boolean).join('\n')));
     }, options.timeoutMs || 120000);
 
     child.stdout.on('data', chunk => appendLog(options.logFile, chunk.toString()));
@@ -156,7 +209,15 @@ function runCommand(command, options) {
     child.on('close', code => {
       clearTimeout(timeout);
       if (code === 0) resolve();
-      else reject(new Error(`Command failed (${code}): ${command}`));
+      else {
+        const tail = readLogTail(options.logFile);
+        const message = [
+          `Command failed (${code}): ${command}`,
+          `Log file: ${options.logFile}`,
+          tail ? `Log tail:\n${tail}` : null,
+        ].filter(Boolean).join('\n');
+        reject(new Error(message));
+      }
     });
   });
 }
@@ -195,7 +256,7 @@ function stopProcess(child) {
 
 function shouldInstall(projectRoot) {
   return fs.existsSync(path.join(projectRoot, 'package.json')) &&
-    !fs.existsSync(path.join(projectRoot, 'node_modules'));
+    !fs.existsSync(path.join(projectRoot, INSTALL_MARKER));
 }
 
 function buildService(project, kind, port) {
@@ -240,17 +301,22 @@ function pickServices(infrastructure) {
 async function startService(service, logsDir, env) {
   const logFile = path.join(logsDir, `${service.kind}.log`);
   const runtimeEnv = serviceEnv(env, service.root_path);
-  const startCommandText = resolveStartCommand(service.start_command, service.root_path);
+  const startCommandText = resolvePackageManagerCommand(
+    resolveStartCommand(service.start_command, service.root_path),
+    runtimeEnv
+  );
   appendLog(logFile, `[service] ${service.name}\n[command] ${service.start_command}\n[resolved_command] ${startCommandText}\n[cwd] ${service.root_path}\n[url] ${service.url}\n\n`);
 
   if (service.install_command && shouldInstall(service.root_path)) {
-    appendLog(logFile, `[install] ${service.install_command}\n`);
-    await runCommand(service.install_command, {
+    const installCommandText = resolvePackageManagerCommand(service.install_command, runtimeEnv);
+    appendLog(logFile, `[install] ${service.install_command}\n[resolved_install] ${installCommandText}\n`);
+    await runCommand(installCommandText, {
       cwd: service.root_path,
       env: runtimeEnv,
       logFile,
       timeoutMs: SERVICE_INSTALL_TIMEOUT_MS,
     });
+    fs.writeFileSync(path.join(service.root_path, INSTALL_MARKER), new Date().toISOString(), 'utf-8');
     appendLog(logFile, '\n[install complete]\n');
   }
 
