@@ -7,45 +7,26 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 const stripe = STRIPE_SECRET_KEY ? require('stripe')(STRIPE_SECRET_KEY) : null;
 
-const CREDIT_PACKAGES = {
-  starter: {
-    id: 'starter',
-    name: 'Starter',
-    credits: 1_000_000,
-    price_usd: 5,
-    description: '1,000,000 credits',
-  },
-  pro: {
-    id: 'pro',
-    name: 'Pro',
-    credits: 5_000_000,
-    price_usd: 20,
-    description: '5,000,000 credits',
-    popular: true,
-  },
-  business: {
-    id: 'business',
-    name: 'Business',
-    credits: 15_000_000,
-    price_usd: 50,
-    description: '15,000,000 credits',
-  },
-};
+const PRICE_PER_CREDIT_VND = 25_000; // 1 credit = 25,000 VND
+const MIN_CREDITS = 4;
 
 async function getPackages(req, res) {
   return res.json({
     success: true,
-    data: Object.values(CREDIT_PACKAGES),
     stripe_enabled: !!stripe,
+    price_per_credit_vnd: PRICE_PER_CREDIT_VND,
+    min_credits: MIN_CREDITS,
   });
 }
 
 async function createCheckout(req, res) {
-  const { package_id } = req.body;
-  const pkg = CREDIT_PACKAGES[package_id];
+  const rawAmount = parseInt(req.body.credit_amount, 10);
 
-  if (!pkg) {
-    return res.status(400).json({ success: false, message: 'Invalid package' });
+  if (!rawAmount || rawAmount < MIN_CREDITS) {
+    return res.status(400).json({
+      success: false,
+      message: `Minimum purchase is ${MIN_CREDITS} credits`,
+    });
   }
 
   if (!stripe) {
@@ -55,40 +36,39 @@ async function createCheckout(req, res) {
     });
   }
 
+  const totalVnd = rawAmount * PRICE_PER_CREDIT_VND;
+
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      payment_method_options: {
-        card: { request_three_d_secure: 'automatic' },
-      },
       line_items: [{
         price_data: {
-          currency: 'usd',
+          currency: 'vnd',
           product_data: {
-            name: `TestPilot — ${pkg.name} Pack`,
-            description: `${pkg.credits.toLocaleString()} AI testing credits`,
+            name: `TestPilot — ${rawAmount} Credits`,
+            description: `${rawAmount} AI testing credits (~${(rawAmount * 500_000).toLocaleString()} tokens)`,
           },
-          unit_amount: pkg.price_usd * 100,
+          unit_amount: totalVnd, // VND is zero-decimal in Stripe
         },
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${FRONTEND_URL}/billing?success=1&package=${pkg.id}`,
+      success_url: `${FRONTEND_URL}/billing?success=1&credits=${rawAmount}`,
       cancel_url: `${FRONTEND_URL}/billing?cancelled=1`,
       metadata: {
         user_id: req.user.id,
-        package_id: pkg.id,
-        credits: pkg.credits,
+        credits: rawAmount,
+        amount_vnd: totalVnd,
       },
       customer_email: req.user.email,
     });
 
-    // Tạo transaction record ở trạng thái pending
     await supabase.from('transactions').insert([{
       user_id: req.user.id,
-      amount_usd: pkg.price_usd,
-      credits_added: pkg.credits,
-      package_name: pkg.name,
+      amount_usd: null,
+      amount_vnd: totalVnd,
+      credits_added: rawAmount,
+      package_name: `${rawAmount} Credits`,
       status: 'pending',
       stripe_session_id: session.id,
     }]);
@@ -113,13 +93,12 @@ async function handleWebhook(req, res) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const { user_id, package_id, credits } = session.metadata;
+    const { user_id, credits } = session.metadata;
 
-    // Cộng credits cho user
-    const creditsNum = parseInt(credits, 10);
+    const creditsNum = parseFloat(credits);
     const user = await findById(user_id);
     if (user) {
-      const newCredits = (user.credits || 0) + creditsNum;
+      const newCredits = (parseFloat(user.credits) || 0) + creditsNum;
       await supabase.from('users').update({ credits: newCredits }).eq('id', user_id);
     }
 

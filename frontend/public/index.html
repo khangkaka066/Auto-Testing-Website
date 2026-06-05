@@ -37,6 +37,15 @@
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
         <script>
+            (function () {
+                var posthogKey = "%REACT_APP_POSTHOG_KEY%";
+                if (!posthogKey || posthogKey.charAt(0) === "%") return;
+
+                var posthogHost = "%REACT_APP_POSTHOG_HOST%";
+                if (!posthogHost || posthogHost.charAt(0) === "%") {
+                    posthogHost = "https://us.i.posthog.com";
+                }
+
             !(function (t, e) {
                 var o, n, p, r;
                 e.__SV ||
@@ -98,14 +107,15 @@
                     }),
                     (e.__SV = 1));
             })(document, window.posthog || []);
-            posthog.init("phc_xAvL2Iq4tFmANRE7kzbKwaSqp1HJjN7x48s3vr0CMjs", {
-                api_host: "https://us.i.posthog.com",
+            posthog.init(posthogKey, {
+                api_host: posthogHost,
                 person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well,
                 session_recording: {
                     recordCrossOriginIframes: true,
                     capturePerformance: false,
                 },
             });
+            })();
         </script>
     </body>
 </html>

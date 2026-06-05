@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import API_BASE_URL from "../config";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  Zap, CreditCard, History, CheckCircle2, LogOut,
+  Zap, CreditCard, History, LogOut,
   LayoutDashboard, User, Menu, ChevronRight, Coins,
-  TrendingUp, Package, AlertTriangle, ExternalLink, Receipt,
+  TrendingUp, Package, AlertTriangle, Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -17,35 +17,8 @@ function formatDate(val) {
   });
 }
 
-const PACKAGES = [
-  {
-    id: "starter",
-    name: "Starter",
-    credits: 1_000_000,
-    price: 5,
-    color: "border-slate-200",
-    badge: "",
-    features: ["1,000,000 AI credits", "All test types", "Full report history", "Email support"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    credits: 5_000_000,
-    price: 20,
-    color: "border-orange-400",
-    badge: "Most Popular",
-    features: ["5,000,000 AI credits", "All test types", "Full report history", "Priority support", "20% better value"],
-  },
-  {
-    id: "business",
-    name: "Business",
-    credits: 15_000_000,
-    price: 50,
-    color: "border-violet-400",
-    badge: "Best Value",
-    features: ["15,000,000 AI credits", "All test types", "Full report history", "Priority support", "34% better value", "Team access"],
-  },
-];
+const PRICE_PER_CREDIT_VND = 25_000;
+const MIN_CREDITS = 4;
 
 export default function BillingPage() {
   const navigate = useNavigate();
@@ -56,7 +29,8 @@ export default function BillingPage() {
   const [tokensUsed, setTokensUsed] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [stripeEnabled, setStripeEnabled] = useState(false);
-  const [buying, setBuying] = useState(null);
+  const [buying, setBuying] = useState(false);
+  const [creditAmount, setCreditAmount] = useState(MIN_CREDITS);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -93,12 +67,16 @@ export default function BillingPage() {
       .catch(() => {});
   }, [navigate]);
 
-  const handleBuy = async (pkgId) => {
+  const handleBuy = async () => {
+    if (creditAmount < MIN_CREDITS) {
+      toast.error(`Minimum purchase is ${MIN_CREDITS} credits`);
+      return;
+    }
     const token = localStorage.getItem("token");
-    setBuying(pkgId);
+    setBuying(true);
     try {
       const res = await axios.post(`${API_BASE_URL}/api/billing/create-checkout`,
-        { package_id: pkgId },
+        { credit_amount: creditAmount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.data.success) {
@@ -106,7 +84,7 @@ export default function BillingPage() {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Could not start checkout");
-      setBuying(null);
+      setBuying(false);
     }
   };
 
@@ -118,10 +96,11 @@ export default function BillingPage() {
     navigate("/");
   };
 
-  const totalSpent = transactions.filter(t => t.status === "completed").reduce((s, t) => s + (t.amount_usd || 0), 0);
+  const totalSpentVnd = transactions.filter(t => t.status === "completed").reduce((s, t) => s + (t.amount_vnd || t.amount_usd * 25_000 || 0), 0);
   const totalCreditsBought = transactions.filter(t => t.status === "completed").reduce((s, t) => s + (t.credits_added || 0), 0);
-  const usedPct = credits != null && (tokensUsed + credits) > 0
-    ? Math.round((tokensUsed / (tokensUsed + credits)) * 100) : 0;
+  const creditsUsed = tokensUsed / 500_000;
+  const usedPct = credits != null && (creditsUsed + credits) > 0
+    ? Math.round((creditsUsed / (creditsUsed + credits)) * 100) : 0;
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -201,9 +180,8 @@ export default function BillingPage() {
 
         <main className="flex-1 overflow-y-auto p-6">
 
-          {/* Credit overview */}
+          {/* Stats row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            {/* Balance card */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-l-4 border-l-violet-500">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Available Credits</p>
@@ -211,12 +189,12 @@ export default function BillingPage() {
                   <Zap className="h-4 w-4" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-800">{credits != null ? credits.toLocaleString() : "—"}</p>
+              <p className="text-2xl font-bold text-slate-800">{credits != null ? parseFloat(credits).toFixed(2) : "—"}</p>
               <div className="mt-2">
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-violet-500 rounded-full transition-all duration-700" style={{ width: `${usedPct}%` }} />
                 </div>
-                <p className="text-xs text-slate-400 mt-1">{usedPct}% used · {tokensUsed.toLocaleString()} tokens spent</p>
+                <p className="text-xs text-slate-400 mt-1">{usedPct}% used this cycle</p>
               </div>
             </div>
 
@@ -227,8 +205,8 @@ export default function BillingPage() {
                   <Coins className="h-4 w-4" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-800">{totalCreditsBought.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">{transactions.filter(t => t.status === "completed").length} transactions</p>
+              <p className="text-2xl font-bold text-slate-800">{parseFloat(totalCreditsBought).toFixed(2)} <span className="text-base font-medium text-slate-400">cr</span></p>
+              <p className="text-xs text-slate-400 mt-1">{transactions.filter(t => t.status === "completed").length} completed transactions</p>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-l-4 border-l-orange-500">
@@ -238,22 +216,21 @@ export default function BillingPage() {
                   <TrendingUp className="h-4 w-4" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${totalSpent.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800">{totalSpentVnd.toLocaleString("vi-VN")} <span className="text-base font-medium text-slate-400">₫</span></p>
               <p className="text-xs text-slate-400 mt-1">Lifetime spend</p>
             </div>
           </div>
 
-          {/* Low credits warning */}
-          {credits != null && credits < 100_000 && (
+          {/* Alerts */}
+          {credits != null && credits < 1 && (
             <div className="mb-6 flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-orange-800">Credits running low</p>
-                <p className="text-xs text-orange-600 mt-0.5">You have {credits.toLocaleString()} credits remaining. Top up now to keep running tests without interruption.</p>
+                <p className="text-xs text-orange-600 mt-0.5">You have <strong>{parseFloat(credits).toFixed(2)}</strong> credits left. Top up now to avoid test interruptions.</p>
               </div>
             </div>
           )}
-
           {!stripeEnabled && (
             <div className="mb-6 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
@@ -264,71 +241,121 @@ export default function BillingPage() {
             </div>
           )}
 
-          {/* Credit packages */}
+          {/* Top up — 2-column layout */}
           <div className="mb-6">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="h-8 w-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
                 <Package className="h-4 w-4" />
               </div>
-              <h2 className="text-sm font-bold text-slate-800">Credit Packages</h2>
+              <h2 className="text-sm font-bold text-slate-800">Top Up Credits</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {PACKAGES.map((pkg) => (
-                <div key={pkg.id} className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col relative ${pkg.color}`}>
-                  {pkg.badge && (
-                    <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap ${
-                      pkg.id === "pro" ? "bg-orange-500 text-white" : "bg-violet-500 text-white"
-                    }`}>
-                      {pkg.badge}
-                    </span>
-                  )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Left: input form */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                <p className="text-xs text-slate-500 mb-5">
+                  Choose how many credits to add to your account. <span className="font-medium text-slate-700">Minimum {MIN_CREDITS} credits</span> per purchase.
+                </p>
 
-                  <div className="mb-4">
-                    <h3 className="text-base font-bold text-slate-800">{pkg.name}</h3>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-3xl font-bold text-slate-900">${pkg.price}</span>
-                      <span className="text-slate-400 text-sm">USD</span>
+                <label className="block text-xs font-semibold text-slate-600 mb-2">Number of credits</label>
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    onClick={() => setCreditAmount(v => Math.max(MIN_CREDITS, v - 1))}
+                    className="h-10 w-10 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors select-none"
+                  >−</button>
+                  <input
+                    type="number"
+                    min={MIN_CREDITS}
+                    value={creditAmount}
+                    onChange={e => setCreditAmount(Math.max(MIN_CREDITS, parseInt(e.target.value) || MIN_CREDITS))}
+                    className="flex-1 text-center text-2xl font-bold text-slate-800 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                  <button
+                    onClick={() => setCreditAmount(v => v + 1)}
+                    className="h-10 w-10 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors select-none"
+                  >+</button>
+                </div>
+
+                {/* Quick amounts */}
+                <div className="flex gap-2 mb-6">
+                  {[4, 10, 20, 50].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setCreditAmount(n)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                        creditAmount === n
+                          ? "bg-orange-600 text-white border-orange-600"
+                          : "border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600"
+                      }`}
+                    >{n}</button>
+                  ))}
+                </div>
+
+                {/* Price summary */}
+                <div className="mt-auto">
+                  <div className="flex items-center justify-between py-3.5 px-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl mb-4">
+                    <div>
+                      <p className="text-[11px] text-slate-500 uppercase tracking-wide font-semibold">Total</p>
+                      <p className="text-2xl font-bold text-slate-900">{(creditAmount * PRICE_PER_CREDIT_VND).toLocaleString("vi-VN")} ₫</p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {pkg.credits.toLocaleString()} credits · ${(pkg.price / pkg.credits * 1_000_000).toFixed(2)}/M tokens
-                    </p>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-orange-600">{creditAmount} <span className="text-sm font-medium">credits</span></p>
+                      <p className="text-[11px] text-slate-400">25,000 ₫ / credit</p>
+                    </div>
                   </div>
 
-                  <ul className="space-y-2 flex-1 mb-5">
-                    {pkg.features.map((f, i) => (
-                      <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
                   <button
-                    onClick={() => handleBuy(pkg.id)}
-                    disabled={!stripeEnabled || buying === pkg.id}
-                    className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                      pkg.id === "pro"
-                        ? "bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300"
-                        : pkg.id === "business"
-                        ? "bg-violet-600 text-white hover:bg-violet-700 disabled:bg-violet-300"
-                        : "bg-slate-800 text-white hover:bg-slate-700 disabled:bg-slate-400"
-                    } disabled:cursor-not-allowed`}
+                    onClick={handleBuy}
+                    disabled={!stripeEnabled || buying}
+                    className="w-full py-3 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm shadow-orange-200"
                   >
-                    {buying === pkg.id ? (
+                    {buying ? (
                       <>
-                        <span className="h-3.5 w-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        Redirecting…
+                        <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Redirecting to checkout…
                       </>
                     ) : (
                       <>
-                        <CreditCard className="h-3.5 w-3.5" />
-                        {stripeEnabled ? `Buy for $${pkg.price}` : "Payment not configured"}
+                        <CreditCard className="h-4 w-4" />
+                        {stripeEnabled ? "Pay now" : "Payment not configured"}
                       </>
                     )}
                   </button>
                 </div>
-              ))}
+              </div>
+
+              {/* Right: what you get */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-6 text-white flex flex-col">
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="h-8 w-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                    <Zap className="h-4 w-4 text-orange-400" />
+                  </div>
+                  <h3 className="text-sm font-bold">What you get</h3>
+                </div>
+
+                <ul className="space-y-3.5 flex-1">
+                  {[
+                    { icon: "✦", label: "AI-powered test generation", sub: "Playwright scripts created automatically from your source code" },
+                    { icon: "✦", label: "All test types included", sub: "UI, API, and Functional testing in one run" },
+                    { icon: "✦", label: "Detailed test reports", sub: "Health score, pass/fail breakdown, and prioritized bug list" },
+                    { icon: "✦", label: "Credits never expire", sub: "Use them at your own pace, no monthly reset" },
+                  ].map((item, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="text-orange-400 text-xs mt-0.5 shrink-0">{item.icon}</span>
+                      <div>
+                        <p className="text-xs font-semibold text-white">{item.label}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{item.sub}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6 pt-5 border-t border-slate-700">
+                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mb-3">With {creditAmount} credit{creditAmount !== 1 ? "s" : ""} you can run approximately</p>
+                  <p className="text-3xl font-bold text-white">{Math.floor(creditAmount / 1.5)} <span className="text-base font-medium text-slate-400">test runs</span></p>
+                  <p className="text-[11px] text-slate-500 mt-1">Based on average project size</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -349,7 +376,7 @@ export default function BillingPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                      <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Package</th>
+                      <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Description</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Credits</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Amount</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
@@ -367,11 +394,13 @@ export default function BillingPage() {
                             <span className="font-medium text-slate-800">{t.package_name || "Credits"}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-700 font-medium">
-                          +{(t.credits_added || 0).toLocaleString()}
+                        <td className="px-4 py-3 text-emerald-600 font-semibold">
+                          +{parseFloat(t.credits_added || 0).toFixed(2)} cr
                         </td>
                         <td className="px-4 py-3 text-slate-700 font-semibold">
-                          ${(t.amount_usd || 0).toFixed(2)}
+                          {t.amount_vnd
+                            ? t.amount_vnd.toLocaleString("vi-VN") + " ₫"
+                            : t.amount_usd != null ? "$" + parseFloat(t.amount_usd).toFixed(2) : "—"}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${

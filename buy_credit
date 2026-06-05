@@ -1,0 +1,11 @@
+1. Tính theo credit
+
+input: 80,000 / 1M * price/1M = 80,000 / 1M * 0.75 = 0.06
+output: 150,000 / 1M * price/1M = 150,000 / 1M * 4.5 = 0.675
+
+1 credits = 500,000 tokens
+token_used = input + output * (price_out / price_in) / 2 = 690000
+credit_used = token_used / 500000 = 1.38 = 0.735$ * 27000 = 19845 + cost_storage_file (0.015$) + cost_database (0.09$) = 19,845 + 405 + 2430 = 22680
+
+==> 1 credit = 25000 VND
+==> Nạp vào tối thiểu 4 credit

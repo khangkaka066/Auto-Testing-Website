@@ -111,57 +111,110 @@ export default function Dashboard() {
   const [loadingRepos, setLoadingRepos] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
 
-    const name = localStorage.getItem("user_name") || "Developer";
-    setUser({ name, email: "" });
-    setAvatar(localStorage.getItem("user_avatar") || "");
-    setInitial(name.charAt(0).toUpperCase());
+    const headers = { Authorization: `Bearer ${token}` };
+    const expireSession = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user_avatar");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("last_test_result");
+      toast.error("Your session expired. Please sign in again.");
+      navigate("/login", { replace: true });
+    };
+    const isUnauthorized = (result) => (
+      result.status === "rejected" && result.reason?.response?.status === 401
+    );
 
-    axios.get(`${API_BASE_URL}/api/test/history`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (res) => {
-        if (!res.data.success) return;
-        const history = res.data.data || [];
-        setHistoryList(history);
+    async function loadDashboard() {
+      try {
+        const profileRes = await axios.get(`${API_BASE_URL}/api/auth/profile`, { headers });
+        if (cancelled) return;
+        if (profileRes.data.success) {
+          const profileUser = profileRes.data.user;
+          const name = profileUser.name || "Developer";
+          setUser({ name, email: profileUser.email || "" });
+          setAvatar(profileUser.avatar || "");
+          setInitial(name.charAt(0).toUpperCase());
+          localStorage.setItem("user_name", name);
+          localStorage.setItem("user_avatar", profileUser.avatar || "");
+        }
 
-        const latestCompleted = history.find(item => item.status === "completed" && item.project_id);
-        if (!latestCompleted) { setLastResult(null); localStorage.removeItem("last_test_result"); return; }
+        const [historyResult, dashboardStatsResult, usageStatsResult, githubStatusResult] =
+          await Promise.allSettled([
+            axios.get(`${API_BASE_URL}/api/test/history`, { headers }),
+            axios.get(`${API_BASE_URL}/api/test/dashboard-stats`, { headers }),
+            axios.get(`${API_BASE_URL}/api/auth/stats`, { headers }),
+            axios.get(`${API_BASE_URL}/api/auth/github/status`, { headers }),
+          ]);
+        if (cancelled) return;
 
-        // Ưu tiên lấy từ result_summary (persist trong DB), fallback sang job store
-        const fromSummary = lastResultFromHistory(latestCompleted);
-        if (fromSummary) {
-          setLastResult(fromSummary);
-          localStorage.setItem("last_test_result", JSON.stringify(fromSummary));
+        if ([historyResult, dashboardStatsResult, usageStatsResult, githubStatusResult].some(isUnauthorized)) {
+          expireSession();
           return;
         }
 
-        try {
-          const runRes = await axios.get(`${API_BASE_URL}/api/test/run/${latestCompleted.project_id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const nextResult = lastResultFromRun(runRes.data.data);
-          setLastResult(nextResult);
-          if (nextResult) localStorage.setItem("last_test_result", JSON.stringify(nextResult));
-          else localStorage.removeItem("last_test_result");
-        } catch {
+        if (historyResult.status === "fulfilled" && historyResult.value.data.success) {
+          const history = historyResult.value.data.data || [];
+          setHistoryList(history);
+
+          const latestCompleted = history.find(item => item.status === "completed" && item.project_id);
+          if (!latestCompleted) {
+            setLastResult(null);
+            localStorage.removeItem("last_test_result");
+          } else {
+            // Ưu tiên lấy từ result_summary (persist trong DB), fallback sang job store
+            const fromSummary = lastResultFromHistory(latestCompleted);
+            if (fromSummary) {
+              setLastResult(fromSummary);
+              localStorage.setItem("last_test_result", JSON.stringify(fromSummary));
+            } else {
+              try {
+                const runRes = await axios.get(`${API_BASE_URL}/api/test/run/${latestCompleted.project_id}`, { headers });
+                if (cancelled) return;
+                const nextResult = lastResultFromRun(runRes.data.data);
+                setLastResult(nextResult);
+                if (nextResult) localStorage.setItem("last_test_result", JSON.stringify(nextResult));
+                else localStorage.removeItem("last_test_result");
+              } catch (err) {
+                if (err.response?.status === 401) {
+                  expireSession();
+                  return;
+                }
+                setLastResult(null);
+                localStorage.removeItem("last_test_result");
+              }
+            }
+          }
+        } else {
           setLastResult(null);
           localStorage.removeItem("last_test_result");
         }
-      })
-      .catch(() => { setLastResult(null); localStorage.removeItem("last_test_result"); });
 
-    axios.get(`${API_BASE_URL}/api/test/dashboard-stats`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => { if (res.data.success) setDashboardStats(res.data.data); })
-      .catch(() => {});
+        if (dashboardStatsResult.status === "fulfilled" && dashboardStatsResult.value.data.success) {
+          setDashboardStats(dashboardStatsResult.value.data.data);
+        }
+        if (usageStatsResult.status === "fulfilled" && usageStatsResult.value.data.success) {
+          setUsageStats(usageStatsResult.value.data.data);
+        }
+        if (githubStatusResult.status === "fulfilled" && githubStatusResult.value.data.success) {
+          setGithubStatus(githubStatusResult.value.data.data);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (err.response?.status === 401) {
+          expireSession();
+          return;
+        }
+        setLastResult(null);
+        localStorage.removeItem("last_test_result");
+      }
+    }
 
-    axios.get(`${API_BASE_URL}/api/auth/stats`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => { if (res.data.success) setUsageStats(res.data.data); })
-      .catch(() => {});
-
-    axios.get(`${API_BASE_URL}/api/auth/github/status`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => { if (res.data.success) setGithubStatus(res.data.data); })
-      .catch(() => {});
+    loadDashboard();
+    return () => { cancelled = true; };
   }, [navigate]);
 
   useEffect(() => {
@@ -324,7 +377,7 @@ export default function Dashboard() {
     },
     {
       icon: Zap, iconBg: "bg-violet-100", iconColor: "text-violet-600",
-      label: "Credits Left", value: usageStats ? usageStats.credits.toLocaleString() : "—",
+      label: "Credits Left", value: usageStats ? parseFloat(usageStats.credits).toFixed(2) : "—",
       sub: usageStats ? `${usageStats.tokens_used.toLocaleString()} used` : "Loading…",
       accent: "border-l-violet-500",
     },
@@ -396,7 +449,7 @@ export default function Dashboard() {
           >
             <CreditCard className="h-4 w-4 shrink-0" />
             {sidebarOpen && <span className="whitespace-nowrap flex-1">Billing</span>}
-            {sidebarOpen && usageStats && usageStats.credits < 100_000 && (
+            {sidebarOpen && usageStats && usageStats.credits < 1 && (
               <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">Low</span>
             )}
           </Link>
@@ -462,11 +515,11 @@ export default function Dashboard() {
         <main ref={mainRef} className="flex-1 overflow-y-auto p-6">
 
           {/* Low credits warning */}
-          {usageStats && usageStats.credits < 100_000 && (
+          {usageStats && usageStats.credits < 1 && (
             <div className="mb-5 flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-orange-800">Credits running low — {usageStats.credits.toLocaleString()} remaining</p>
+                <p className="text-sm font-semibold text-orange-800">Credits running low — {parseFloat(usageStats.credits).toFixed(2)} remaining</p>
                 <p className="text-xs text-orange-600 mt-0.5">Top up now to avoid interruptions during test runs.</p>
               </div>
               <Link to="/billing"
@@ -783,11 +836,11 @@ export default function Dashboard() {
                         <Zap className="h-3.5 w-3.5 text-violet-600" />
                         <span className="text-xs font-semibold text-violet-700">Credits</span>
                       </div>
-                      <span className="text-sm font-bold text-violet-700">{usageStats.credits.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-violet-700">{parseFloat(usageStats.credits).toFixed(2)}</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-violet-100 overflow-hidden">
                       <div className="h-full rounded-full bg-violet-500 transition-all duration-700"
-                        style={{ width: `${usageStats.tokens_used + usageStats.credits > 0 ? Math.round((usageStats.tokens_used / (usageStats.tokens_used + usageStats.credits)) * 100) : 0}%` }}
+                        style={{ width: `${(() => { const cu = usageStats.tokens_used / 500_000; return cu + usageStats.credits > 0 ? Math.round((cu / (cu + usageStats.credits)) * 100) : 0; })()}%` }}
                       />
                     </div>
                     <p className="text-[10px] text-violet-400 mt-1">{usageStats.tokens_used.toLocaleString()} tokens used</p>

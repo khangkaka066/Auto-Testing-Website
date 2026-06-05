@@ -3,6 +3,8 @@ const { updateById, findById, INITIAL_CREDITS } = require('./userStore');
 
 const jobTokenStorage = new AsyncLocalStorage();
 
+const TOKENS_PER_CREDIT = 500_000;
+
 async function getUserStats(userId) {
   const user = await findById(userId);
   return {
@@ -13,13 +15,16 @@ async function getUserStats(userId) {
 
 async function addUserTokens(userId, count) {
   if (!count || count <= 0) return;
-  // Dùng Supabase RPC để atomic increment — tránh race condition khi nhiều job chạy song song
+  const creditCost = count / TOKENS_PER_CREDIT; // float, e.g. 1.38
+
+  // Try atomic RPC first (requires DB function to accept p_credits as NUMERIC)
   const supabase = require('./supabase');
   let error = null;
   try {
     const result = await supabase.rpc('increment_user_tokens', {
       p_user_id: userId,
       p_tokens: count,
+      p_credits: creditCost,
     });
     error = result.error;
   } catch (err) {
@@ -27,9 +32,9 @@ async function addUserTokens(userId, count) {
   }
 
   if (error) {
-    // Fallback về read-modify-write nếu RPC chưa được tạo
+    // Fallback: read-modify-write (credits column must be NUMERIC in DB)
     await updateById(userId, {
-      $inc: { tokens_used: count, credits: -count },
+      $inc: { tokens_used: count, credits: -creditCost },
     }).catch(err => console.error('[tokenTracker] fallback error:', err.message));
   }
 }
