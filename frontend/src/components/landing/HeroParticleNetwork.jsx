@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const NODE_COUNT   = 120;
+const NODE_COUNT   = 140;
 const MAX_DIST     = 100;
 const PARALLAX     = 0.030;   // camera sway strength
 const CURSOR_R     = 160;     // repulsion radius (scene px)
