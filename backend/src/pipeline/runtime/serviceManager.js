@@ -163,9 +163,13 @@ function withYarnInstallNetworkOptions(args) {
 
   const hasRegistry = parts.some(part => part === '--registry' || part.startsWith('--registry='));
   const hasNetworkTimeout = parts.some(part => part === '--network-timeout' || part.startsWith('--network-timeout='));
+  const hasNonInteractive = parts.includes('--non-interactive');
+  const hasIgnoreOptional = parts.includes('--ignore-optional');
 
   if (!hasRegistry) parts.push('--registry', 'https://registry.npmjs.org');
   if (!hasNetworkTimeout) parts.push('--network-timeout', '600000');
+  if (!hasNonInteractive) parts.push('--non-interactive');
+  if (!hasIgnoreOptional) parts.push('--ignore-optional');
 
   return parts.join(' ');
 }
