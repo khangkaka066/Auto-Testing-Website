@@ -165,6 +165,7 @@ export default function TestReport() {
   const [run, setRun] = useState(() => loadLocalReport(projectId));
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {

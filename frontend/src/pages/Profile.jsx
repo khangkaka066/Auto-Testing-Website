@@ -18,6 +18,7 @@ export default function Profile() {
   const { lang } = useLanguage();
   const t = profileT[lang];
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {

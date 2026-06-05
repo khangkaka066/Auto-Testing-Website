@@ -170,6 +170,7 @@ export default function Dashboard() {
       .catch(() => {});
   }, [navigate]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ghStatus = params.get("github");
@@ -216,6 +217,7 @@ export default function Dashboard() {
     } catch {}
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (uploadMode === "github" && githubStatus?.connected && repos.length === 0) loadRepos();
   }, [uploadMode, githubStatus, repos.length]);

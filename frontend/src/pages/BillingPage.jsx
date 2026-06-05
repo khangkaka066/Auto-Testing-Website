@@ -63,6 +63,7 @@ export default function BillingPage() {
   const [buying, setBuying] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }

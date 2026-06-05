@@ -71,6 +71,7 @@ export default function TestProgress() {
   const subProgressCompleted = showSubProgress ? Math.max(0, Number(subProgress.completed) || 0) : 0;
   const subProgressTotal = showSubProgress ? Math.max(0, Number(subProgress.total) || 0) : 0;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
