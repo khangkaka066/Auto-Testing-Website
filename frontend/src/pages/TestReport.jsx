@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
+import { testReportT } from "../i18n/testing";
 
 function parseScore(value) {
   if (typeof value === "number") return Math.max(0, Math.min(100, value));
@@ -158,13 +160,15 @@ function ScoreRing({ score }) {
 export default function TestReport() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { lang } = useLanguage();
+  const t = testReportT[lang];
   const [run, setRun] = useState(() => loadLocalReport(projectId));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Please sign in to view the report");
+      toast.error(t.toasts.signInRequired);
       navigate("/login");
       return undefined;
     }
@@ -189,7 +193,7 @@ export default function TestReport() {
           nextRun = fallback;
           setRun(fallback);
         } else {
-          toast.error(err.response?.data?.message || "Failed to load test report");
+          toast.error(err.response?.data?.message || t.toasts.loadFailed);
         }
       }
 
@@ -235,25 +239,25 @@ export default function TestReport() {
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Workspace
+          {t.backToWorkspace}
         </button>
 
         {loading ? (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-slate-500 text-left">
-            Loading report...
+            {t.loading}
           </div>
         ) : !hasReportContent(report) ? (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-left">
-            <h1 className="text-2xl font-bold text-slate-900">Report is not available</h1>
-            <p className="mt-2 text-slate-500">The test run has not produced a final report yet.</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t.notAvailable}</h1>
+            <p className="mt-2 text-slate-500">{t.notAvailableHint}</p>
           </div>
         ) : (
           <>
             <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between text-left">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-orange-600">Final test report</p>
+                <p className="text-sm font-semibold uppercase tracking-wide text-orange-600">{t.title}</p>
                 <h1 className="mt-2 text-3xl font-bold font-display tracking-tight text-slate-900">
-                  Test Result
+                  {t.testResult}
                 </h1>
                 <p className="mt-2 text-sm text-slate-500 break-all">
                   {run?.project_id || projectId}
@@ -266,35 +270,35 @@ export default function TestReport() {
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-left">
                 <Clock3 className="h-5 w-5 text-blue-600 mb-2" />
                 <p className="text-lg font-bold text-slate-900">{summary.duration || "-"}</p>
-                <p className="text-sm text-slate-500">Execution time</p>
+                <p className="text-sm text-slate-500">{t.summary.executionTime}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-left">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 mb-2" />
                 <p className="text-2xl font-bold text-slate-900">{summary.passed ?? 0}</p>
-                <p className="text-sm text-slate-500">Passed</p>
+                <p className="text-sm text-slate-500">{t.summary.passed}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-left">
                 <XCircle className="h-5 w-5 text-red-600 mb-2" />
                 <p className="text-2xl font-bold text-slate-900">{summary.failed ?? 0}</p>
-                <p className="text-sm text-slate-500">Failed</p>
+                <p className="text-sm text-slate-500">{t.summary.failed}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-left">
                 <AlertTriangle className="h-5 w-5 text-orange-600 mb-2" />
                 <p className="text-2xl font-bold text-slate-900">{summary.total ?? 0}</p>
-                <p className="text-sm text-slate-500">Total tests</p>
+                <p className="text-sm text-slate-500">{t.summary.totalTests}</p>
               </div>
             </div>
 
             <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4 text-left">
-              <p className="text-sm font-medium text-slate-500">Finished at</p>
+              <p className="text-sm font-medium text-slate-500">{t.summary.finishedAt}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{formatDate(finishedAt)}</p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-6 text-left">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Detected issues</h2>
-                  <p className="text-sm text-slate-500">{issues.length} issue(s)</p>
+                  <h2 className="text-xl font-bold text-slate-900">{t.issues.title}</h2>
+                  <p className="text-sm text-slate-500">{issues.length} {t.issues.unit}</p>
                 </div>
                 <FileWarning className="h-5 w-5 text-orange-500" />
               </div>
@@ -324,7 +328,7 @@ export default function TestReport() {
                 </div>
               ) : (
                 <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
-                  No issues were reported in the final result.
+                  {t.issues.none}
                 </div>
               )}
             </div>

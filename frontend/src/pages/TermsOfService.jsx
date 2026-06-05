@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useLanguage } from "../context/LanguageContext";
+import LanguageToggle from "../components/ui/LanguageToggle";
 
 const LAST_UPDATED = "June 6, 2026";
 
@@ -342,7 +343,7 @@ Chúng tôi cố gắng trả lời tất cả các yêu cầu trong vòng 5 ng�
 };
 
 export default function TermsOfService() {
-  const [lang, setLang] = useState("en");
+  const { lang } = useLanguage();
   const t = content[lang];
 
   return (
@@ -356,24 +357,7 @@ export default function TermsOfService() {
             </svg>
             <span className="text-sm font-medium">Back to Automate</span>
           </Link>
-          <div className="flex items-center gap-1 rounded-full border border-slate-200 p-1">
-            <button
-              onClick={() => setLang("en")}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                lang === "en" ? "bg-orange-500 text-white" : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setLang("vi")}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                lang === "vi" ? "bg-orange-500 text-white" : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              VI
-            </button>
-          </div>
+          <LanguageToggle />
         </div>
       </nav>
 

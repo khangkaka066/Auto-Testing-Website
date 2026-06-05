@@ -5,10 +5,14 @@ import Navbar from "../components/landing/Navbar";
 import { ArrowLeft, UploadCloud, FileText, Play, X } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import { useLanguage } from "../context/LanguageContext";
+import { testRunnerT } from "../i18n/testing";
 
 export default function TestRunner() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const { lang } = useLanguage();
+  const t = testRunnerT[lang];
 
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -18,18 +22,18 @@ export default function TestRunner() {
   const TEST_TYPES = [
     {
       value: "UI Testing",
-      label: "UI Testing",
-      desc: "Test giao diện người dùng với Playwright",
+      label: t.types[0].label,
+      desc: t.types[0].desc,
     },
     {
       value: "API Testing",
-      label: "API Testing",
-      desc: "Test các API endpoint của backend",
+      label: t.types[1].label,
+      desc: t.types[1].desc,
     },
     {
       value: "Functional Testing",
-      label: "Functional Testing",
-      desc: "Test luồng nghiệp vụ và chức năng",
+      label: t.types[2].label,
+      desc: t.types[2].desc,
     },
   ];
 
@@ -37,11 +41,11 @@ export default function TestRunner() {
 
   const setSelectedZip = (file) => {
     if (!isZipFile(file)) {
-      toast.error("Please select a .zip source code file");
+      toast.error(t.toasts.selectZip);
       return;
     }
     setZipFile(file);
-    toast.success(`File selected: ${file.name}`);
+    toast.success(`${t.toasts.fileSelected}: ${file.name}`);
   };
 
   const handleDragOver = (e) => {
@@ -75,7 +79,7 @@ export default function TestRunner() {
 
   const handleStartTest = async () => {
     if (!zipFile) {
-      toast.error("Please upload a .zip source code file to get started!");
+      toast.error(t.toasts.uploadFirst);
       return;
     }
 
@@ -113,7 +117,7 @@ export default function TestRunner() {
       }
 
       setIsTesting(false);
-      toast.success("Test pipeline started!");
+      toast.success(t.toasts.pipelineStarted);
       sessionStorage.setItem(
         "latest_test_progress",
         JSON.stringify({
@@ -130,7 +134,7 @@ export default function TestRunner() {
       });
     } catch (err) {
       setIsTesting(false);
-      toast.error(err.response?.data?.message || "An error occurred while uploading source code");
+      toast.error(err.response?.data?.message || t.toasts.uploadError);
     }
   };
 
@@ -144,15 +148,15 @@ export default function TestRunner() {
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Workspace
+          {t.backToWorkspace}
         </button>
 
         <div className="mb-8 text-left">
           <h1 className="text-3xl font-bold font-display tracking-tight text-slate-900">
-            Launch Auto Test
+            {t.title}
           </h1>
           <p className="text-slate-500 mt-2">
-            Upload a .zip file containing your source code. The system will store it in your workspace, extract it, and prepare it for automated analysis.
+            {t.subtitle}
           </p>
         </div>
 
@@ -191,7 +195,7 @@ export default function TestRunner() {
                   className="mt-4 flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-md transition-colors"
                 >
                   <X className="h-4 w-4" />
-                  Remove file
+                  {t.dropzone.remove}
                 </button>
               </div>
             ) : (
@@ -200,13 +204,13 @@ export default function TestRunner() {
                   <UploadCloud className="h-8 w-8" />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-700 mb-1">
-                  Drag & drop your .zip source code here
+                  {t.dropzone.title}
                 </h3>
                 <p className="text-sm text-slate-500 mb-4">
-                  or click to browse from your computer
+                  {t.dropzone.subtitle}
                 </p>
                 <span className="text-xs font-medium text-slate-400 bg-white px-3 py-1 border border-slate-200 rounded-full shadow-sm">
-                  Supported: .zip
+                  {t.dropzone.supported}
                 </span>
               </>
             )}
@@ -214,7 +218,7 @@ export default function TestRunner() {
 
           {/* Test type selector */}
           <div className="mt-6">
-            <p className="text-sm font-semibold text-slate-700 mb-3">Test Type</p>
+            <p className="text-sm font-semibold text-slate-700 mb-3">{t.testType}</p>
             <div className="grid grid-cols-3 gap-3">
               {TEST_TYPES.map((t) => (
                 <button
@@ -252,12 +256,12 @@ export default function TestRunner() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Starting...
+                  {t.starting}
                 </>
               ) : (
                 <>
                   <Play className="h-5 w-5 fill-current" />
-                  Start Test
+                  {t.startBtn}
                 </>
               )}
             </button>

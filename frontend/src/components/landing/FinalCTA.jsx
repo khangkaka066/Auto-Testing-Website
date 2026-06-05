@@ -2,8 +2,13 @@ import React, { useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import CTAIcosahedron from "./CTAIcosahedron";
 import { Root, Animation } from "@bsmnt/scrollytelling";
+import { useLanguage } from "../../context/LanguageContext";
+import { finalCtaT } from "../../i18n/landing";
 
 export default function FinalCTA() {
+  const { lang } = useLanguage();
+  const t = finalCtaT[lang];
+
   const badgeRef = useRef(null);
   const headingRef = useRef(null);
   const paraRef = useRef(null);
@@ -11,14 +16,11 @@ export default function FinalCTA() {
 
   return (
     <Root start="top 80%" end="top 15%" scrub={1}>
-      <section
-        data-testid="final-cta-section"
-        className="relative overflow-hidden bg-slate-900 text-white"
-      >
-        <Animation tween={{ target: badgeRef,   start: 0,  end: 35, fromTo: [{ opacity: 0, y: 20 },                      { opacity: 1, y: 0 }] }} />
-        <Animation tween={{ target: headingRef, start: 10, end: 55, fromTo: [{ opacity: 0, y: 45, scale: 0.9 },           { opacity: 1, y: 0, scale: 1 }] }} />
-        <Animation tween={{ target: paraRef,    start: 28, end: 68, fromTo: [{ opacity: 0, y: 30 },                      { opacity: 1, y: 0 }] }} />
-        <Animation tween={{ target: ctaRef,     start: 45, end: 82, fromTo: [{ opacity: 0, y: 25 },                      { opacity: 1, y: 0 }] }} />
+      <section data-testid="final-cta-section" className="relative overflow-hidden bg-slate-900 text-white">
+        <Animation tween={{ target: badgeRef,   start: 0,  end: 35, fromTo: [{ opacity: 0, y: 20 }, { opacity: 1, y: 0 }] }} />
+        <Animation tween={{ target: headingRef, start: 10, end: 55, fromTo: [{ opacity: 0, y: 45, scale: 0.9 }, { opacity: 1, y: 0, scale: 1 }] }} />
+        <Animation tween={{ target: paraRef,    start: 28, end: 68, fromTo: [{ opacity: 0, y: 30 }, { opacity: 1, y: 0 }] }} />
+        <Animation tween={{ target: ctaRef,     start: 45, end: 82, fromTo: [{ opacity: 0, y: 25 }, { opacity: 1, y: 0 }] }} />
 
         <CTAIcosahedron />
         <div className="absolute inset-0 bg-grid-dark opacity-40 pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
@@ -26,36 +28,27 @@ export default function FinalCTA() {
 
         <div className="relative max-w-5xl mx-auto px-6 md:px-8 py-24 md:py-32 text-center">
           <div ref={badgeRef} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-white/5">
-            <span className="text-xs font-mono uppercase tracking-[0.2em] text-orange-300 font-semibold">
-              Start in 60 seconds
-            </span>
+            <span className="text-xs font-mono uppercase tracking-[0.2em] text-orange-300 font-semibold">{t.badge}</span>
           </div>
 
           <h2 ref={headingRef} className="font-display mt-6 text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
-            Stop chasing bugs.<br />
-            <span className="text-orange-400">Start shipping.</span>
+            {t.headline1}<br />
+            <span className="text-orange-400">{t.headline2}</span>
           </h2>
 
-          <p ref={paraRef} className="mt-6 max-w-2xl mx-auto text-lg text-slate-300 leading-relaxed">
-            Join thousands of teams using TestPilot to release software with confidence — no flaky
-            tests, no late-night rollbacks.
-          </p>
+          <p ref={paraRef} className="mt-6 max-w-2xl mx-auto text-lg text-slate-300 leading-relaxed">{t.paragraph}</p>
 
           <div ref={ctaRef} className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href="#"
-              data-testid="final-cta-primary"
+            <a href="#" data-testid="final-cta-primary"
               className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-7 py-3.5 rounded-md transition-colors"
             >
-              Start free — no card needed
+              {t.primaryCta}
               <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
-            <a
-              href="#"
-              data-testid="final-cta-secondary"
+            <a href="#" data-testid="final-cta-secondary"
               className="inline-flex items-center gap-2 border border-white/15 hover:border-white/40 text-white font-medium px-7 py-3.5 rounded-md transition-colors"
             >
-              Book a demo
+              {t.secondaryCta}
             </a>
           </div>
         </div>

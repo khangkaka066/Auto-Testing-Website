@@ -1,41 +1,14 @@
 import React, { useRef } from "react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "../ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { SectionHeader } from "./Features";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-
-const faqs = [
-  {
-    q: "Do I need to write code to use TestPilot?",
-    a: "No. You can describe flows in plain English and TestPilot generates and maintains the tests for you. Power users can still write or import Playwright / Cypress specs.",
-  },
-  {
-    q: "Which browsers and devices are supported?",
-    a: "Chrome, Firefox, Safari and Edge on desktop, plus iOS Safari and Android Chrome viewports. Tests run in parallel across all of them.",
-  },
-  {
-    q: "How does self-healing work?",
-    a: "When a selector drifts (for example, a class name changes), TestPilot uses heuristics and a vision model to relocate the element and proposes a fix. You can auto-merge or review.",
-  },
-  {
-    q: "Can I run TestPilot in my own CI?",
-    a: "Yes. Drop-in GitHub Actions, GitLab CI and CircleCI integrations are available. You can also trigger runs via our REST API or CLI.",
-  },
-  {
-    q: "Is my data secure?",
-    a: "All runners are isolated, secrets are encrypted at rest, and access is role-based. We are SOC 2 Type II certified and GDPR compliant.",
-  },
-  {
-    q: "What happens after the free trial?",
-    a: "You roll over to the Free plan automatically — no cards charged. Upgrade to Pro any time to unlock more runs and features.",
-  },
-];
+import { useLanguage } from "../../context/LanguageContext";
+import { faqT } from "../../i18n/landing";
 
 export default function FAQ() {
+  const { lang } = useLanguage();
+  const t = faqT[lang];
+
   const headerRef = useRef(null);
   const f1 = useRef(null), f2 = useRef(null), f3 = useRef(null);
   const f4 = useRef(null), f5 = useRef(null), f6 = useRef(null);
@@ -43,42 +16,28 @@ export default function FAQ() {
 
   return (
     <Root start="top 85%" end="top 15%" scrub={1}>
-      <section
-        id="faq"
-        data-testid="faq-section"
-        className="py-24 md:py-32 border-b border-slate-200 bg-slate-50/40"
-      >
+      <section id="faq" data-testid="faq-section" className="py-24 md:py-32 border-b border-slate-200 bg-slate-50/40">
         <Animation tween={{ target: headerRef, start: 0, end: 38, fromTo: [{ opacity: 0, y: 30 }, { opacity: 1, y: 0 }] }} />
         <Animation tween={faqRefs.map((ref, i) => ({
-          target: ref,
-          start: 12 + i * 12,
-          end: 50 + i * 10,
+          target: ref, start: 12 + i * 12, end: 50 + i * 10,
           fromTo: [{ opacity: 0, x: -24 }, { opacity: 1, x: 0 }],
         }))} />
 
         <div className="max-w-4xl mx-auto px-6 md:px-8">
           <div ref={headerRef}>
-            <SectionHeader
-              label="FAQ"
-              title="Questions, answered."
-              align="center"
-            />
+            <SectionHeader label={t.header.label} title={t.header.title} align="center" />
           </div>
 
-          <Accordion type="single" collapsible className="mt-12 space-y-3" data-testid="faq-accordion">
-            {faqs.map((f, i) => (
+          <Accordion type="single" collapsible className="mt-12 flex flex-col gap-3">
+            {t.items.map((f, i) => (
               <div key={i} ref={faqRefs[i]}>
-                <AccordionItem
-                  value={`item-${i}`}
-                  data-testid={`faq-item-${i}`}
+                <AccordionItem value={`item-${i}`} data-testid={`faq-item-${i}`}
                   className="border border-slate-200 rounded-lg bg-white px-5 [&[data-state=open]]:border-slate-300"
                 >
                   <AccordionTrigger className="font-display text-left font-semibold text-slate-900 hover:no-underline py-5">
                     {f.q}
                   </AccordionTrigger>
-                  <AccordionContent className="text-slate-600 leading-relaxed pb-5">
-                    {f.a}
-                  </AccordionContent>
+                  <AccordionContent className="text-slate-600 leading-relaxed pb-5">{f.a}</AccordionContent>
                 </AccordionItem>
               </div>
             ))}

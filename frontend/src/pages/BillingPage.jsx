@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import { useLanguage } from "../context/LanguageContext";
+import { billingT } from "../i18n/billing";
 
 function formatDate(val) {
   if (!val) return "—";
@@ -24,7 +26,7 @@ const PACKAGES = [
     credits: 1_000_000,
     price: 5,
     color: "border-slate-200",
-    badge: "",
+    badgeKey: "",
     features: ["1,000,000 AI credits", "All test types", "Full report history", "Email support"],
   },
   {
@@ -33,7 +35,7 @@ const PACKAGES = [
     credits: 5_000_000,
     price: 20,
     color: "border-orange-400",
-    badge: "Most Popular",
+    badgeKey: "mostPopular",
     features: ["5,000,000 AI credits", "All test types", "Full report history", "Priority support", "20% better value"],
   },
   {
@@ -42,13 +44,15 @@ const PACKAGES = [
     credits: 15_000_000,
     price: 50,
     color: "border-violet-400",
-    badge: "Best Value",
+    badgeKey: "bestValue",
     features: ["15,000,000 AI credits", "All test types", "Full report history", "Priority support", "34% better value", "Team access"],
   },
 ];
 
 export default function BillingPage() {
   const navigate = useNavigate();
+  const { lang } = useLanguage();
+  const t = billingT[lang];
   const [user, setUser] = useState({ name: "Developer" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
   const [initial, setInitial] = useState(localStorage.getItem("user_name")?.charAt(0).toUpperCase() || "U");
@@ -71,10 +75,10 @@ export default function BillingPage() {
     // Check success/cancel từ Stripe redirect
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "1") {
-      toast.success("Payment successful! Credits have been added to your account.");
+      toast.success(t.toasts.paymentSuccess);
       window.history.replaceState({}, "", "/billing");
     } else if (params.get("cancelled") === "1") {
-      toast.info("Payment cancelled.");
+      toast.info(t.toasts.paymentCancelled);
       window.history.replaceState({}, "", "/billing");
     }
 
@@ -105,7 +109,7 @@ export default function BillingPage() {
         window.location.href = res.data.data.url;
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not start checkout");
+      toast.error(err.response?.data?.message || t.toasts.checkoutFailed);
       setBuying(null);
     }
   };
@@ -114,12 +118,12 @@ export default function BillingPage() {
     localStorage.removeItem("token");
     localStorage.removeItem("user_avatar");
     localStorage.removeItem("user_name");
-    toast.success("Logged out successfully!");
+    toast.success(t.toasts.loggedOut);
     navigate("/");
   };
 
-  const totalSpent = transactions.filter(t => t.status === "completed").reduce((s, t) => s + (t.amount_usd || 0), 0);
-  const totalCreditsBought = transactions.filter(t => t.status === "completed").reduce((s, t) => s + (t.credits_added || 0), 0);
+  const totalSpent = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.amount_usd || 0), 0);
+  const totalCreditsBought = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.credits_added || 0), 0);
   const usedPct = credits != null && (tokensUsed + credits) > 0
     ? Math.round((tokensUsed / (tokensUsed + credits)) * 100) : 0;
 
@@ -188,8 +192,8 @@ export default function BillingPage() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-base font-bold text-slate-800">Billing & Credits</h1>
-            <p className="text-xs text-slate-400">Manage your credit balance and transactions</p>
+            <h1 className="text-base font-bold text-slate-800">{t.pageTitle}</h1>
+            <p className="text-xs text-slate-400">{t.subtitle}</p>
           </div>
           <Link to="/profile" className="flex items-center gap-2 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors">
             <div className="h-8 w-8 bg-orange-600 text-white font-bold rounded-full flex items-center justify-center text-sm shrink-0 overflow-hidden">
@@ -206,7 +210,7 @@ export default function BillingPage() {
             {/* Balance card */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-l-4 border-l-violet-500">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Available Credits</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.overview.available}</p>
                 <div className="h-8 w-8 bg-violet-100 text-violet-600 rounded-lg flex items-center justify-center">
                   <Zap className="h-4 w-4" />
                 </div>
@@ -216,30 +220,30 @@ export default function BillingPage() {
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-violet-500 rounded-full transition-all duration-700" style={{ width: `${usedPct}%` }} />
                 </div>
-                <p className="text-xs text-slate-400 mt-1">{usedPct}% used · {tokensUsed.toLocaleString()} tokens spent</p>
+                <p className="text-xs text-slate-400 mt-1">{usedPct}% {t.overview.usedPercent} · {tokensUsed.toLocaleString()} {t.overview.tokensSpent}</p>
               </div>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-l-4 border-l-emerald-500">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Purchased</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.overview.purchased}</p>
                 <div className="h-8 w-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
                   <Coins className="h-4 w-4" />
                 </div>
               </div>
               <p className="text-2xl font-bold text-slate-800">{totalCreditsBought.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">{transactions.filter(t => t.status === "completed").length} transactions</p>
+              <p className="text-xs text-slate-400 mt-1">{transactions.filter(tx => tx.status === "completed").length} {t.overview.transactions}</p>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 border-l-4 border-l-orange-500">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Spent</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.overview.spent}</p>
                 <div className="h-8 w-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
                   <TrendingUp className="h-4 w-4" />
                 </div>
               </div>
               <p className="text-2xl font-bold text-slate-800">${totalSpent.toFixed(2)}</p>
-              <p className="text-xs text-slate-400 mt-1">Lifetime spend</p>
+              <p className="text-xs text-slate-400 mt-1">{t.overview.lifetimeSpend}</p>
             </div>
           </div>
 
@@ -248,8 +252,8 @@ export default function BillingPage() {
             <div className="mb-6 flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-orange-800">Credits running low</p>
-                <p className="text-xs text-orange-600 mt-0.5">You have {credits.toLocaleString()} credits remaining. Top up now to keep running tests without interruption.</p>
+                <p className="text-sm font-semibold text-orange-800">{t.warnings.lowCredits}</p>
+                <p className="text-xs text-orange-600 mt-0.5">{credits.toLocaleString()} {t.warnings.lowCreditsHint}</p>
               </div>
             </div>
           )}
@@ -258,8 +262,8 @@ export default function BillingPage() {
             <div className="mb-6 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-blue-800">Payment not configured</p>
-                <p className="text-xs text-blue-600 mt-0.5">Add <code className="bg-blue-100 px-1 rounded">STRIPE_SECRET_KEY</code> and <code className="bg-blue-100 px-1 rounded">STRIPE_WEBHOOK_SECRET</code> to backend <code className="bg-blue-100 px-1 rounded">.env</code> to enable payments.</p>
+                <p className="text-sm font-semibold text-blue-800">{t.warnings.notConfigured}</p>
+                <p className="text-xs text-blue-600 mt-0.5">{t.warnings.notConfiguredHint}</p>
               </div>
             </div>
           )}
@@ -270,17 +274,17 @@ export default function BillingPage() {
               <div className="h-8 w-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
                 <Package className="h-4 w-4" />
               </div>
-              <h2 className="text-sm font-bold text-slate-800">Credit Packages</h2>
+              <h2 className="text-sm font-bold text-slate-800">{t.packages.title}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {PACKAGES.map((pkg) => (
                 <div key={pkg.id} className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col relative ${pkg.color}`}>
-                  {pkg.badge && (
+                  {pkg.badgeKey && (
                     <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap ${
                       pkg.id === "pro" ? "bg-orange-500 text-white" : "bg-violet-500 text-white"
                     }`}>
-                      {pkg.badge}
+                      {pkg.badgeKey === "mostPopular" ? t.packages.mostPopular : t.packages.bestValue}
                     </span>
                   )}
 
@@ -288,10 +292,10 @@ export default function BillingPage() {
                     <h3 className="text-base font-bold text-slate-800">{pkg.name}</h3>
                     <div className="flex items-baseline gap-1 mt-1">
                       <span className="text-3xl font-bold text-slate-900">${pkg.price}</span>
-                      <span className="text-slate-400 text-sm">USD</span>
+                      <span className="text-slate-400 text-sm">{t.packages.usd}</span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      {pkg.credits.toLocaleString()} credits · ${(pkg.price / pkg.credits * 1_000_000).toFixed(2)}/M tokens
+                      {pkg.credits.toLocaleString()} {t.packages.creditsUnit} · ${(pkg.price / pkg.credits * 1_000_000).toFixed(2)}/M tokens
                     </p>
                   </div>
 
@@ -318,12 +322,12 @@ export default function BillingPage() {
                     {buying === pkg.id ? (
                       <>
                         <span className="h-3.5 w-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        Redirecting…
+                        {t.packages.redirecting}
                       </>
                     ) : (
                       <>
                         <CreditCard className="h-3.5 w-3.5" />
-                        {stripeEnabled ? `Buy for $${pkg.price}` : "Payment not configured"}
+                        {stripeEnabled ? `${t.packages.buyFor} $${pkg.price}` : t.packages.notConfigured}
                       </>
                     )}
                   </button>
@@ -339,8 +343,8 @@ export default function BillingPage() {
                 <Receipt className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-800">Transaction History</h3>
-                <p className="text-xs text-slate-400">{transactions.length} records</p>
+                <h3 className="text-sm font-bold text-slate-800">{t.history.title}</h3>
+                <p className="text-xs text-slate-400">{transactions.length} {t.history.records}</p>
               </div>
             </div>
 
@@ -349,46 +353,46 @@ export default function BillingPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                      <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Package</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Credits</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Amount</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
+                      <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.history.package}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.history.credits}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.history.amount}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.history.status}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.history.date}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {transactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                    {transactions.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 bg-violet-100 rounded-lg flex items-center justify-center shrink-0">
                               <Zap className="h-3.5 w-3.5 text-violet-600" />
                             </div>
-                            <span className="font-medium text-slate-800">{t.package_name || "Credits"}</span>
+                            <span className="font-medium text-slate-800">{tx.package_name || "Credits"}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-slate-700 font-medium">
-                          +{(t.credits_added || 0).toLocaleString()}
+                          +{(tx.credits_added || 0).toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-slate-700 font-semibold">
-                          ${(t.amount_usd || 0).toFixed(2)}
+                          ${(tx.amount_usd || 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            t.status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : t.status === "pending" ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
+                            tx.status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : tx.status === "pending" ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
                             : "bg-red-50 text-red-700 border border-red-200"
                           }`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${
-                              t.status === "completed" ? "bg-emerald-500"
-                              : t.status === "pending" ? "bg-yellow-500"
+                              tx.status === "completed" ? "bg-emerald-500"
+                              : tx.status === "pending" ? "bg-yellow-500"
                               : "bg-red-500"
                             }`} />
-                            {t.status}
+                            {tx.status === "completed" ? t.history.completed : tx.status === "pending" ? t.history.pending : tx.status}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                          {formatDate(t.created_at)}
+                          {formatDate(tx.created_at)}
                         </td>
                       </tr>
                     ))}
@@ -400,8 +404,8 @@ export default function BillingPage() {
                 <div className="h-14 w-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
                   <History className="h-7 w-7 text-slate-300" />
                 </div>
-                <p className="text-sm font-medium text-slate-500">No transactions yet</p>
-                <p className="text-xs text-slate-400 mt-1">Your purchase history will appear here</p>
+                <p className="text-sm font-medium text-slate-500">{t.history.empty}</p>
+                <p className="text-xs text-slate-400 mt-1">{t.history.emptyHint}</p>
               </div>
             )}
           </div>

@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
 import { User, Mail, Lock, ArrowLeft, Camera } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
+import { profileT } from "../i18n/profile";
 
 export default function Profile() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
@@ -13,11 +15,13 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const { lang } = useLanguage();
+  const t = profileT[lang];
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Please sign in to use this feature");
+      toast.error(t.signInRequired);
       navigate("/login");
       return;
     }
@@ -103,7 +107,7 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-500 animate-pulse font-medium">Loading account information...</p>
+        <p className="text-slate-500 animate-pulse font-medium">{t.loading}</p>
       </div>
     );
   }
@@ -118,12 +122,12 @@ export default function Profile() {
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
+          {t.backToDashboard}
         </button>
 
         <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-900 text-left mb-1">Profile</h2>
-          <p className="text-slate-500 text-sm text-left mb-6">Update your display name and profile photo.</p>
+          <h2 className="text-2xl font-bold text-slate-900 text-left mb-1">{t.title}</h2>
+          <p className="text-slate-500 text-sm text-left mb-6">{t.subtitle}</p>
 
           <div className="flex flex-col items-center mb-6 relative">
             <div
@@ -154,7 +158,7 @@ export default function Profile() {
               className="text-xs font-semibold text-orange-600 mt-2 hover:underline disabled:opacity-50"
               disabled={uploading}
             >
-              {uploading ? "Uploading..." : "Change profile photo"}
+              {uploading ? t.uploading : t.changePhoto}
             </button>
           </div>
 
@@ -162,7 +166,7 @@ export default function Profile() {
             <div>
               <label className="block text-sm font-medium text-slate-700 text-left flex items-center gap-1.5">
                 <User className="h-4 w-4 text-slate-400" />
-                Full name
+                {t.fullName}
               </label>
               <input
                 type="text"
@@ -176,7 +180,7 @@ export default function Profile() {
             <div>
               <label className="block text-sm font-medium text-slate-400 text-left flex items-center gap-1.5 select-none">
                 <Mail className="h-4 w-4 text-slate-300" />
-                Email address (read-only)
+                {t.email}
               </label>
               <input
                 type="email"
@@ -189,11 +193,11 @@ export default function Profile() {
             <div>
               <label className="block text-sm font-medium text-slate-700 text-left flex items-center gap-1.5">
                 <Lock className="h-4 w-4 text-slate-400" />
-                New password (leave blank to keep current)
+                {t.newPassword}
               </label>
               <input
                 type="password"
-                placeholder="••••••••"
+                placeholder={t.passwordPlaceholder}
                 value={formData.password}
                 className="mt-1 w-full rounded-md border p-2 bg-white text-black border-slate-200 focus:outline-none focus:border-orange-500"
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -204,7 +208,7 @@ export default function Profile() {
               type="submit"
               className="w-full mt-6 rounded-md bg-orange-600 py-2.5 font-semibold text-white hover:bg-orange-700 transition-colors shadow-sm"
             >
-              Save changes
+              {t.saveChanges}
             </button>
           </form>
         </div>
