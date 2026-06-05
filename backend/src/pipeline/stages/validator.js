@@ -70,6 +70,34 @@ function writeFailedSpecManifest(validatorOutputDir, failedFiles) {
   );
 }
 
+function extractFailedSpecFilesFromLog(log, specsDir) {
+  const specsDirResolved = path.resolve(specsDir);
+  const rawMatches = [
+    ...[...log.matchAll(/^(.+?\.spec\.ts)\(\d+,\d+\):/gm)].map(m => m[1]),
+    ...[...log.matchAll(/^--- (.+?\.spec\.ts) ---$/gm)].map(m => m[1]),
+    ...[...log.matchAll(/([^\n:(]+\.spec\.ts)/g)].map(m => m[1].trim()),
+  ];
+  const failed = new Set();
+
+  for (const raw of rawMatches) {
+    const candidates = [
+      path.resolve(raw),
+      path.join(specsDirResolved, path.basename(raw)),
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate) && candidate.endsWith('.spec.ts')) {
+        const rel = path.relative(specsDirResolved, candidate);
+        if (!rel.startsWith('..')) {
+          failed.add(candidate);
+          break;
+        }
+      }
+    }
+  }
+
+  return [...failed].sort();
+}
+
 function run(specsDir, validatorOutputDir) {
   const specFiles = getSpecFiles(specsDir);
   fs.mkdirSync(validatorOutputDir, { recursive: true });
@@ -113,26 +141,16 @@ function run(specsDir, validatorOutputDir) {
     return false;
   }
 
-  const errors = [];
-  const failedFiles = [];
-
-  for (const specFile of specFiles) {
-    const result = runTsc(tscBin, [specFile]);
-    if (result.status === 0) continue;
-    failedFiles.push(specFile);
-    errors.push([
-      `--- ${path.relative(BACKEND_ROOT, specFile)} ---`,
-      resultLog(result).trim(),
-    ].filter(Boolean).join('\n'));
-  }
-
-  if (failedFiles.length === 0) {
+  const result = runTsc(tscBin, specFiles);
+  if (result.status === 0) {
     fs.rmSync(path.join(validatorOutputDir, 'validator_errors.log'), { force: true });
     writeFailedSpecManifest(validatorOutputDir, []);
     return true;
   }
 
-  fs.writeFileSync(path.join(validatorOutputDir, 'validator_errors.log'), errors.join('\n\n').trim(), 'utf-8');
+  const errorLog = resultLog(result).trim();
+  const failedFiles = extractFailedSpecFilesFromLog(errorLog, specsDir);
+  fs.writeFileSync(path.join(validatorOutputDir, 'validator_errors.log'), errorLog, 'utf-8');
   writeFailedSpecManifest(validatorOutputDir, failedFiles);
   return false;
 }
@@ -157,32 +175,7 @@ function getFailedSpecFiles(specsDir, validatorOutputDir) {
   if (!fs.existsSync(logPath)) return [];
 
   const log = fs.readFileSync(logPath, 'utf-8');
-  const specsDirResolved = path.resolve(specsDir);
-
-  const rawMatches = [
-    ...[...log.matchAll(/^(.+?\.spec\.ts)\(\d+,\d+\):/gm)].map(m => m[1]),
-    ...[...log.matchAll(/^--- (.+?\.spec\.ts) ---$/gm)].map(m => m[1]),
-    ...[...log.matchAll(/([^\n:(]+\.spec\.ts)/g)].map(m => m[1].trim()),
-  ];
-  const failed = new Set();
-
-  for (const raw of rawMatches) {
-    const candidates = [
-      path.resolve(raw),
-      path.join(specsDirResolved, path.basename(raw)),
-    ];
-    for (const candidate of candidates) {
-      if (fs.existsSync(candidate) && candidate.endsWith('.spec.ts')) {
-        const rel = path.relative(specsDirResolved, candidate);
-        if (!rel.startsWith('..')) {
-          failed.add(candidate);
-          break;
-        }
-      }
-    }
-  }
-
-  return [...failed].sort();
+  return extractFailedSpecFilesFromLog(log, specsDir);
 }
 
 function removeFailedSpecs(specsDir, validatorOutputDir) {

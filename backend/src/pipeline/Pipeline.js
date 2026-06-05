@@ -108,7 +108,7 @@ class Pipeline {
   _reportProgress(stageKey, message) {
     const index = STAGE_INDEX[stageKey] == null ? 0 : STAGE_INDEX[stageKey];
     const stage = PROGRESS_STAGES[index];
-    this.onProgress({
+    return this.onProgress({
       status: 'running',
       stage: stageKey,
       progress_percent: stage.percent,
@@ -118,11 +118,11 @@ class Pipeline {
   }
 
   _reportSubProgress(stageKey, label, completed, total) {
-    if (!total || total <= 0) return;
+    if (!total || total <= 0) return null;
     const index = STAGE_INDEX[stageKey] == null ? 0 : STAGE_INDEX[stageKey];
     const stage = PROGRESS_STAGES[index];
     const safeCompleted = Math.max(0, Math.min(completed, total));
-    this.onProgress({
+    return this.onProgress({
       status: 'running',
       stage: stageKey,
       progress_percent: stage.percent,
@@ -133,6 +133,12 @@ class Pipeline {
         percent: Math.round((safeCompleted / total) * 100),
       },
     });
+  }
+
+  async _waitForProgressPersist(progressResult) {
+    if (progressResult && progressResult.persisted) {
+      await progressResult.persisted;
+    }
   }
 
   _setupDirectories() {
@@ -235,7 +241,7 @@ class Pipeline {
       runtimeUrls: this.runtimeUrls,
       frameworkProfile: this.frameworkProfile,
       onProgress: ({ completed, total }) => {
-        this._reportSubProgress('coder', 'Generating test specs', completed, total);
+        return this._reportSubProgress('coder', 'Generating test specs', completed, total);
       },
     });
     fs.writeFileSync(
@@ -245,14 +251,18 @@ class Pipeline {
     return manifest;
   }
 
-  runValidator() {
-    this._reportProgress('validator', 'Checking generated tests before execution');
+  async runValidator() {
+    await this._waitForProgressPersist(
+      this._reportProgress('validator', 'Checking generated tests before execution')
+    );
     console.log('[STAGE 4.5] Validator...');
     return validator.run(this.specsDir, this.dirs.validator);
   }
 
   async runDebugger() {
-    this._reportProgress('debugger', 'Checking whether generated tests need repair');
+    await this._waitForProgressPersist(
+      this._reportProgress('debugger', 'Checking whether generated tests need repair')
+    );
     console.log('[STAGE 4.7] Debugger...');
     const failedFiles = validator.getFailedSpecFiles(this.specsDir, this.dirs.validator);
     if (failedFiles.length === 0) return;
@@ -260,10 +270,12 @@ class Pipeline {
     const logPath = path.join(this.dirs.validator, 'validator_errors.log');
     const errorLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8') : '';
     const manifestPath = path.join(this.dirs.coder, 'coder_manifest.json');
-    this._reportProgress('debugger', `Repairing ${failedFiles.length} generated test file(s)`);
+    await this._waitForProgressPersist(
+      this._reportProgress('debugger', `Repairing ${failedFiles.length} generated test file(s)`)
+    );
     await debugger_.run(failedFiles, errorLog, manifestPath, this.dirs.filter, this.dirs.validator, {
       onProgress: ({ completed, total }) => {
-        this._reportSubProgress('debugger', 'Repairing generated tests', completed, total);
+        return this._reportSubProgress('debugger', 'Repairing generated tests', completed, total);
       },
     });
   }
@@ -339,12 +351,12 @@ class Pipeline {
       await this.runCoder(this.runtimeUrls.baseUrl || baseUrl);
 
       const MAX_RETRIES = 3;
-      let isValid = this.runValidator();
+      let isValid = await this.runValidator();
 
       for (let attempt = 1; attempt <= MAX_RETRIES && !isValid; attempt++) {
         console.log(`\n--- Auto-healing attempt ${attempt}/${MAX_RETRIES} ---`);
         await this.runDebugger();
-        isValid = this.runValidator();
+        isValid = await this.runValidator();
       }
 
       if (!isValid) {

@@ -204,6 +204,10 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
       return { generated: [] };
     }
   }, { onProgress: options.onProgress });
+  if (typeof options.onProgress === 'function') {
+    const progressResult = options.onProgress({ completed: items.length, total: items.length });
+    if (progressResult && progressResult.persisted) await progressResult.persisted;
+  }
 
   const manifest = [];
   const usedNames = new Set();

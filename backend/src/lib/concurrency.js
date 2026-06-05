@@ -4,6 +4,12 @@ async function mapConcurrent(items, maxConcurrent, fn, options = {}) {
   let nextIndex = 0;
   let completed = 0;
 
+  async function notifyProgress(progress) {
+    if (typeof options.onProgress !== 'function') return;
+    const result = options.onProgress(progress);
+    if (result && result.persisted) await result.persisted;
+  }
+
   async function worker() {
     while (nextIndex < items.length) {
       const currentIndex = nextIndex++;
@@ -17,16 +23,12 @@ async function mapConcurrent(items, maxConcurrent, fn, options = {}) {
         }
       } finally {
         completed++;
-        if (typeof options.onProgress === 'function') {
-          options.onProgress({ completed, total: items.length });
-        }
+        await notifyProgress({ completed, total: items.length });
       }
     }
   }
 
-  if (typeof options.onProgress === 'function') {
-    options.onProgress({ completed: 0, total: items.length });
-  }
+  await notifyProgress({ completed: 0, total: items.length });
 
   await Promise.all(Array.from({ length: limit }, worker));
   return results;

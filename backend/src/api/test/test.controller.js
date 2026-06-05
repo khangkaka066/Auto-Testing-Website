@@ -245,11 +245,14 @@ async function persistJobSnapshot(job) {
 function updateJobAndSnapshot(jobId, changes) {
   updateJob(jobId, changes);
   const job = getJob(jobId);
+  let persisted = Promise.resolve(null);
   if (job) {
-    persistJobSnapshot(job).catch(err => {
+    persisted = persistJobSnapshot(job).catch(err => {
       console.error('[updateJobAndSnapshot] Supabase error:', err.message);
+      return null;
     });
   }
+  if (job) Object.defineProperty(job, 'persisted', { value: persisted, enumerable: false });
   return job;
 }
 

@@ -157,12 +157,28 @@ function resolveStartCommand(command, projectRoot) {
   return command;
 }
 
+function withYarnInstallNetworkOptions(args) {
+  const parts = String(args || '').trim().split(/\s+/).filter(Boolean);
+  if (parts[0] !== 'install') return args || '';
+
+  const hasRegistry = parts.some(part => part === '--registry' || part.startsWith('--registry='));
+  const hasNetworkTimeout = parts.some(part => part === '--network-timeout' || part.startsWith('--network-timeout='));
+
+  if (!hasRegistry) parts.push('--registry', 'https://registry.npmjs.org');
+  if (!hasNetworkTimeout) parts.push('--network-timeout', '600000');
+
+  return parts.join(' ');
+}
+
 function resolvePackageManagerCommand(command, env) {
   if (!command) return command;
   const trimmed = command.trim();
   const yarnMatch = trimmed.match(/^yarn(?:\s+(.*))?$/);
-  if (yarnMatch && !commandExists('yarn', env)) {
-    const args = yarnMatch[1] || '';
+  if (yarnMatch) {
+    const args = withYarnInstallNetworkOptions(yarnMatch[1] || '');
+    if (commandExists('yarn', env)) {
+      return `yarn${args ? ` ${args}` : ''}`;
+    }
     if (commandExists('corepack', env)) {
       return `corepack yarn${args ? ` ${args}` : ''}`;
     }
