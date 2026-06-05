@@ -170,7 +170,6 @@ export default function Dashboard() {
       .catch(() => {});
   }, [navigate]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ghStatus = params.get("github");
@@ -187,6 +186,7 @@ export default function Dashboard() {
       toast.error(`${t.toasts.githubFailed}: ${params.get("reason") || "unknown error"}`);
       window.history.replaceState({}, "", "/dashboard");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const connectGithub = () => {
@@ -217,9 +217,9 @@ export default function Dashboard() {
     } catch {}
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (uploadMode === "github" && githubStatus?.connected && repos.length === 0) loadRepos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadMode, githubStatus, repos.length]);
 
   const selectZip = (file) => {

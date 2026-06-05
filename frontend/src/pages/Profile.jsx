@@ -18,7 +18,6 @@ export default function Profile() {
   const { lang } = useLanguage();
   const t = profileT[lang];
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -49,6 +48,7 @@ export default function Profile() {
         toast.error(err.response?.data?.message || "Failed to load profile");
         setLoading(false);
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const handleAvatarChange = async (e) => {

@@ -63,7 +63,6 @@ export default function BillingPage() {
   const [buying, setBuying] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
@@ -96,6 +95,7 @@ export default function BillingPage() {
     axios.get(`${API_BASE_URL}/api/billing/transactions`, { headers })
       .then(r => { if (r.data.success) setTransactions(r.data.data); })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const handleBuy = async (pkgId) => {
