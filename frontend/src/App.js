@@ -18,6 +18,9 @@ import TestReport from "./pages/TestReport";
 import PricingPage from "./pages/PricingPage";
 import BillingPage from "./pages/BillingPage";
 import FeaturesPage from "./pages/FeaturesPage";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CookiePolicy from "./pages/CookiePolicy";
 import { Toaster } from "./components/ui/sonner";
 import ChatWidget from "./components/ui/ChatWidget";
 
@@ -38,6 +41,9 @@ function App() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-left" />

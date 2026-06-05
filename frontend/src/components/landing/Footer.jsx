@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Twitter, Github, Linkedin } from "lucide-react";
+import { SiFacebook, SiTiktok } from "react-icons/si";
 
 const ROUTE_MAP = {
   Features: "/features",
@@ -40,17 +40,26 @@ export default function Footer() {
               The autonomous QA platform for teams that ship every day.
             </p>
             <div className="mt-6 flex items-center gap-3">
-              {[Twitter, Github, Linkedin].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  data-testid={`social-link-${i}`}
-                  className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-colors"
-                  aria-label="social link"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
+              <a
+                href="https://www.facebook.com/share/1Ai6P7uPZ4/?mibextid=wwXIfr"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="social-link-facebook"
+                className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:text-[#1877F2] hover:border-[#1877F2] transition-colors"
+                aria-label="Facebook"
+              >
+                <SiFacebook className="h-4 w-4" />
+              </a>
+              <a
+                href="https://www.tiktok.com/@userriea2dhf16?_r=1&_t=ZS-96s3dNKN64T"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="social-link-tiktok"
+                className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-colors"
+                aria-label="TikTok"
+              >
+                <SiTiktok className="h-4 w-4" />
+              </a>
             </div>
           </div>
 
