@@ -61,6 +61,13 @@ function buildUniqueRunWorkspace(baseDir, runId) {
   return { runId: candidateRunId, runWorkspaceDir: candidateDir };
 }
 
+function pipelineError(message, details = {}) {
+  const err = new Error(message);
+  err.name = 'PipelineError';
+  err.details = details;
+  return err;
+}
+
 class Pipeline {
   constructor({ userId, projectId, sourceCodePath, testType, onProgress }) {
     this.userId = userId;
@@ -343,6 +350,7 @@ class Pipeline {
       if (!isValid) {
         console.log('[FALLBACK] Removing failed specs...');
         const removed = validator.removeFailedSpecs(this.specsDir, this.dirs.validator);
+        console.log(`  → Removed ${removed.length} failed spec file(s).`);
         if (removed.length > 0) isValid = true;
       }
 
@@ -352,12 +360,32 @@ class Pipeline {
           : [];
         if (remaining.length === 0) {
           console.log('[FAILED] No valid spec files remaining.');
+          throw pipelineError('No valid generated spec files remaining after validation.', {
+            stage: 'validator',
+            run_workspace_dir: this.runWorkspaceDir,
+            validator_errors_path: path.join(this.dirs.validator, 'validator_errors.log'),
+            removed_failed_specs_path: path.join(this.dirs.validator, 'removed_failed_specs.json'),
+          });
         } else {
           await this.runExecutor(baseUrl);
-          await this.runReporter();
+          const report = await this.runReporter();
+          if (!report) {
+            throw pipelineError('Executor did not produce a report that can be summarized.', {
+              stage: 'executor',
+              run_workspace_dir: this.runWorkspaceDir,
+              executor_report_path: path.join(this.dirs.executor, 'test_report.json'),
+              runtime_services_path: path.join(this.dirs.executor, 'runtime_services.json'),
+            });
+          }
         }
       } else {
         console.log('[FAILED] Pipeline failed after max retries.');
+        throw pipelineError('Generated specs failed validation after max auto-healing retries.', {
+          stage: 'validator',
+          run_workspace_dir: this.runWorkspaceDir,
+          validator_errors_path: path.join(this.dirs.validator, 'validator_errors.log'),
+          failed_specs_path: path.join(this.dirs.validator, 'failed_specs.json'),
+        });
       }
     });
 

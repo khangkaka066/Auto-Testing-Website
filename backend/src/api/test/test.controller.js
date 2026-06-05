@@ -184,9 +184,10 @@ function buildJobState(job) {
 
 function serializePipelineError(err) {
   const error = {
-    type: err?.constructor?.name || 'Error',
+    type: err?.name || err?.constructor?.name || 'Error',
     message: err?.message || 'Unknown pipeline error',
   };
+  if (err?.details && typeof err.details === 'object') error.details = err.details;
   if (AI_DEBUG && err?.stack) error.stack = err.stack;
   return error;
 }
