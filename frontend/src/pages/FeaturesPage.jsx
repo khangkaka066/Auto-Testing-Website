@@ -12,9 +12,12 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
+  GitBranch,
+  ShieldCheck,
 } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import Footer from "../components/landing/Footer";
+import HeroParticleNetwork from "../components/landing/HeroParticleNetwork";
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -155,45 +158,169 @@ function WorkflowStep({ step, index, total }) {
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <Navbar />
+    <div className="min-h-screen bg-white text-slate-900">
+      <HeroParticleNetwork />
+
+      <div className="relative flex min-h-screen flex-col" style={{ zIndex: 1 }}>
+        <Navbar />
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white border-b border-slate-200 pt-28 pb-20 md:pt-36 md:pb-28">
+      <section className="relative overflow-hidden border-b border-slate-200 pt-24 pb-16 md:pt-32 md:pb-24">
         {/* Background grid */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              "linear-gradient(#0F172A 1px, transparent 1px), linear-gradient(90deg, #0F172A 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-          }}
-        />
-        <div className="relative max-w-4xl mx-auto px-6 md:px-8 text-center">
-          <span className="inline-block text-xs font-mono uppercase tracking-[0.2em] text-orange-600 font-semibold mb-5">
-            Platform Features
-          </span>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1]">
-            Powerful features for{" "}
-            <span className="text-orange-500">automated web testing</span>
-          </h1>
-          <p className="mt-6 text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            From source code to detailed test reports — TestPilot handles the entire QA
-            pipeline so your team can focus on building.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-6 py-3 rounded-lg transition-colors shadow-sm"
-            >
-              Go to Dashboard <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/pricing"
-              className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 rounded-lg transition-colors"
-            >
-              View Pricing
-            </Link>
+        <div className="absolute inset-0 bg-grid pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/65 via-white/45 to-white pointer-events-none" />
+
+        <div className="relative max-w-7xl mx-auto px-6 md:px-8">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-7">
+              <div
+                className="hero-fade-in inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-200 bg-orange-50/90 backdrop-blur"
+                style={{ animationDelay: "0ms" }}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75 animate-ping"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                </span>
+                <span className="text-xs font-mono uppercase tracking-[0.18em] text-orange-700 font-semibold">
+                  Platform Features
+                </span>
+              </div>
+
+              <h1
+                className="hero-fade-in font-display mt-6 text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.03]"
+                style={{ animationDelay: "140ms" }}
+              >
+                Powerful features for{" "}
+                <span className="relative inline-block">
+                  <span className="relative z-10 text-orange-500">automated web testing</span>
+                  <span className="absolute -bottom-1 left-0 right-0 h-3 bg-orange-200/70 -z-0"></span>
+                </span>
+              </h1>
+
+              <p
+                className="hero-fade-in mt-6 max-w-2xl text-lg leading-relaxed text-slate-600"
+                style={{ animationDelay: "260ms" }}
+              >
+                From source code to detailed test reports, TestPilot handles the entire QA
+                pipeline so your team can focus on building.
+              </p>
+
+              <div
+                className="hero-fade-in mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+                style={{ animationDelay: "370ms" }}
+              >
+                <Link
+                  to="/dashboard"
+                  className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-6 py-3.5 rounded-md transition-all shadow-sm hover:shadow-md"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900 font-medium px-2 py-3.5"
+                >
+                  View Pricing
+                </Link>
+              </div>
+
+              <ul
+                className="hero-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600"
+                style={{ animationDelay: "480ms" }}
+              >
+                {["AI code analysis", "Playwright execution", "Visual reports"].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-orange-500" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lg:col-span-5 relative">
+              <div className="relative">
+                <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-orange-100 via-white to-slate-100 blur-2xl opacity-70" />
+                <div className="relative rounded-xl border border-slate-200 bg-white/95 backdrop-blur shadow-2xl shadow-slate-900/5 overflow-hidden animate-float">
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50/90">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-400"></span>
+                    <span className="h-2.5 w-2.5 rounded-full bg-yellow-400"></span>
+                    <span className="h-2.5 w-2.5 rounded-full bg-green-400"></span>
+                    <div className="ml-3 flex-1 text-xs font-mono text-slate-500 bg-white border border-slate-200 rounded px-3 py-1">
+                      testpilot.app/features
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                        AI test pipeline
+                      </div>
+                      <div className="font-display font-semibold text-slate-900 mt-0.5">
+                        Source to report in one run
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        { icon: Upload, label: "Connect repo or upload source", meta: "GitHub OAuth · ZIP upload" },
+                        { icon: Brain, label: "Analyse source code", meta: "Stack mapped" },
+                        { icon: ListChecks, label: "Generate test cases", meta: "UI · API · Flow" },
+                        { icon: ShieldCheck, label: "Run and validate", meta: "Self-healing" },
+                      ].map((row, i) => {
+                        const Icon = row.icon;
+                        return (
+                          <div
+                            key={row.label}
+                            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-md bg-slate-50 border border-slate-200"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-50 text-orange-500 border border-orange-100">
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-800 truncate">{row.label}</p>
+                                <p className="text-xs font-mono text-slate-400">{row.meta}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono text-orange-500">{String(i + 1).padStart(2, "0")}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                      {[
+                        { label: "Coverage", value: "92%" },
+                        { label: "Passed", value: "48", accent: true },
+                        { label: "Runtime", value: "3m" },
+                      ].map((stat) => (
+                        <div key={stat.label}>
+                          <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
+                            {stat.label}
+                          </div>
+                          <div className={`font-display font-semibold text-lg ${stat.accent ? "text-orange-600" : "text-slate-900"}`}>
+                            {stat.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden md:flex absolute -bottom-4 -left-6 items-center gap-3 bg-white border border-slate-200 shadow-lg rounded-lg px-4 py-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-orange-500 pulse-dot"></span>
+                  <div>
+                    <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
+                      Workflow
+                    </div>
+                    <div className="text-sm font-medium text-slate-900">
+                      8 capabilities linked
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <GitBranch className="hidden lg:block absolute -top-8 -right-4 h-10 w-10 text-orange-300/80" />
+            </div>
           </div>
         </div>
       </section>
@@ -376,6 +503,7 @@ export default function FeaturesPage() {
       </section>
 
       <Footer />
+      </div>
     </div>
   );
 }

@@ -11,6 +11,7 @@ const ROUTE_MAP = {
   Changelog: "/changelog",
   Docs: "/docs",
   "API reference": "/docs#api-reference",
+  Roadmap: "/roadmap",
   Privacy: "/privacy-policy",
   "Bảo mật": "/privacy-policy",
   Terms: "/terms-of-service",

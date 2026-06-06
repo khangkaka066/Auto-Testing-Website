@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import API_BASE_URL from "../config";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -48,6 +48,8 @@ const PACKAGES = [
   },
 ];
 
+const MIN_CREDITS = 4;
+
 export default function BillingPage() {
   const navigate = useNavigate();
   const t = billingT;
@@ -59,7 +61,6 @@ export default function BillingPage() {
   const [transactions, setTransactions] = useState([]);
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [buying, setBuying] = useState(false);
-  const [creditAmount, setCreditAmount] = useState(MIN_CREDITS);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -96,8 +97,8 @@ export default function BillingPage() {
       .catch(() => {});
   }, [navigate, t.toasts.paymentCancelled, t.toasts.paymentSuccess]);
 
-  const handleBuy = async () => {
-    if (creditAmount < MIN_CREDITS) {
+  const handleBuy = async (creditAmount) => {
+    if (!creditAmount || creditAmount < MIN_CREDITS) {
       toast.error(`Minimum purchase is ${MIN_CREDITS} credits`);
       return;
     }
@@ -129,6 +130,7 @@ export default function BillingPage() {
   const totalCreditsBought = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.credits_added || 0), 0);
   const usedPct = credits != null && (tokensUsed + credits) > 0
     ? Math.round((tokensUsed / (tokensUsed + credits)) * 100) : 0;
+  const previewCreditAmount = PACKAGES[1].credits;
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -301,7 +303,7 @@ export default function BillingPage() {
                   </div>
 
                   <button
-                    onClick={handleBuy}
+                    onClick={() => handleBuy(pkg.credits)}
                     disabled={!stripeEnabled || buying}
                     className="w-full py-3 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm shadow-orange-200"
                   >
@@ -318,7 +320,7 @@ export default function BillingPage() {
                     )}
                   </button>
                 </div>
-              </div>
+              ))}
 
               {/* Right: what you get */}
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-6 text-white flex flex-col">
@@ -347,8 +349,8 @@ export default function BillingPage() {
                 </ul>
 
                 <div className="mt-6 pt-5 border-t border-slate-700">
-                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mb-3">With {creditAmount} credit{creditAmount !== 1 ? "s" : ""} you can run approximately</p>
-                  <p className="text-3xl font-bold text-white">{Math.floor(creditAmount / 1.5)} <span className="text-base font-medium text-slate-400">test runs</span></p>
+                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mb-3">With {previewCreditAmount.toLocaleString()} credit{previewCreditAmount !== 1 ? "s" : ""} you can run approximately</p>
+                  <p className="text-3xl font-bold text-white">{Math.floor(previewCreditAmount / 1.5).toLocaleString()} <span className="text-base font-medium text-slate-400">test runs</span></p>
                   <p className="text-[11px] text-slate-500 mt-1">Based on average project size</p>
                 </div>
               </div>

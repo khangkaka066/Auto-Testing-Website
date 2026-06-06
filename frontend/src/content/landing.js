@@ -259,7 +259,6 @@ export const footerT = {
       "links": [
         "Features",
         "Pricing",
-        "Integrations",
         "Changelog",
         "Roadmap"
       ]
