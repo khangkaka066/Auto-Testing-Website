@@ -5,10 +5,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
 import { navbarT } from "../../content/landing";
+import { AboutButton, AboutModal } from "./AboutModal";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
   const [initial, setInitial] = useState(localStorage.getItem("user_name")?.charAt(0).toUpperCase() || "U");
@@ -82,7 +84,15 @@ export default function Navbar() {
             {t.pricing}
             <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
           </Link>
+          <button
+            onClick={() => setAboutOpen(true)}
+            className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1"
+          >
+            About
+            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
+          </button>
         </nav>
+        <AboutModal open={aboutOpen} onOpenChange={setAboutOpen} />
 
         <div className="hidden md:flex items-center gap-3 relative" ref={dropdownRef}>
           {isLoggedIn ? (
@@ -142,6 +152,7 @@ export default function Navbar() {
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{l.label}</a>
             ))}
             <Link to="/pricing" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{t.pricing}</Link>
+            <button onClick={() => { setOpen(false); setAboutOpen(true); }} className="text-sm font-medium text-slate-700 text-left">About</button>
             <div className="h-px bg-slate-100" />
             {isLoggedIn ? (
               <>
