@@ -12,6 +12,11 @@ function resolveTscBin() {
   }
 }
 
+function nodeMajorVersion() {
+  const match = process.version.match(/^v(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
 function getSpecFiles(specsDir) {
   if (!fs.existsSync(specsDir)) return [];
   return fs.readdirSync(specsDir)
@@ -19,22 +24,8 @@ function getSpecFiles(specsDir) {
     .map(f => path.resolve(specsDir, f));
 }
 
-function run(specsDir, validatorOutputDir) {
-  const specFiles = getSpecFiles(specsDir);
-  if (specFiles.length === 0) return true;
-
-  const tscBin = resolveTscBin();
-  if (!tscBin) {
-    fs.mkdirSync(validatorOutputDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(validatorOutputDir, 'validator_errors.log'),
-      'TypeScript compiler is not installed in the backend package. Run `npm install` in backend/ before starting the pipeline.',
-      'utf-8'
-    );
-    return false;
-  }
-
-  const result = spawnSync(
+function runTsc(tscBin, specFiles) {
+  return spawnSync(
     process.execPath,
     [
       tscBin,
@@ -48,23 +39,44 @@ function run(specsDir, validatorOutputDir) {
     ],
     { cwd: BACKEND_ROOT, encoding: 'utf-8' }
   );
-
-  if (result.status === 0) return true;
-
-  const errorLog = (result.stdout || '') + '\n' + (result.stderr || '');
-  fs.mkdirSync(validatorOutputDir, { recursive: true });
-  fs.writeFileSync(path.join(validatorOutputDir, 'validator_errors.log'), errorLog.trim(), 'utf-8');
-  return false;
 }
 
-function getFailedSpecFiles(specsDir, validatorOutputDir) {
-  const logPath = path.join(validatorOutputDir, 'validator_errors.log');
-  if (!fs.existsSync(logPath)) return [];
+function runTscVersion(tscBin) {
+  return spawnSync(process.execPath, [tscBin, '--version'], {
+    cwd: BACKEND_ROOT,
+    encoding: 'utf-8',
+  });
+}
 
-  const log = fs.readFileSync(logPath, 'utf-8');
+function resultLog(result) {
+  const output = (result.stdout || '') + '\n' + (result.stderr || '');
+  if (result.error) {
+    return `${output}\n[validator] Failed to run TypeScript compiler: ${result.error.message}`;
+  }
+  if (result.signal) {
+    return `${output}\n[validator] TypeScript compiler terminated by signal: ${result.signal}`;
+  }
+  return output;
+}
+
+function writeFailedSpecManifest(validatorOutputDir, failedFiles) {
+  fs.writeFileSync(
+    path.join(validatorOutputDir, 'failed_specs.json'),
+    JSON.stringify({
+      failed_count: failedFiles.length,
+      failed: failedFiles,
+    }, null, 2),
+    'utf-8'
+  );
+}
+
+function extractFailedSpecFilesFromLog(log, specsDir) {
   const specsDirResolved = path.resolve(specsDir);
-
-  const rawMatches = [...log.matchAll(/([^\s:(]+\.spec\.ts)/g)].map(m => m[1]);
+  const rawMatches = [
+    ...[...log.matchAll(/^(.+?\.spec\.ts)\(\d+,\d+\):/gm)].map(m => m[1]),
+    ...[...log.matchAll(/^--- (.+?\.spec\.ts) ---$/gm)].map(m => m[1]),
+    ...[...log.matchAll(/([^\n:(]+\.spec\.ts)/g)].map(m => m[1].trim()),
+  ];
   const failed = new Set();
 
   for (const raw of rawMatches) {
@@ -84,6 +96,86 @@ function getFailedSpecFiles(specsDir, validatorOutputDir) {
   }
 
   return [...failed].sort();
+}
+
+function run(specsDir, validatorOutputDir) {
+  const specFiles = getSpecFiles(specsDir);
+  fs.mkdirSync(validatorOutputDir, { recursive: true });
+  if (specFiles.length === 0) {
+    writeFailedSpecManifest(validatorOutputDir, []);
+    return true;
+  }
+
+  const tscBin = resolveTscBin();
+  if (!tscBin) {
+    fs.writeFileSync(
+      path.join(validatorOutputDir, 'validator_errors.log'),
+      'TypeScript compiler is not installed in the backend package. Run `npm install` in backend/ before starting the pipeline.',
+      'utf-8'
+    );
+    writeFailedSpecManifest(validatorOutputDir, []);
+    return false;
+  }
+
+  if (nodeMajorVersion() < 20) {
+    fs.writeFileSync(
+      path.join(validatorOutputDir, 'validator_errors.log'),
+      `Unsupported Node.js version for the AI pipeline validator: ${process.version}. Backend requires Node.js >=20.`,
+      'utf-8'
+    );
+    writeFailedSpecManifest(validatorOutputDir, []);
+    return false;
+  }
+
+  const tscVersion = runTscVersion(tscBin);
+  if (tscVersion.status !== 0) {
+    fs.writeFileSync(
+      path.join(validatorOutputDir, 'validator_errors.log'),
+      [
+        'TypeScript compiler failed before spec validation could start.',
+        resultLog(tscVersion).trim(),
+      ].filter(Boolean).join('\n'),
+      'utf-8'
+    );
+    writeFailedSpecManifest(validatorOutputDir, []);
+    return false;
+  }
+
+  const result = runTsc(tscBin, specFiles);
+  if (result.status === 0) {
+    fs.rmSync(path.join(validatorOutputDir, 'validator_errors.log'), { force: true });
+    writeFailedSpecManifest(validatorOutputDir, []);
+    return true;
+  }
+
+  const errorLog = resultLog(result).trim();
+  const failedFiles = extractFailedSpecFilesFromLog(errorLog, specsDir);
+  fs.writeFileSync(path.join(validatorOutputDir, 'validator_errors.log'), errorLog, 'utf-8');
+  writeFailedSpecManifest(validatorOutputDir, failedFiles);
+  return false;
+}
+
+function getFailedSpecFiles(specsDir, validatorOutputDir) {
+  const manifestPath = path.join(validatorOutputDir, 'failed_specs.json');
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      if (Array.isArray(manifest.failed)) {
+        return manifest.failed
+          .map(fp => path.resolve(fp))
+          .filter(fp => fs.existsSync(fp) && fp.endsWith('.spec.ts'))
+          .sort();
+      }
+    } catch {
+      // Fall back to parsing the TypeScript log below.
+    }
+  }
+
+  const logPath = path.join(validatorOutputDir, 'validator_errors.log');
+  if (!fs.existsSync(logPath)) return [];
+
+  const log = fs.readFileSync(logPath, 'utf-8');
+  return extractFailedSpecFilesFromLog(log, specsDir);
 }
 
 function removeFailedSpecs(specsDir, validatorOutputDir) {

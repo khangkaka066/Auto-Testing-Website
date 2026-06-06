@@ -1,5 +1,7 @@
 # Mô tả source code Auto-Testing-Website
 
+123
+
 Auto-Testing-Website là một nền tảng web giúp người dùng tự động kiểm thử website hoặc ứng dụng web của mình. Người dùng có thể tải source code dạng `.zip` lên hệ thống, hoặc kết nối GitHub để chọn repository và branch cần kiểm thử. Sau đó hệ thống sẽ tự động phân tích mã nguồn, tạo kịch bản kiểm thử, chạy test bằng Playwright và trả về báo cáo kết quả trực quan.
 
 Source code được chia thành hai phần chính: `frontend` và `backend`. Phần frontend được xây dựng bằng React, dùng React Router để điều hướng giữa các trang như landing page, đăng nhập, đăng ký, dashboard, hồ sơ người dùng, trang chạy test, trang theo dõi tiến trình và trang xem báo cáo. Giao diện dashboard cho phép người dùng upload file ZIP, chọn repository GitHub, chọn loại test như UI Testing, API Testing hoặc Functional Testing, xem lịch sử các lần chạy test, điểm chất lượng gần nhất, số credit còn lại và trạng thái kết nối GitHub.

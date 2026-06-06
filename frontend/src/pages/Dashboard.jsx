@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import API_BASE_URL from "../config";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
+import { dashboardT } from "../content/dashboard";
 
 function scoreBadgeVariant(score) {
   if (score === null || score === undefined) return { bar: "bg-slate-200", text: "text-slate-400" };
@@ -30,7 +31,7 @@ function formatDateTime(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("vi-VN", {
+  return date.toLocaleString("en-US", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -86,6 +87,7 @@ function lastResultFromRun(data) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const t = dashboardT;
 
   const [user, setUser] = useState({ name: "Developer", email: "" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
@@ -221,7 +223,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const ghStatus = params.get("github");
     if (ghStatus === "connected") {
-      toast.success(`GitHub connected: @${params.get("login")}`);
+      toast.success(`${t.toasts.githubConnected}: @${params.get("login")}`);
       window.history.replaceState({}, "", "/dashboard");
       const token = localStorage.getItem("token");
       if (token) {
@@ -230,26 +232,26 @@ export default function Dashboard() {
           .catch(() => {});
       }
     } else if (ghStatus === "error") {
-      toast.error(`GitHub connection failed: ${params.get("reason") || "unknown error"}`);
+      toast.error(`${t.toasts.githubFailed}: ${params.get("reason") || "unknown error"}`);
       window.history.replaceState({}, "", "/dashboard");
     }
-  }, []);
+  }, [t.toasts.githubConnected, t.toasts.githubFailed]);
 
   const connectGithub = () => {
     const token = localStorage.getItem("token");
     window.location.href = `${API_BASE_URL}/api/auth/github/connect?_token=${token}`;
   };
 
-  const loadRepos = async () => {
+  const loadRepos = useCallback(async () => {
     const token = localStorage.getItem("token");
     setLoadingRepos(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/api/auth/github/repos`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.success) setRepos(res.data.data);
     } catch (err) {
-      if (err.response?.status === 401) { setGithubStatus({ connected: false }); toast.error("GitHub token expired. Please reconnect."); }
+      if (err.response?.status === 401) { setGithubStatus({ connected: false }); toast.error(t.toasts.githubExpired); }
     } finally { setLoadingRepos(false); }
-  };
+  }, [t.toasts.githubExpired]);
 
   const handleSelectRepo = async (repo) => {
     setSelectedRepo(repo);
@@ -265,10 +267,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (uploadMode === "github" && githubStatus?.connected && repos.length === 0) loadRepos();
-  }, [uploadMode, githubStatus, repos.length]);
+  }, [uploadMode, githubStatus?.connected, repos.length, loadRepos]);
 
   const selectZip = (file) => {
-    if (!file?.name.toLowerCase().endsWith(".zip")) { toast.error("Please select a .zip file"); return; }
+    if (!file?.name.toLowerCase().endsWith(".zip")) { toast.error(t.toasts.selectZip); return; }
     setZipFile(file);
   };
 
@@ -281,8 +283,8 @@ export default function Dashboard() {
   const handleStartTest = async () => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
-    if (uploadMode === "zip" && !zipFile) { toast.error("Please select a .zip file first"); return; }
-    if (uploadMode === "github" && !selectedRepo) { toast.error("Please select a repository"); return; }
+    if (uploadMode === "zip" && !zipFile) { toast.error(t.toasts.selectZipFirst); return; }
+    if (uploadMode === "github" && !selectedRepo) { toast.error(t.toasts.selectRepo); return; }
 
     setIsTesting(true);
     try {
@@ -302,7 +304,7 @@ export default function Dashboard() {
           test_type: testType,
         }, { headers: { Authorization: `Bearer ${token}` } });
         const projectId = runRes.data.data.project_id;
-        toast.success("Test pipeline started!");
+        toast.success(t.toasts.pipelineStarted);
         sessionStorage.setItem("latest_test_progress", JSON.stringify({ projectId, sourcePath: src.source_path }));
         navigate(`/test-progress/${projectId}`, { replace: true, state: { projectId, sourcePath: src.source_path } });
       } else {
@@ -312,12 +314,12 @@ export default function Dashboard() {
           test_type: testType,
         }, { headers: { Authorization: `Bearer ${token}` } });
         const projectId = runRes.data.data.project_id;
-        toast.success(`Cloning ${selectedRepo.full_name} — pipeline started!`);
+        toast.success(`Cloning ${selectedRepo.full_name} — ${t.toasts.cloningStarted}`);
         sessionStorage.setItem("latest_test_progress", JSON.stringify({ projectId }));
         navigate(`/test-progress/${projectId}`, { replace: true, state: { projectId } });
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to start test");
+      toast.error(err.response?.data?.message || t.toasts.startFailed);
       setIsTesting(false);
     }
   };
@@ -326,7 +328,7 @@ export default function Dashboard() {
     localStorage.removeItem("token");
     localStorage.removeItem("user_avatar");
     localStorage.removeItem("user_name");
-    toast.success("Logged out successfully!");
+    toast.success(t.nav.loggedOut);
     navigate("/");
   };
 
@@ -335,50 +337,50 @@ export default function Dashboard() {
   const statCards = [
     {
       icon: Activity, iconBg: "bg-blue-100", iconColor: "text-blue-600",
-      label: "Total Tests", value: ds ? ds.total_tests : historyList.length,
-      sub: ds ? `${ds.completed_tests} completed` : "—",
+      label: t.stats.totalTests, value: ds ? ds.total_tests : historyList.length,
+      sub: ds ? `${ds.completed_tests} ${t.stats.completed}` : "—",
       accent: "border-l-blue-500",
     },
     {
       icon: Target, iconBg: "bg-orange-100", iconColor: "text-orange-600",
-      label: "Success Rate", value: ds ? `${ds.success_rate}%` : "—",
-      sub: ds ? `${ds.failed_tests} failed` : "Loading…",
+      label: t.stats.successRate, value: ds ? `${ds.success_rate}%` : "—",
+      sub: ds ? `${ds.failed_tests} ${t.stats.failed}` : t.stats.loading,
       accent: "border-l-orange-500",
     },
     {
       icon: TrendingUp, iconBg: "bg-indigo-100", iconColor: "text-indigo-600",
-      label: "Avg Score", value: ds?.avg_score != null ? `${ds.avg_score}/100` : "—",
-      sub: ds?.avg_score != null ? (ds.avg_score >= 70 ? "Good health" : "Needs review") : "No data",
+      label: t.stats.avgScore, value: ds?.avg_score != null ? `${ds.avg_score}/100` : "—",
+      sub: ds?.avg_score != null ? (ds.avg_score >= 70 ? t.stats.goodHealth : t.stats.needsReview) : "No data",
       accent: "border-l-indigo-500",
     },
     {
       icon: Award, iconBg: "bg-yellow-100", iconColor: "text-yellow-600",
-      label: "Best Score", value: ds?.best_score != null ? `${ds.best_score}/100` : "—",
-      sub: "All time high",
+      label: t.stats.bestScore, value: ds?.best_score != null ? `${ds.best_score}/100` : "—",
+      sub: t.stats.allTimeHigh,
       accent: "border-l-yellow-500",
     },
     {
       icon: CalendarDays, iconBg: "bg-teal-100", iconColor: "text-teal-600",
-      label: "This Month", value: ds ? ds.tests_this_month : "—",
-      sub: ds ? `${ds.tests_this_week} this week` : "Loading…",
+      label: t.stats.thisMonth, value: ds ? ds.tests_this_month : "—",
+      sub: ds ? `${ds.tests_this_week} this week` : t.stats.loading,
       accent: "border-l-teal-500",
     },
     {
       icon: CheckCircle2, iconBg: "bg-emerald-100", iconColor: "text-emerald-600",
-      label: "Total Passed", value: ds ? ds.total_passed.toLocaleString() : "—",
-      sub: ds ? `${ds.total_failed} failed across all tests` : "Loading…",
+      label: t.stats.totalPassed, value: ds ? ds.total_passed.toLocaleString() : "—",
+      sub: ds ? `${ds.total_failed} ${t.stats.failed} across all tests` : t.stats.loading,
       accent: "border-l-emerald-500",
     },
     {
       icon: Clock, iconBg: "bg-slate-100", iconColor: "text-slate-600",
-      label: "Avg Duration", value: ds?.avg_duration_sec != null ? formatDuration(ds.avg_duration_sec) : "—",
-      sub: "Per test run",
+      label: t.stats.avgDuration, value: ds?.avg_duration_sec != null ? formatDuration(ds.avg_duration_sec) : "—",
+      sub: t.stats.perTestRun,
       accent: "border-l-slate-400",
     },
     {
       icon: Zap, iconBg: "bg-violet-100", iconColor: "text-violet-600",
-      label: "Credits Left", value: usageStats ? parseFloat(usageStats.credits).toFixed(2) : "—",
-      sub: usageStats ? `${usageStats.tokens_used.toLocaleString()} used` : "Loading…",
+      label: t.stats.creditsLeft, value: usageStats ? usageStats.credits.toLocaleString() : "—",
+      sub: usageStats ? `${usageStats.tokens_used.toLocaleString()} used` : t.stats.loading,
       accent: "border-l-violet-500",
     },
   ];
@@ -417,7 +419,7 @@ export default function Dashboard() {
             className={`w-full flex items-center py-2.5 rounded-lg text-sm font-medium transition-all duration-150 bg-orange-600 text-white shadow-sm shadow-orange-900/30 ${sidebarOpen ? "gap-3 px-3" : "justify-center px-0"}`}
           >
             <LayoutDashboard className="h-4 w-4 shrink-0" />
-            {sidebarOpen && <span className="whitespace-nowrap flex-1">Dashboard</span>}
+            {sidebarOpen && <span className="whitespace-nowrap flex-1">{t.nav.dashboard}</span>}
             {sidebarOpen && <ChevronRight className="h-3.5 w-3.5 opacity-70" />}
           </Link>
 
@@ -427,7 +429,7 @@ export default function Dashboard() {
             className={`w-full flex items-center py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-150 cursor-pointer ${sidebarOpen ? "gap-3 px-3" : "justify-center px-0"}`}
           >
             <History className="h-4 w-4 shrink-0" />
-            {sidebarOpen && <span className="whitespace-nowrap flex-1">Test History</span>}
+            {sidebarOpen && <span className="whitespace-nowrap flex-1">{t.nav.testHistory}</span>}
             {sidebarOpen && historyList.length > 0 && (
               <span className="text-[10px] font-bold bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full">
                 {historyList.length}
@@ -440,7 +442,7 @@ export default function Dashboard() {
             className={`w-full flex items-center py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-150 ${sidebarOpen ? "gap-3 px-3" : "justify-center px-0"}`}
           >
             <User className="h-4 w-4 shrink-0" />
-            {sidebarOpen && <span className="whitespace-nowrap flex-1">Profile</span>}
+            {sidebarOpen && <span className="whitespace-nowrap flex-1">{t.nav.profile}</span>}
           </Link>
 
           {/* Billing */}
@@ -448,8 +450,8 @@ export default function Dashboard() {
             className={`w-full flex items-center py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-150 ${sidebarOpen ? "gap-3 px-3" : "justify-center px-0"}`}
           >
             <CreditCard className="h-4 w-4 shrink-0" />
-            {sidebarOpen && <span className="whitespace-nowrap flex-1">Billing</span>}
-            {sidebarOpen && usageStats && usageStats.credits < 1 && (
+            {sidebarOpen && <span className="whitespace-nowrap flex-1">{t.nav.billing}</span>}
+            {sidebarOpen && usageStats && usageStats.credits < 100_000 && (
               <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">Low</span>
             )}
           </Link>
@@ -464,9 +466,9 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white text-xs font-semibold truncate">{user.name}</p>
-                <p className="text-slate-500 text-[10px] truncate">Free plan</p>
+                <p className="text-slate-500 text-[10px] truncate">{t.nav.freePlan}</p>
               </div>
-              <button onClick={handleLogout} className="text-slate-500 hover:text-red-400 transition-colors p-1 rounded">
+              <button onClick={handleLogout} title={t.nav.signOut} className="text-slate-500 hover:text-red-400 transition-colors p-1 rounded">
                 <LogOut className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -491,8 +493,8 @@ export default function Dashboard() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-base font-bold text-slate-800">Welcome back, {user.name}!</h1>
-            <p className="text-xs text-slate-400">Manage your automated testing campaigns</p>
+            <h1 className="text-base font-bold text-slate-800">{t.welcome}, {user.name}!</h1>
+            <p className="text-xs text-slate-400">{t.subtitle}</p>
           </div>
           <div className="flex items-center gap-3">
             {githubStatus?.connected && (
@@ -519,13 +521,13 @@ export default function Dashboard() {
             <div className="mb-5 flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-orange-800">Credits running low — {parseFloat(usageStats.credits).toFixed(2)} remaining</p>
-                <p className="text-xs text-orange-600 mt-0.5">Top up now to avoid interruptions during test runs.</p>
+                <p className="text-sm font-semibold text-orange-800">{t.credits.warning} — {usageStats.credits.toLocaleString()} {t.credits.remaining}</p>
+                <p className="text-xs text-orange-600 mt-0.5">{t.credits.hint}</p>
               </div>
               <Link to="/billing"
                 className="shrink-0 flex items-center gap-1.5 bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-colors"
               >
-                <CreditCard className="h-3.5 w-3.5" /> Top Up
+                <CreditCard className="h-3.5 w-3.5" /> {t.credits.topUp}
               </Link>
             </div>
           )}
@@ -556,8 +558,8 @@ export default function Dashboard() {
                   <Rocket className="h-4.5 w-4.5" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-sm font-bold text-slate-800">Run Web Tests</h2>
-                  <p className="text-xs text-slate-400">Upload source code to start automated AI testing</p>
+                  <h2 className="text-sm font-bold text-slate-800">{t.runTests.title}</h2>
+                  <p className="text-xs text-slate-400">{t.runTests.subtitle}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setUploadMode("zip")}
@@ -565,14 +567,14 @@ export default function Dashboard() {
                       uploadMode === "zip" ? "bg-orange-600 text-white border-orange-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                     }`}
                   >
-                    <UploadCloud className="h-3.5 w-3.5" /> ZIP
+                    <UploadCloud className="h-3.5 w-3.5" /> {t.runTests.zip}
                   </button>
                   <button onClick={() => setUploadMode("github")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                       uploadMode === "github" ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                     }`}
                   >
-                    <GithubLogo className="h-3.5 w-3.5" /> GitHub
+                    <GithubLogo className="h-3.5 w-3.5" /> {t.runTests.github}
                   </button>
                 </div>
               </div>
@@ -586,7 +588,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-800 truncate">{zipFile.name}</p>
-                        <p className="text-xs text-slate-500">{(zipFile.size / 1024).toFixed(1)} KB · Ready to test</p>
+                        <p className="text-xs text-slate-500">{(zipFile.size / 1024).toFixed(1)} KB · {t.runTests.readyToTest}</p>
                       </div>
                       <button onClick={() => { setZipFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                         className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded"
@@ -609,9 +611,9 @@ export default function Dashboard() {
                       </div>
                       <div className="text-center">
                         <p className="text-sm font-medium text-slate-600">
-                          Drag & drop your <span className="text-orange-600 font-semibold">.zip</span> here
+                          {t.runTests.dragDrop.split(".zip")[0]}<span className="text-orange-600 font-semibold">.zip</span>{t.runTests.dragDrop.split(".zip")[1]}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5">or <span className="text-orange-600 underline">browse files</span> · Max 200 MB</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{t.runTests.or} <span className="text-orange-600 underline">{t.runTests.browseFiles}</span> · {t.runTests.maxSize}</p>
                       </div>
                       <input ref={fileInputRef} type="file" accept=".zip,application/zip" className="hidden"
                         onChange={(e) => e.target.files?.[0] && selectZip(e.target.files[0])} />
@@ -626,13 +628,13 @@ export default function Dashboard() {
                         <GithubLogo className="h-6 w-6 text-slate-400" />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-slate-600">Connect your GitHub account</p>
-                        <p className="text-xs text-slate-400 mt-0.5 max-w-xs">TestPilot will request read access to clone public and private repos</p>
+                        <p className="text-sm font-medium text-slate-600">{t.runTests.connectGithub}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 max-w-xs">{t.runTests.githubPermission}</p>
                       </div>
                       <button onClick={connectGithub}
                         className="flex items-center gap-2 bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors mt-1"
                       >
-                        <GithubLogo className="h-4 w-4" /> Connect GitHub
+                        <GithubLogo className="h-4 w-4" /> {t.runTests.connectBtn}
                       </button>
                     </div>
                   ) : (
@@ -640,13 +642,13 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2.5 bg-slate-50 rounded-lg px-3 py-2">
                         {githubStatus.avatar && <img src={githubStatus.avatar} alt="" className="h-6 w-6 rounded-full" />}
                         <span className="text-sm font-medium text-slate-700">@{githubStatus.login}</span>
-                        <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Connected</span>
-                        <button onClick={connectGithub} className="ml-auto text-xs text-slate-400 hover:text-slate-600 underline">Reconnect</button>
+                        <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">{t.runTests.connected}</span>
+                        <button onClick={connectGithub} className="ml-auto text-xs text-slate-400 hover:text-slate-600 underline">{t.runTests.reconnect}</button>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Repository</label>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">{t.runTests.repository}</label>
                         <input type="text" value={repoSearch} onChange={(e) => setRepoSearch(e.target.value)}
-                          placeholder={loadingRepos ? "Loading repositories…" : "Search your repos…"}
+                          placeholder={loadingRepos ? t.runTests.loadingRepos : t.runTests.searchRepos}
                           className="w-full rounded-t-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white"
                         />
                         {repos.length > 0 && (
@@ -658,7 +660,7 @@ export default function Dashboard() {
                                 }`}
                               >
                                 <span className="truncate">{repo.full_name}</span>
-                                {repo.private && <span className="text-xs text-slate-400 shrink-0 ml-2">Private</span>}
+                                {repo.private && <span className="text-xs text-slate-400 shrink-0 ml-2">{t.runTests.private}</span>}
                               </button>
                             ))}
                           </div>
@@ -667,7 +669,7 @@ export default function Dashboard() {
                       {selectedRepo && (
                         <div>
                           <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
-                            <GitBranch className="h-3 w-3" /> Branch
+                            <GitBranch className="h-3 w-3" /> {t.runTests.branch}
                           </label>
                           <select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white"
@@ -684,34 +686,34 @@ export default function Dashboard() {
 
                 {/* Test type selector */}
                 <div>
-                  <p className="text-xs font-semibold text-slate-600 mb-2">Test Type</p>
+                  <p className="text-xs font-semibold text-slate-600 mb-2">{t.runTests.testType}</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { value: "UI Testing", label: "UI Testing", desc: "UI/UX" },
-                      { value: "API Testing", label: "API Testing", desc: "Endpoints" },
-                      { value: "Functional Testing", label: "Functional", desc: "Function" },
-                    ].map((t) => (
+                      { value: "UI Testing", label: t.runTests.uiTesting, desc: t.runTests.uiUx },
+                      { value: "API Testing", label: t.runTests.apiTesting, desc: t.runTests.endpoints },
+                      { value: "Functional Testing", label: t.runTests.functionalTesting, desc: t.runTests.function },
+                    ].map((testTypeOpt) => (
                       <button
-                        key={t.value}
+                        key={testTypeOpt.value}
                         type="button"
-                        onClick={() => setTestType(t.value)}
+                        onClick={() => setTestType(testTypeOpt.value)}
                         className={`flex flex-col items-start px-3 py-2.5 rounded-lg border-2 text-left transition-all ${
-                          testType === t.value
+                          testType === testTypeOpt.value
                             ? "border-orange-500 bg-orange-50"
                             : "border-slate-200 hover:border-slate-300 bg-white"
                         }`}
                       >
-                        <span className={`text-xs font-bold leading-tight ${testType === t.value ? "text-orange-700" : "text-slate-700"}`}>
-                          {t.label}
+                        <span className={`text-xs font-bold leading-tight ${testType === testTypeOpt.value ? "text-orange-700" : "text-slate-700"}`}>
+                          {testTypeOpt.label}
                         </span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">{t.desc}</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">{testTypeOpt.desc}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                  <p className="text-xs text-slate-400">AI-powered test generation & execution</p>
+                  <p className="text-xs text-slate-400">{t.runTests.aiPowered}</p>
                   <button onClick={handleStartTest}
                     disabled={isTesting || (uploadMode === "zip" && !zipFile) || (uploadMode === "github" && (!githubStatus?.connected || !selectedRepo))}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all shadow-sm ${
@@ -722,7 +724,7 @@ export default function Dashboard() {
                     }`}
                   >
                     <Rocket className="h-4 w-4" />
-                    {isTesting ? "Starting…" : "Start Testing"}
+                    {isTesting ? t.runTests.starting : t.runTests.startTesting}
                   </button>
                 </div>
               </div>
@@ -734,7 +736,7 @@ export default function Dashboard() {
                 <div className="h-8 w-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
                   <BarChart2 className="h-4 w-4" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-800">Last Test Result</h3>
+                <h3 className="text-sm font-bold text-slate-800">{t.lastResult.title}</h3>
               </div>
               <div className="p-5 flex-1">
                 {lastResult ? (
@@ -756,13 +758,13 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 mb-0.5">Health Score</p>
+                        <p className="text-xs text-slate-500 mb-0.5">{t.lastResult.healthScore}</p>
                         <p className={`text-xl font-bold ${
                           parseScore(lastResult.health_score) >= 75 ? "text-emerald-600"
                           : parseScore(lastResult.health_score) >= 50 ? "text-orange-500" : "text-red-600"
                         }`}>{lastResult.health_score}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          {parseScore(lastResult.health_score) >= 75 ? "Healthy" : parseScore(lastResult.health_score) >= 50 ? "Fair" : "Critical"}
+                          {parseScore(lastResult.health_score) >= 75 ? t.lastResult.healthy : parseScore(lastResult.health_score) >= 50 ? t.lastResult.fair : t.lastResult.critical}
                         </p>
                       </div>
                     </div>
@@ -771,17 +773,17 @@ export default function Dashboard() {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-lg bg-emerald-50 p-2.5 text-center">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mx-auto mb-1" />
-                          <p className="text-xs text-emerald-600 font-medium">Passed</p>
+                          <p className="text-xs text-emerald-600 font-medium">{t.lastResult.passed}</p>
                           <p className="text-base font-bold text-emerald-700">{lastResult.summary.passed ?? 0}</p>
                         </div>
                         <div className="rounded-lg bg-red-50 p-2.5 text-center">
                           <XCircle className="h-3.5 w-3.5 text-red-600 mx-auto mb-1" />
-                          <p className="text-xs text-red-600 font-medium">Failed</p>
+                          <p className="text-xs text-red-600 font-medium">{t.lastResult.failed}</p>
                           <p className="text-base font-bold text-red-700">{lastResult.summary.failed ?? 0}</p>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-2.5 text-center">
                           <Activity className="h-3.5 w-3.5 text-slate-500 mx-auto mb-1" />
-                          <p className="text-xs text-slate-500 font-medium">Total</p>
+                          <p className="text-xs text-slate-500 font-medium">{t.lastResult.total}</p>
                           <p className="text-base font-bold text-slate-700">{lastResult.summary.total ?? 0}</p>
                         </div>
                       </div>
@@ -790,14 +792,14 @@ export default function Dashboard() {
                     {lastResult.summary?.duration && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
                         <Clock className="h-3.5 w-3.5" />
-                        <span>Duration: <span className="font-semibold text-slate-700">{lastResult.summary.duration}</span></span>
+                        <span>{t.lastResult.duration} <span className="font-semibold text-slate-700">{lastResult.summary.duration}</span></span>
                       </div>
                     )}
 
                     {lastResult.issues?.length > 0 && (
                       <div className="rounded-lg bg-orange-50 border border-orange-100 p-3">
                         <p className="text-xs font-semibold text-orange-700 flex items-center gap-1 mb-1.5">
-                          <AlertTriangle className="h-3.5 w-3.5" /> {lastResult.issues.length} Issue{lastResult.issues.length > 1 ? "s" : ""}
+                          <AlertTriangle className="h-3.5 w-3.5" /> {lastResult.issues.length} {t.lastResult.issues}
                         </p>
                         <div className="space-y-1 max-h-16 overflow-y-auto">
                           {lastResult.issues.map((issue, i) => (
@@ -812,7 +814,7 @@ export default function Dashboard() {
                     {lastResult.finished_at && (
                       <p className="text-[11px] text-slate-400 flex items-center gap-1 border-t pt-2">
                         <Clock className="h-3 w-3" />
-                        {new Date(lastResult.finished_at).toLocaleString("vi-VN")}
+                        {new Date(lastResult.finished_at).toLocaleString("en-US")}
                       </p>
                     )}
                   </div>
@@ -821,8 +823,8 @@ export default function Dashboard() {
                     <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mb-2">
                       <BarChart2 className="h-6 w-6 text-slate-300" />
                     </div>
-                    <p className="text-sm font-medium text-slate-500">No results yet</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Run your first test to see stats</p>
+                    <p className="text-sm font-medium text-slate-500">{t.lastResult.noResults}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.lastResult.noResultsHint}</p>
                   </div>
                 )}
               </div>
@@ -834,7 +836,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
                         <Zap className="h-3.5 w-3.5 text-violet-600" />
-                        <span className="text-xs font-semibold text-violet-700">Credits</span>
+                        <span className="text-xs font-semibold text-violet-700">{t.stats.creditsLeft}</span>
                       </div>
                       <span className="text-sm font-bold text-violet-700">{parseFloat(usageStats.credits).toFixed(2)}</span>
                     </div>
@@ -858,15 +860,15 @@ export default function Dashboard() {
                   <History className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">Test History</h3>
-                  <p className="text-xs text-slate-400">{historyList.length} runs · saved to your account</p>
+                  <h3 className="text-sm font-bold text-slate-800">{t.history.title}</h3>
+                  <p className="text-xs text-slate-400">{historyList.length} {t.history.runs}</p>
                 </div>
               </div>
               {ds && (
                 <div className="hidden sm:flex items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />{ds.completed_tests} completed</span>
-                  <span className="flex items-center gap-1"><XCircle className="h-3.5 w-3.5 text-red-400" />{ds.failed_tests} failed</span>
-                  <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-blue-400" />{ds.success_rate}% success</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />{ds.completed_tests} {t.history.completed}</span>
+                  <span className="flex items-center gap-1"><XCircle className="h-3.5 w-3.5 text-red-400" />{ds.failed_tests} {t.history.failed}</span>
+                  <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-blue-400" />{ds.success_rate}% {t.history.success}</span>
                 </div>
               )}
             </div>
@@ -876,12 +878,12 @@ export default function Dashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-left border-b border-slate-100">
-                      <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[35%]">Project</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[18%]">Started</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[10%]">Duration</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[12%]">Status</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[13%]">Passed / Failed</th>
-                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[10%]">Score</th>
+                      <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[35%]">{t.history.project}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[18%]">{t.history.started}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[10%]">{t.history.duration}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[12%]">{t.history.status}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[13%]">{t.history.passedFailed}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[10%]">{t.history.score}</th>
                       <th className="px-4 py-3 w-[2%]"></th>
                     </tr>
                   </thead>
@@ -964,7 +966,7 @@ export default function Dashboard() {
                               <button onClick={() => navigate(`/test-report/${item.project_id}`)}
                                 className="text-xs font-semibold text-orange-600 hover:text-orange-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 whitespace-nowrap"
                               >
-                                Report <ChevronRight className="h-3 w-3" />
+                                {t.history.report} <ChevronRight className="h-3 w-3" />
                               </button>
                             )}
                           </td>
@@ -979,8 +981,8 @@ export default function Dashboard() {
                 <div className="h-14 w-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
                   <History className="h-7 w-7 text-slate-300" />
                 </div>
-                <p className="text-sm font-medium text-slate-500">No test history yet</p>
-                <p className="text-xs text-slate-400 mt-1">Run your first test to see results here</p>
+                <p className="text-sm font-medium text-slate-500">{t.history.empty}</p>
+                <p className="text-xs text-slate-400 mt-1">{t.history.emptyHint}</p>
               </div>
             )}
           </div>

@@ -46,7 +46,8 @@ async function retryCall(fn, maxRetries = AI_RETRY_COUNT, baseDelayMs = 1000) {
 /**
  * Structured output — tương đương Python client.responses.parse(..., text_format=Model)
  */
-async function parseStructured(model, systemPrompt, userContent, zodSchema, schemaName) {
+async function parseStructured(model, systemPrompt, userContent, zodSchema, schemaName, options = {}) {
+  const maxRetries = options.maxRetries ?? AI_RETRY_COUNT;
   return retryCall(async () => {
     const res = await getClient().beta.chat.completions.parse({
       model,
@@ -60,13 +61,14 @@ async function parseStructured(model, systemPrompt, userContent, zodSchema, sche
     const parsed = res.choices[0].message.parsed;
     if (!parsed) throw new Error(`OpenAI returned null for schema ${schemaName}`);
     return parsed;
-  });
+  }, maxRetries);
 }
 
 /**
  * Plain text completion — tương đương Python client.responses.create(...)
  */
-async function createCompletion(model, systemPrompt, userContent) {
+async function createCompletion(model, systemPrompt, userContent, options = {}) {
+  const maxRetries = options.maxRetries ?? AI_RETRY_COUNT;
   return retryCall(async () => {
     const res = await getClient().chat.completions.create({
       model,
@@ -77,7 +79,7 @@ async function createCompletion(model, systemPrompt, userContent) {
     });
     recordTokens(res.usage);
     return res.choices[0].message.content || '';
-  });
+  }, maxRetries);
 }
 
 module.exports = { loadPrompt, parseStructured, createCompletion };

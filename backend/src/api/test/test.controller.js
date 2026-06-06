@@ -184,9 +184,10 @@ function buildJobState(job) {
 
 function serializePipelineError(err) {
   const error = {
-    type: err?.constructor?.name || 'Error',
+    type: err?.name || err?.constructor?.name || 'Error',
     message: err?.message || 'Unknown pipeline error',
   };
+  if (err?.details && typeof err.details === 'object') error.details = err.details;
   if (AI_DEBUG && err?.stack) error.stack = err.stack;
   return error;
 }
@@ -244,11 +245,14 @@ async function persistJobSnapshot(job) {
 function updateJobAndSnapshot(jobId, changes) {
   updateJob(jobId, changes);
   const job = getJob(jobId);
+  let persisted = Promise.resolve(null);
   if (job) {
-    persistJobSnapshot(job).catch(err => {
+    persisted = persistJobSnapshot(job).catch(err => {
       console.error('[updateJobAndSnapshot] Supabase error:', err.message);
+      return null;
     });
   }
+  if (job) Object.defineProperty(job, 'persisted', { value: persisted, enumerable: false });
   return job;
 }
 
@@ -497,6 +501,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
     const currentJob = getJob(jobId);
     const failedStage = currentJob?.stage || 'failed';
     const error = serializePipelineError(err);
+    console.error('[runPipelineJob] pipeline failed:', failureMessage(failedStage, error));
     const finishedAt = new Date().toISOString();
     const failedJob = updateJobAndSnapshot(jobId, {
       success: false,

@@ -16,6 +16,8 @@ const CoderBatchOutputSchema = z.object({
   generated: z.array(GeneratedSpecSchema),
 });
 
+const NO_RETRY = { maxRetries: 0 };
+
 const FORBIDDEN_PATTERNS = [
   'document.body.innerHTML', 'addEventListener(', 'page.$$eval(',
   '.evaluateAll(', 'MouseEvent', 'KeyboardEvent', 'EventListener',
@@ -119,7 +121,8 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
     prompt.systemPrompt,
     userPrompt,
     CoderBatchOutputSchema,
-    'CoderBatchOutput'
+    'CoderBatchOutput',
+    NO_RETRY
   ));
 
   const violations = validateOutput(output);
@@ -139,7 +142,8 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
       prompt.systemPrompt,
       repairPrompt,
       CoderBatchOutputSchema,
-      'CoderBatchOutput'
+      'CoderBatchOutput',
+      NO_RETRY
     ));
   }
 
@@ -200,6 +204,10 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
       return { generated: [] };
     }
   }, { onProgress: options.onProgress });
+  if (typeof options.onProgress === 'function') {
+    const progressResult = options.onProgress({ completed: items.length, total: items.length });
+    if (progressResult && progressResult.persisted) await progressResult.persisted;
+  }
 
   const manifest = [];
   const usedNames = new Set();

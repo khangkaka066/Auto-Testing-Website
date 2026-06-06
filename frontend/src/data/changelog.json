@@ -1,0 +1,51 @@
+[
+  {
+    "version": "2.4.0",
+    "date": "2026-06-06",
+    "changes": [
+      { "type": "feature",     "text": "Added About modal with team info and tech stack" },
+      { "type": "feature",     "text": "Built Changelog public page with timeline layout" },
+      { "type": "improvement", "text": "Upgraded About modal animations to match Pricing page style" },
+      { "type": "fix",         "text": "Fixed Google OAuth authorization error on localhost" }
+    ]
+  },
+  {
+    "version": "2.3.0",
+    "date": "2026-05-20",
+    "changes": [
+      { "type": "feature",     "text": "Internationalization: migrated language context to content files" },
+      { "type": "improvement", "text": "Added billing, dashboard, landing, profile, testing content files" },
+      { "type": "fix",         "text": "Updated dependencies in useEffect hooks across multiple components" }
+    ]
+  },
+  {
+    "version": "2.2.0",
+    "date": "2026-05-01",
+    "changes": [
+      { "type": "feature",     "text": "AI-powered test authoring from plain English prompts" },
+      { "type": "feature",     "text": "Cross-browser parallel test execution (Chrome, Firefox, Safari)" },
+      { "type": "improvement", "text": "10x faster test runs with smart parallelization" },
+      { "type": "breaking",    "text": "Renamed runTest to executeTest in the public API" }
+    ]
+  },
+  {
+    "version": "2.1.0",
+    "date": "2026-04-10",
+    "changes": [
+      { "type": "feature",     "text": "Visual regression diffs with side-by-side comparison" },
+      { "type": "feature",     "text": "GitHub, GitLab and CircleCI CI/CD integrations" },
+      { "type": "fix",         "text": "Fixed flaky test detection in Firefox viewport" },
+      { "type": "fix",         "text": "Resolved token expiry issue on long-running sessions" }
+    ]
+  },
+  {
+    "version": "2.0.0",
+    "date": "2026-03-01",
+    "changes": [
+      { "type": "breaking",    "text": "Migrated from REST polling to WebSocket for live test progress" },
+      { "type": "feature",     "text": "Self-healing selectors powered by vision model" },
+      { "type": "feature",     "text": "New dashboard with real-time run statistics" },
+      { "type": "improvement", "text": "Redesigned onboarding flow — setup in under 60 seconds" }
+    ]
+  }
+]

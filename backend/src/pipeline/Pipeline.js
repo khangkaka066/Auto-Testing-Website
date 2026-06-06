@@ -61,6 +61,13 @@ function buildUniqueRunWorkspace(baseDir, runId) {
   return { runId: candidateRunId, runWorkspaceDir: candidateDir };
 }
 
+function pipelineError(message, details = {}) {
+  const err = new Error(message);
+  err.name = 'PipelineError';
+  err.details = details;
+  return err;
+}
+
 class Pipeline {
   constructor({ userId, projectId, sourceCodePath, testType, onProgress }) {
     this.userId = userId;
@@ -101,7 +108,7 @@ class Pipeline {
   _reportProgress(stageKey, message) {
     const index = STAGE_INDEX[stageKey] == null ? 0 : STAGE_INDEX[stageKey];
     const stage = PROGRESS_STAGES[index];
-    this.onProgress({
+    return this.onProgress({
       status: 'running',
       stage: stageKey,
       progress_percent: stage.percent,
@@ -111,11 +118,11 @@ class Pipeline {
   }
 
   _reportSubProgress(stageKey, label, completed, total) {
-    if (!total || total <= 0) return;
+    if (!total || total <= 0) return null;
     const index = STAGE_INDEX[stageKey] == null ? 0 : STAGE_INDEX[stageKey];
     const stage = PROGRESS_STAGES[index];
     const safeCompleted = Math.max(0, Math.min(completed, total));
-    this.onProgress({
+    return this.onProgress({
       status: 'running',
       stage: stageKey,
       progress_percent: stage.percent,
@@ -126,6 +133,12 @@ class Pipeline {
         percent: Math.round((safeCompleted / total) * 100),
       },
     });
+  }
+
+  async _waitForProgressPersist(progressResult) {
+    if (progressResult && progressResult.persisted) {
+      await progressResult.persisted;
+    }
   }
 
   _setupDirectories() {
@@ -228,7 +241,7 @@ class Pipeline {
       runtimeUrls: this.runtimeUrls,
       frameworkProfile: this.frameworkProfile,
       onProgress: ({ completed, total }) => {
-        this._reportSubProgress('coder', 'Generating test specs', completed, total);
+        return this._reportSubProgress('coder', 'Generating test specs', completed, total);
       },
     });
     fs.writeFileSync(
@@ -238,14 +251,18 @@ class Pipeline {
     return manifest;
   }
 
-  runValidator() {
-    this._reportProgress('validator', 'Checking generated tests before execution');
+  async runValidator() {
+    await this._waitForProgressPersist(
+      this._reportProgress('validator', 'Checking generated tests before execution')
+    );
     console.log('[STAGE 4.5] Validator...');
     return validator.run(this.specsDir, this.dirs.validator);
   }
 
   async runDebugger() {
-    this._reportProgress('debugger', 'Checking whether generated tests need repair');
+    await this._waitForProgressPersist(
+      this._reportProgress('debugger', 'Checking whether generated tests need repair')
+    );
     console.log('[STAGE 4.7] Debugger...');
     const failedFiles = validator.getFailedSpecFiles(this.specsDir, this.dirs.validator);
     if (failedFiles.length === 0) return;
@@ -253,10 +270,12 @@ class Pipeline {
     const logPath = path.join(this.dirs.validator, 'validator_errors.log');
     const errorLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8') : '';
     const manifestPath = path.join(this.dirs.coder, 'coder_manifest.json');
-    this._reportProgress('debugger', `Repairing ${failedFiles.length} generated test file(s)`);
+    await this._waitForProgressPersist(
+      this._reportProgress('debugger', `Repairing ${failedFiles.length} generated test file(s)`)
+    );
     await debugger_.run(failedFiles, errorLog, manifestPath, this.dirs.filter, this.dirs.validator, {
       onProgress: ({ completed, total }) => {
-        this._reportSubProgress('debugger', 'Repairing generated tests', completed, total);
+        return this._reportSubProgress('debugger', 'Repairing generated tests', completed, total);
       },
     });
   }
@@ -332,17 +351,18 @@ class Pipeline {
       await this.runCoder(this.runtimeUrls.baseUrl || baseUrl);
 
       const MAX_RETRIES = 3;
-      let isValid = this.runValidator();
+      let isValid = await this.runValidator();
 
       for (let attempt = 1; attempt <= MAX_RETRIES && !isValid; attempt++) {
         console.log(`\n--- Auto-healing attempt ${attempt}/${MAX_RETRIES} ---`);
         await this.runDebugger();
-        isValid = this.runValidator();
+        isValid = await this.runValidator();
       }
 
       if (!isValid) {
         console.log('[FALLBACK] Removing failed specs...');
         const removed = validator.removeFailedSpecs(this.specsDir, this.dirs.validator);
+        console.log(`  → Removed ${removed.length} failed spec file(s).`);
         if (removed.length > 0) isValid = true;
       }
 
@@ -352,12 +372,32 @@ class Pipeline {
           : [];
         if (remaining.length === 0) {
           console.log('[FAILED] No valid spec files remaining.');
+          throw pipelineError('No valid generated spec files remaining after validation.', {
+            stage: 'validator',
+            run_workspace_dir: this.runWorkspaceDir,
+            validator_errors_path: path.join(this.dirs.validator, 'validator_errors.log'),
+            removed_failed_specs_path: path.join(this.dirs.validator, 'removed_failed_specs.json'),
+          });
         } else {
           await this.runExecutor(baseUrl);
-          await this.runReporter();
+          const report = await this.runReporter();
+          if (!report) {
+            throw pipelineError('Executor did not produce a report that can be summarized.', {
+              stage: 'executor',
+              run_workspace_dir: this.runWorkspaceDir,
+              executor_report_path: path.join(this.dirs.executor, 'test_report.json'),
+              runtime_services_path: path.join(this.dirs.executor, 'runtime_services.json'),
+            });
+          }
         }
       } else {
         console.log('[FAILED] Pipeline failed after max retries.');
+        throw pipelineError('Generated specs failed validation after max auto-healing retries.', {
+          stage: 'validator',
+          run_workspace_dir: this.runWorkspaceDir,
+          validator_errors_path: path.join(this.dirs.validator, 'validator_errors.log'),
+          failed_specs_path: path.join(this.dirs.validator, 'failed_specs.json'),
+        });
       }
     });
 

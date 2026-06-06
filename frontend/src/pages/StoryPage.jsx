@@ -4,7 +4,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import StoryCanvas from "../components/story/StoryCanvas";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -320,9 +319,6 @@ export default function StoryPage() {
 
   return (
     <>
-      {/* Three.js hand-drawn canvas */}
-      <StoryCanvas colorRef={colorRef} />
-
       {/* GSAP scan-sweep element (full-width, fixed) */}
       <div
         id="story-scan"
