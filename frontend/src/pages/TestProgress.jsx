@@ -5,6 +5,7 @@ import axios from "axios";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
+import { testProgressT } from "../content/testing";
 
 const STATUS_META = {
   queued: {
@@ -29,26 +30,14 @@ const STATUS_META = {
   },
 };
 
-const STAGE_LABELS = {
-  queued: "Queued",
-  initializing: "Initializing",
-  detector: "Detector",
-  analyzer: "Analyzer",
-  planner: "Planner",
-  filter: "Filter",
-  coder: "Coder",
-  validator: "Validator",
-  debugger: "Debugger",
-  executor: "Executor",
-  reporter: "Reporter",
-  completed: "Completed",
-  failed: "Failed",
-};
+// STAGE_LABELS stays inside the component so it can use the page copy.
 
 export default function TestProgress() {
   const { projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const t = testProgressT;
+  const STAGE_LABELS = t.stageLabels;
   const missedStatusPolls = useRef(0);
   const latestProgress = useMemo(() => {
     try {
@@ -59,7 +48,7 @@ export default function TestProgress() {
   }, []);
   const [runState, setRunState] = useState({
     status: "queued",
-    message: "Initializing test pipeline.",
+    message: t.messages.initializing,
     stage: "queued",
     sub_progress: null,
     progress_percent: 10,
@@ -70,7 +59,7 @@ export default function TestProgress() {
   const meta = useMemo(() => STATUS_META[runState.status] || STATUS_META.queued, [runState.status]);
   const StatusIcon = meta.icon;
   const progressPercent = Math.max(0, Math.min(100, runState.progress_percent || 0));
-  const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || "Queued";
+  const stageLabel = STAGE_LABELS[runState.stage] || runState.stage || t.stageLabels.queued;
   const subProgress = runState.sub_progress;
   const showSubProgress = runState.status === "running" && subProgress && Number(subProgress.total) > 0;
   const failureError = runState.status === "failed" ? runState.error : null;
@@ -83,7 +72,7 @@ export default function TestProgress() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Please sign in to view test progress");
+      toast.error(t.signInRequired);
       navigate("/login");
       return undefined;
     }
@@ -124,15 +113,15 @@ export default function TestProgress() {
             return {
               ...current,
               message: missedStatusPolls.current < 30
-                ? "Reconnecting to the test job status..."
-                : "Still reconnecting to the test job status. The backend may be waking up or restarting.",
+                ? t.messages.reconnecting
+                : t.messages.stillReconnecting,
             };
           }
 
           return {
             ...current,
             status: "failed",
-            message: err.response?.data?.message || "Failed to load pipeline status.",
+            message: err.response?.data?.message || t.messages.loadFailed,
           };
         });
       }
@@ -145,7 +134,14 @@ export default function TestProgress() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [navigate, projectId]);
+  }, [
+    navigate,
+    projectId,
+    t.messages.loadFailed,
+    t.messages.reconnecting,
+    t.messages.stillReconnecting,
+    t.signInRequired,
+  ]);
 
   const isFinished = runState.status === "completed" || runState.status === "failed";
 
@@ -159,12 +155,12 @@ export default function TestProgress() {
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Workspace
+          {t.backToWorkspace}
         </button>
 
         <div className="mb-8 text-left">
           <h1 className="text-3xl font-bold font-display tracking-tight text-slate-900">
-            Auto Test Progress
+            {t.title}
           </h1>
           <p className="text-slate-500 mt-2">
             {runState.project_id}
@@ -177,7 +173,7 @@ export default function TestProgress() {
               <StatusIcon className={`h-6 w-6 ${meta.tone} ${runState.status === "running" ? "animate-spin" : ""}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Status</p>
+              <p className="text-sm font-medium text-slate-500">{t.status}</p>
               <h2 className="text-xl font-bold text-slate-900">{meta.label}</h2>
             </div>
           </div>
@@ -185,7 +181,7 @@ export default function TestProgress() {
           <div className="mt-8">
             <div className="mb-3 flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Current stage</p>
+                <p className="text-sm font-medium text-slate-500">{t.currentStage}</p>
                 <p className="text-lg font-bold text-slate-900">{stageLabel}</p>
               </div>
               <p className="text-2xl font-bold text-slate-900 tabular-nums">{progressPercent}%</p>
@@ -216,29 +212,29 @@ export default function TestProgress() {
             ) : null}
             <div className="mt-3 flex justify-between text-sm text-slate-500">
               <span>{runState.message}</span>
-              {!isFinished ? <span className="animate-pulse">Loading...</span> : <span>{meta.label}</span>}
+              {!isFinished ? <span className="animate-pulse">{t.loading}</span> : <span>{meta.label}</span>}
             </div>
           </div>
 
           {runState.dry_run ? (
             <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 p-4 text-sm text-orange-700">
-              Running in dry-run mode — no real pipeline has been triggered.
+              {t.dryRun}
             </div>
           ) : null}
 
           {runState.report_path ? (
             <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm">
-              <p className="font-semibold text-emerald-700 mb-1">Report</p>
+              <p className="font-semibold text-emerald-700 mb-1">{t.report}</p>
               <p className="font-mono text-xs text-emerald-700 break-all">{runState.report_path}</p>
             </div>
           ) : null}
 
           {failureError ? (
             <div className="mt-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-800">
-              <p className="font-semibold mb-1">Failure details</p>
+              <p className="font-semibold mb-1">{t.failureDetails}</p>
               <p className="break-words">
                 {failureError.type ? `${failureError.type}: ` : ""}
-                {failureError.message || "The pipeline stopped before returning an error message."}
+                {failureError.message || t.noErrorMessage}
               </p>
             </div>
           ) : null}
@@ -250,14 +246,14 @@ export default function TestProgress() {
                   onClick={() => navigate(`/test-report/${runState.project_id}`)}
                   className="bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-orange-700 transition-colors"
                 >
-                  View report
+                  {t.viewReport}
                 </button>
               ) : null}
               <button
                 onClick={() => navigate("/dashboard")}
                 className="bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
               >
-                Go to Workspace
+                {t.goToWorkspace}
               </button>
             </div>
           ) : null}

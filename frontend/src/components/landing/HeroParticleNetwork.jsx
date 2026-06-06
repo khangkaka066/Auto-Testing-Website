@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const NODE_COUNT   = 100;
+const NODE_COUNT   = 140;
 const MAX_DIST     = 100;
 const PARALLAX     = 0.030;   // camera sway strength
 const CURSOR_R     = 160;     // repulsion radius (scene px)
@@ -19,7 +19,12 @@ export default function HeroParticleNetwork() {
     let w = window.innerWidth;
     let h = window.innerHeight;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h);
     renderer.setClearColor(0x000000, 0);
