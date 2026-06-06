@@ -18,7 +18,7 @@ export const billingT = {
     "notConfiguredHint": "Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET to backend .env to enable payments."
   },
   "packages": {
-    "title": "Credit Packages",
+    "title": "Billing Options",
     "mostPopular": "Most Popular",
     "bestValue": "Best Value",
     "usd": "USD",

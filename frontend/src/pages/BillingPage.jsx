@@ -18,37 +18,8 @@ function formatDate(val) {
   });
 }
 
-const PACKAGES = [
-  {
-    id: "starter",
-    name: "Starter",
-    credits: 1_000_000,
-    price: 5,
-    color: "border-slate-200",
-    badgeKey: "",
-    features: ["1,000,000 AI credits", "All test types", "Full report history", "Email support"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    credits: 5_000_000,
-    price: 20,
-    color: "border-orange-400",
-    badgeKey: "mostPopular",
-    features: ["5,000,000 AI credits", "All test types", "Full report history", "Priority support", "20% better value"],
-  },
-  {
-    id: "business",
-    name: "Business",
-    credits: 15_000_000,
-    price: 50,
-    color: "border-violet-400",
-    badgeKey: "bestValue",
-    features: ["15,000,000 AI credits", "All test types", "Full report history", "Priority support", "34% better value", "Team access"],
-  },
-];
-
 const MIN_CREDITS = 4;
+const PRICE_PER_CREDIT_USD = 1;
 
 export default function BillingPage() {
   const navigate = useNavigate();
@@ -62,6 +33,7 @@ export default function BillingPage() {
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [buying, setBuying] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [creditAmount, setCreditAmount] = useState(MIN_CREDITS);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -130,7 +102,7 @@ export default function BillingPage() {
   const totalCreditsBought = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.credits_added || 0), 0);
   const usedPct = credits != null && (tokensUsed + credits) > 0
     ? Math.round((tokensUsed / (tokensUsed + credits)) * 100) : 0;
-  const previewCreditAmount = PACKAGES[1].credits;
+  const creditTotalUsd = creditAmount * PRICE_PER_CREDIT_USD;
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -271,7 +243,7 @@ export default function BillingPage() {
             </div>
           )}
 
-          {/* Top up — 2-column layout */}
+          {/* Billing options */}
           <div className="mb-6">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="h-8 w-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
@@ -280,47 +252,107 @@ export default function BillingPage() {
               <h2 className="text-sm font-bold text-slate-800">{t.packages.title}</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {PACKAGES.map((pkg) => (
-                <div key={pkg.id} className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col relative ${pkg.color}`}>
-                  {pkg.badgeKey && (
-                    <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap ${
-                      pkg.id === "pro" ? "bg-orange-500 text-white" : "bg-violet-500 text-white"
-                    }`}>
-                      {pkg.badgeKey === "mostPopular" ? t.packages.mostPopular : t.packages.bestValue}
-                    </span>
-                  )}
-
-                  <div className="mb-4">
-                    <h3 className="text-base font-bold text-slate-800">{pkg.name}</h3>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-3xl font-bold text-slate-900">${pkg.price}</span>
-                      <span className="text-slate-400 text-sm">{t.packages.usd}</span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {pkg.credits.toLocaleString()} {t.packages.creditsUnit} · ${(pkg.price / pkg.credits * 1_000_000).toFixed(2)}/M tokens
-                    </p>
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_0.9fr] gap-4 pt-3">
+              <div className="bg-white rounded-xl border-2 border-orange-400 shadow-sm p-6 flex flex-col relative overflow-visible">
+                <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap bg-orange-500 text-white">
+                  Monthly plan
+                </span>
+                <div className="relative">
+                  <h3 className="text-base font-bold text-slate-800">Plus</h3>
+                  <p className="text-xs text-slate-500 mt-1">Predictable monthly testing for regular users</p>
+                  <div className="flex items-baseline gap-1 mt-5">
+                    <span className="text-4xl font-bold text-slate-900">$10</span>
+                    <span className="text-slate-400 text-sm">/month</span>
                   </div>
-
-                  <button
-                    onClick={() => handleBuy(pkg.credits)}
-                    disabled={!stripeEnabled || buying}
-                    className="w-full py-3 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm shadow-orange-200"
-                  >
-                    {buying ? (
-                      <>
-                        <span className="h-3.5 w-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        {t.packages.redirecting}
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="h-3.5 w-3.5" />
-                        {stripeEnabled ? `${t.packages.buyFor} $${pkg.price}` : t.packages.notConfigured}
-                      </>
-                    )}
-                  </button>
+                  <p className="text-xs text-slate-500 mt-1">15 standard test runs each billing cycle</p>
                 </div>
-              ))}
+
+                <ul className="relative mt-6 space-y-3 flex-1">
+                  {[
+                    "15 standard tests/month",
+                    "Optional code fix suggestions",
+                    "Better test generation engine",
+                    "Extra runs continue with credits",
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-700">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  disabled
+                  className="relative mt-6 w-full py-3 rounded-xl text-sm font-bold bg-slate-200 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Subscribe coming soon
+                </button>
+              </div>
+
+              <div className="bg-white rounded-xl border-2 border-violet-400 shadow-sm p-6 flex flex-col relative">
+                <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap bg-violet-500 text-white">
+                  Pay as you go
+                </span>
+                <h3 className="text-base font-bold text-slate-800">Credits</h3>
+                <p className="text-xs text-slate-500 mt-1">Flexible top-ups for larger runs or extra capacity</p>
+                <div className="flex items-baseline gap-1 mt-5">
+                  <span className="text-4xl font-bold text-slate-900">$1</span>
+                  <span className="text-slate-400 text-sm">/credit</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Minimum purchase is {MIN_CREDITS} credits</p>
+
+                <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Credit amount</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Credits never expire</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCreditAmount((value) => Math.max(MIN_CREDITS, value - 1))}
+                        className="h-9 w-9 rounded-lg border border-slate-300 bg-white text-lg font-bold text-slate-700 hover:border-slate-400 transition-colors"
+                      >
+                        -
+                      </button>
+                      <div className="h-9 min-w-14 px-3 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-900">
+                        {creditAmount}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCreditAmount((value) => value + 1)}
+                        className="h-9 w-9 rounded-lg border border-slate-300 bg-white text-lg font-bold text-slate-700 hover:border-slate-400 transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-600">Total</span>
+                    <span className="text-2xl font-bold text-slate-900">${creditTotalUsd}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleBuy(creditAmount)}
+                  disabled={!stripeEnabled || buying}
+                  className="mt-6 w-full py-3 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm shadow-orange-200"
+                >
+                  {buying ? (
+                    <>
+                      <span className="h-3.5 w-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      {t.packages.redirecting}
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-3.5 w-3.5" />
+                      {stripeEnabled ? `Buy ${creditAmount} credits for $${creditTotalUsd}` : t.packages.notConfigured}
+                    </>
+                  )}
+                </button>
+              </div>
 
               {/* Right: what you get */}
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-6 text-white flex flex-col">
@@ -334,9 +366,9 @@ export default function BillingPage() {
                 <ul className="space-y-3.5 flex-1">
                   {[
                     { icon: "✦", label: "AI-powered test generation", sub: "Playwright scripts created automatically from your source code" },
-                    { icon: "✦", label: "All test types included", sub: "UI, API, and Functional testing in one run" },
-                    { icon: "✦", label: "Detailed test reports", sub: "Health score, pass/fail breakdown, and prioritized bug list" },
-                    { icon: "✦", label: "Credits never expire", sub: "Use them at your own pace, no monthly reset" },
+                    { icon: "✦", label: "Plus allowance", sub: "15 standard test runs per month once subscriptions are enabled" },
+                    { icon: "✦", label: "Flexible credits", sub: "Use credits for extra runs, larger projects, or one-off testing" },
+                    { icon: "✦", label: "Detailed reports", sub: "Health score, pass/fail breakdown, and prioritized bug list" },
                   ].map((item, i) => (
                     <li key={i} className="flex gap-3">
                       <span className="text-orange-400 text-xs mt-0.5 shrink-0">{item.icon}</span>
@@ -349,9 +381,9 @@ export default function BillingPage() {
                 </ul>
 
                 <div className="mt-6 pt-5 border-t border-slate-700">
-                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mb-3">With {previewCreditAmount.toLocaleString()} credit{previewCreditAmount !== 1 ? "s" : ""} you can run approximately</p>
-                  <p className="text-3xl font-bold text-white">{Math.floor(previewCreditAmount / 1.5).toLocaleString()} <span className="text-base font-medium text-slate-400">test runs</span></p>
-                  <p className="text-[11px] text-slate-500 mt-1">Based on average project size</p>
+                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mb-3">Your selected top-up</p>
+                  <p className="text-3xl font-bold text-white">{creditAmount} <span className="text-base font-medium text-slate-400">credits</span></p>
+                  <p className="text-[11px] text-slate-500 mt-1">Estimated total: ${creditTotalUsd}</p>
                 </div>
               </div>
             </div>

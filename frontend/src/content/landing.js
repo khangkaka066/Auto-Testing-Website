@@ -114,53 +114,39 @@ export const howItWorksT = {
 export const pricingT = {
   "header": {
     "label": "Pricing",
-    "title": "Pay for runs, not for seats.",
-    "subtitle": "Simple plans that grow with your team. No surprise overage fees, ever."
+    "title": "Choose Plus or pay with credits.",
+    "subtitle": "Start with 2 free credits, then use a predictable monthly plan or flexible pay-as-you-go top ups."
   },
   "mostPopular": "Most popular",
   "tiers": [
     {
-      "name": "Free",
-      "price": "0",
-      "period": "forever",
-      "desc": "Perfect for solo developers and side projects.",
-      "features": [
-        "500 test runs / month",
-        "1 user, 1 project",
-        "Community support",
-        "Chrome only"
-      ],
-      "cta": "Start free"
-    },
-    {
-      "name": "Pro",
-      "price": "49",
+      "name": "Plus",
+      "price": "10",
       "period": "per month",
-      "desc": "For teams that ship to production every day.",
+      "desc": "For developers who test regularly and want a predictable monthly bill.",
       "features": [
-        "25,000 test runs / month",
-        "Unlimited projects",
-        "All browsers & mobile viewports",
-        "AI test authoring & self-healing",
-        "GitHub, GitLab, Slack integrations",
-        "Priority support"
+        "15 standard test runs / month",
+        "Optional code fix suggestions",
+        "Better test generation engine",
+        "Extra runs continue with credits",
+        "Monthly allowance resets each billing cycle"
       ],
-      "cta": "Start 14-day trial",
+      "cta": "Subscribe",
       "highlighted": true
     },
     {
-      "name": "Enterprise",
-      "price": "Custom",
-      "period": "annual contract",
-      "desc": "Compliance, SSO and dedicated infrastructure.",
+      "name": "Credits",
+      "price": "1",
+      "period": "per credit",
+      "desc": "For occasional testing, larger runs, or usage beyond the Plus allowance.",
       "features": [
-        "Unlimited test runs",
-        "SSO/SAML, SCIM, audit logs",
-        "Dedicated runners & region",
-        "SOC 2 Type II report",
-        "Custom SLA & onboarding"
+        "$1 per credit",
+        "Minimum top-up: 4 credits",
+        "Credits do not expire",
+        "Use credits for larger or extra runs",
+        "2 free credits on signup"
       ],
-      "cta": "Talk to sales"
+      "cta": "Buy credits"
     }
   ]
 };

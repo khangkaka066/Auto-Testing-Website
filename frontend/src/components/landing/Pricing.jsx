@@ -8,8 +8,8 @@ export default function Pricing() {
   const t = pricingT;
 
   const headerRef = useRef(null);
-  const t1 = useRef(null), t2 = useRef(null), t3 = useRef(null);
-  const tierRefs = [t1, t2, t3];
+  const t1 = useRef(null), t2 = useRef(null);
+  const tierRefs = [t1, t2];
 
   return (
     <Root start="top 85%" end="top 15%" scrub={1}>
@@ -25,7 +25,7 @@ export default function Pricing() {
             <SectionHeader label={t.header.label} title={t.header.title} subtitle={t.header.subtitle} align="center" />
           </div>
 
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6 items-start max-w-5xl mx-auto">
             {t.tiers.map((tier, i) => (
               <div key={tier.name} ref={tierRefs[i]} data-testid={`pricing-tier-${tier.name.toLowerCase()}`}
                 className={`relative rounded-lg p-8 ${tier.highlighted ? "border-2 border-orange-500 shadow-xl shadow-orange-500/10 bg-white" : "border border-slate-200 bg-white"}`}

@@ -147,13 +147,13 @@ export default function Hero() {
               </div>
 
               {/* Floating badge */}
-              <div className="hidden md:flex absolute -bottom-4 -left-6 items-center gap-3 bg-white border border-slate-200 shadow-lg rounded-lg px-4 py-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-orange-500 pulse-dot"></span>
+              <div className="hidden md:flex absolute -bottom-2 -left-3 items-center gap-2 bg-white border border-slate-200 shadow-lg rounded-md px-3 py-2">
+                <span className="h-2 w-2 rounded-full bg-orange-500 pulse-dot"></span>
                 <div>
-                  <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-400">
                     AI Author
                   </div>
-                  <div className="text-sm font-medium text-slate-900">
+                  <div className="text-xs font-medium text-slate-900">
                     Generated 12 tests
                   </div>
                 </div>
