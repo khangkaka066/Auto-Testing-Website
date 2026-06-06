@@ -8,6 +8,7 @@ const ROUTE_MAP = {
   "Tính năng": "/features",
   Pricing: "/pricing",
   "Bảng giá": "/pricing",
+  Changelog: "/changelog",
   Privacy: "/privacy-policy",
   "Bảo mật": "/privacy-policy",
   Terms: "/terms-of-service",

@@ -21,6 +21,7 @@ import FeaturesPage from "./pages/FeaturesPage";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CookiePolicy from "./pages/CookiePolicy";
+import ChangelogPage from "./pages/ChangelogPage";
 import { Toaster } from "./components/ui/sonner";
 import ChatWidget from "./components/ui/ChatWidget";
 
@@ -44,6 +45,7 @@ function App() {
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/changelog" element={<ChangelogPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-left" />

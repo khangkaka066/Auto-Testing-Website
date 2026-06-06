@@ -84,6 +84,10 @@ export default function Navbar() {
             {t.pricing}
             <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
           </Link>
+          <Link to="/changelog" className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1">
+            Changelog
+            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
+          </Link>
           <button
             onClick={() => setAboutOpen(true)}
             className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1"
@@ -152,6 +156,7 @@ export default function Navbar() {
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{l.label}</a>
             ))}
             <Link to="/pricing" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{t.pricing}</Link>
+            <Link to="/changelog" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">Changelog</Link>
             <button onClick={() => { setOpen(false); setAboutOpen(true); }} className="text-sm font-medium text-slate-700 text-left">About</button>
             <div className="h-px bg-slate-100" />
             {isLoggedIn ? (
