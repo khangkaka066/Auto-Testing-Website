@@ -67,6 +67,12 @@ const BOT_KB = [
       "I can escalate this to our support team right away. Click the button below to start a live chat with one of our customer care specialists.",
     escalate: true,
   },
+  {
+    keywords: ["zalo", "phone", "hotline", "số điện thoại", "liên hệ trực tiếp", "gọi", "call"],
+    answer:
+      "Bạn có thể liên hệ trực tiếp với supporter của chúng tôi qua **Zalo: 0999939979** 📱\n\nChúng tôi sẽ phản hồi trong thời gian sớm nhất!",
+    escalate: false,
+  },
 ];
 
 const FALLBACK =
@@ -214,14 +220,13 @@ export default function ChatWidget() {
     pushMessage({ role: "user", content: text });
 
     if (mode === "human") {
-      // In human mode, just echo back waiting (real integration would use WebSocket)
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
         pushMessage({
           role: "agent",
           content:
-            "Thanks for your message! Our agent has received it and will reply shortly. Average response time is under 2 minutes.",
+            "Cảm ơn bạn đã nhắn tin! Để được hỗ trợ nhanh nhất, hãy liên hệ trực tiếp qua **Zalo: 0999939979** 📱. Supporter sẽ phản hồi bạn trong thời gian sớm nhất.",
         });
       }, 1500);
       return;
@@ -267,12 +272,12 @@ export default function ChatWidget() {
       setMode("human");
       pushMessage({
         role: "system",
-        content: "Agent Alex has joined the chat",
+        content: "Supporter đã tham gia cuộc trò chuyện",
       });
       pushMessage({
         role: "agent",
         content:
-          "Hi! I'm Alex from TestPilot support. I've reviewed your conversation — how can I help you today?",
+          "Xin chào! Tôi là supporter của TestPilot. Tôi đã xem qua cuộc trò chuyện của bạn.\n\nBạn có thể liên hệ trực tiếp với tôi qua **Zalo: 0999939979** 📱 để được hỗ trợ nhanh hơn. Tôi có thể giúp gì cho bạn?",
       });
     }, 2500);
   };
@@ -288,8 +293,8 @@ export default function ChatWidget() {
     mode === "bot"
       ? "AI Assistant"
       : mode === "connecting"
-      ? "Connecting…"
-      : "Live Support — Alex";
+      ? "Đang kết nối…"
+      : "Supporter — Zalo: 0999939979";
 
   const statusDot =
     mode === "bot"
@@ -368,7 +373,7 @@ export default function ChatWidget() {
           {/* Quick suggestions (only in bot mode with no messages from user yet) */}
           {mode === "bot" && messages.length === 1 && (
             <div className="px-4 pt-2 pb-1 flex flex-wrap gap-1.5 border-t border-slate-100 bg-white">
-              {["How does it work?", "What's the pricing?", "CI/CD integration"].map((q) => (
+              {["How does it work?", "What's the pricing?", "Liên hệ Zalo"].map((q) => (
                 <button
                   key={q}
                   onClick={() => {
@@ -392,8 +397,8 @@ export default function ChatWidget() {
               onKeyDown={handleKeyDown}
               placeholder={
                 mode === "human"
-                  ? "Message Agent Alex…"
-                  : "Ask me anything…"
+                  ? "Nhắn tin cho supporter…"
+                  : "Hỏi bất cứ điều gì…"
               }
               rows={1}
               className="flex-1 resize-none text-sm rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent placeholder:text-slate-400 max-h-24 overflow-y-auto"

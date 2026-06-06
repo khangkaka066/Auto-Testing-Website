@@ -24,8 +24,9 @@ import CookiePolicy from "./pages/CookiePolicy";
 import ChangelogPage from "./pages/ChangelogPage";
 import DocsPage from "./pages/DocsPage";
 import RoadmapPage from "./pages/RoadmapPage";
+import AboutPage from "./pages/AboutPage";
 import { Toaster } from "./components/ui/sonner";
-import ChatWidget from "./components/ui/ChatWidget";
+import ContactWidget from "./components/ui/ContactWidget";
 
 function App() {
   return (
@@ -50,10 +51,11 @@ function App() {
           <Route path="/changelog" element={<ChangelogPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/about" element={<AboutPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-left" />
-      <ChatWidget />
+      <ContactWidget />
     </div>
   );
 }

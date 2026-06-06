@@ -12,6 +12,7 @@ const ROUTE_MAP = {
   Docs: "/docs",
   "API reference": "/docs#api-reference",
   Roadmap: "/roadmap",
+  About: "/about",
   Privacy: "/privacy-policy",
   "Bảo mật": "/privacy-policy",
   Terms: "/terms-of-service",
