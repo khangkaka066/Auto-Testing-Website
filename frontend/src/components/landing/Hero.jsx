@@ -1,178 +1,182 @@
 import React from "react";
-import { ArrowRight, Bot, Check, Play, Sparkles, Timer } from "lucide-react";
+import { ArrowRight, Check, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Root, Parallax } from "@bsmnt/scrollytelling";
-import { heroT } from "../../content/landing";
 
 export default function Hero() {
-  const t = heroT;
-
   return (
-    <Root start="top 100%" end="top 0%" scrub={1}>
-      <section
-        data-testid="hero-section"
-        className="relative overflow-hidden border-b border-slate-200"
-      >
-        <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+    <section
+      data-testid="hero-section"
+      className="relative overflow-hidden border-b border-slate-200"
+    >
+<div className="absolute inset-0 bg-grid pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
 
-        <div className="relative max-w-7xl mx-auto px-6 md:px-8 pt-20 pb-24 md:pt-28 md:pb-32 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+      <div className="relative max-w-7xl mx-auto px-6 md:px-8 pt-20 pb-24 md:pt-28 md:pb-32">
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-7">
             <div
-              className="hero-fade-in inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 bg-white/80 backdrop-blur-sm text-xs font-mono uppercase tracking-[0.18em] text-orange-600 font-semibold shadow-sm"
+              className="hero-fade-in inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-200 bg-orange-50"
               style={{ animationDelay: "0ms" }}
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-              {t.badge}
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75 animate-ping"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+              </span>
+              <span className="text-xs font-mono uppercase tracking-[0.18em] text-orange-700 font-semibold">
+                v2.4 — AI Test Authoring
+              </span>
             </div>
 
             <h1
-              ref={undefined}
               data-testid="hero-heading"
-              className="hero-fade-in font-display mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.03] text-slate-900"
-              style={{ animationDelay: "80ms" }}
+              className="hero-fade-in font-display mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]"
+              style={{ animationDelay: "140ms" }}
             >
-              {t.headline1}<br />
-              {t.headline2} <span className="text-orange-500">{t.highlight}.</span>
+              Ship faster.<br />
+              With <span className="relative inline-block">
+                <span className="relative z-10">zero bugs</span>
+                <span className="absolute -bottom-1 left-0 right-0 h-3 bg-orange-200/70 -z-0"></span>
+              </span>.
             </h1>
 
             <p
               className="hero-fade-in mt-6 max-w-xl text-lg leading-relaxed text-slate-600"
-              style={{ animationDelay: "160ms" }}
+              style={{ animationDelay: "260ms" }}
             >
-              {t.subtitle}
+              TestPilot is the autonomous QA platform that writes, runs, and maintains your
+              end-to-end tests. Catch regressions across every browser before they hit production.
             </p>
 
             <div
               className="hero-fade-in mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4"
-              style={{ animationDelay: "240ms" }}
+              style={{ animationDelay: "370ms" }}
             >
               <Link
-                to="/register"
+                to="/pricing"
                 data-testid="hero-primary-cta"
-                className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-6 py-3 rounded-md transition-colors shadow-lg shadow-orange-500/25"
+                className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-6 py-3.5 rounded-md transition-all shadow-sm hover:shadow-md"
               >
-                {t.primaryCta}
+                Start testing
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <button
+              <a
+                href="#how"
                 data-testid="hero-secondary-cta"
-                className="inline-flex items-center gap-2 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium px-6 py-3 rounded-md transition-colors"
+                className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900 font-medium px-2 py-3.5"
               >
-                <Play className="h-4 w-4 text-orange-500" />
-                {t.secondaryCta}
-              </button>
+                <span className="flex items-center justify-center h-7 w-7 rounded-full bg-slate-900 text-white">
+                  <Play className="h-3 w-3 ml-0.5" />
+                </span>
+                Watch 2-min demo
+              </a>
             </div>
 
-            <div
-              className="hero-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500"
-              style={{ animationDelay: "320ms" }}
+            <ul
+              className="hero-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600"
+              style={{ animationDelay: "480ms" }}
             >
-              {t.benefits.map((b) => (
-                <span key={b} className="flex items-center gap-1.5">
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                  {b}
-                </span>
+              {["No credit card", "14-day free trial", "Cancel anytime"].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-orange-500" />
+                  {t}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
-          {/* Right panel */}
-          <div className="hero-fade-in relative" style={{ animationDelay: "120ms" }}>
-            <Parallax tween={{ start: 0, end: 100, movementY: { value: 30, unit: "px" } }}>
-              <div className="relative mx-auto max-w-xl lg:max-w-none">
-                <div className="absolute -inset-4 rounded-[2rem] bg-orange-200/25 blur-3xl" />
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15">
-                  <div className="border-b border-slate-200 bg-slate-100/90 px-4 pt-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-2">
-                        <span className="h-3 w-3 rounded-full bg-red-400 shadow-inner" />
-                        <span className="h-3 w-3 rounded-full bg-amber-400 shadow-inner" />
-                        <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-inner" />
+          <div className="lg:col-span-5 relative">
+            <Root start="top top" end="bottom top">
+            <Parallax tween={{ start: 0, end: 100, movementY: { value: -55, unit: "px" } }}>
+            <div className="relative">
+              <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-orange-100 via-white to-slate-100 blur-2xl opacity-70" />
+              <div className="relative rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/5 overflow-hidden animate-float">
+                {/* Browser bar */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-400"></span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-400"></span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-400"></span>
+                  <div className="ml-3 flex-1 text-xs font-mono text-slate-500 bg-white border border-slate-200 rounded px-3 py-1">
+                    testpilot.app/runs/47ba
+                  </div>
+                </div>
+                {/* Body */}
+                <div className="p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
+                        Live run
                       </div>
-                      <div className="flex min-w-0 flex-1 items-end gap-1">
-                        <div className="min-w-0 rounded-t-lg border border-b-0 border-slate-200 bg-white px-3 py-2 shadow-sm">
-                          <p className="truncate font-mono text-[11px] font-semibold text-slate-700">
-                            {t.checkoutFlow}
-                          </p>
-                        </div>
-                        <div className="hidden rounded-t-lg px-3 py-2 font-mono text-[11px] text-slate-400 sm:block">
-                          {t.liveRun}
-                        </div>
+                      <div className="font-display font-semibold text-slate-900 mt-0.5">
+                        Checkout flow — Chrome
                       </div>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        {t.passing}
-                      </span>
                     </div>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded-md bg-green-50 text-green-700 border border-green-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                      PASSING
+                    </span>
                   </div>
 
-                  <div className="bg-slate-950 p-4 sm:p-5">
-                    <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-orange-300" />
-                        <span className="font-mono text-xs font-semibold text-slate-200">{t.aiAuthor}</span>
-                      </div>
-                      <span className="font-mono text-[11px] text-slate-500">{t.generated}</span>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {[
-                        { label: "navigate /cart", dur: "120ms" },
-                        { label: "[data-testid=checkout]", dur: "45ms" },
-                        { label: "expect orderConfirm.toBeVisible", dur: "230ms" },
-                        { label: "expect total.$30.00", dur: "18ms" },
-                      ].map((row, i) => (
-                        <div key={row.label} className="group flex items-center gap-3 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-3 text-xs font-mono transition-colors hover:border-emerald-400/30 hover:bg-slate-900">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10">
-                            <Check className="h-3 w-3 text-emerald-300" />
-                          </span>
-                          <span className="w-5 shrink-0 text-slate-600">{String(i + 1).padStart(2, "0")}</span>
-                          <span className="min-w-0 flex-1 truncate text-slate-200">{row.label}</span>
-                          <span className="text-slate-500">{row.dur}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 divide-x divide-slate-200 border-t border-slate-200 bg-white">
+                  <div className="space-y-1.5">
                     {[
-                      { label: t.statLabels.tests, value: "12" },
-                      { label: t.statLabels.passed, value: "12", tone: "text-emerald-600" },
-                      { label: t.statLabels.duration, value: "1.4s" },
-                    ].map((stat) => (
-                      <div key={stat.label} className="px-4 py-4">
-                        <p className="text-[11px] font-medium text-slate-500">{stat.label}</p>
-                        <p className={`mt-1 text-lg font-bold tabular-nums ${stat.tone || "text-slate-900"}`}>{stat.value}</p>
+                      { step: "visit('/cart')", t: "0.4s", ok: true },
+                      { step: "click('checkout-btn')", t: "0.2s", ok: true },
+                      { step: "fill('email', user.email)", t: "0.3s", ok: true },
+                      { step: "expect(orderConfirm).visible", t: "1.1s", ok: true },
+                    ].map((row, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-slate-50 border border-slate-200"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                          <code className="text-xs font-mono text-slate-700 truncate">
+                            {row.step}
+                          </code>
+                        </div>
+                        <span className="text-xs font-mono text-slate-400 flex-shrink-0">{row.t}</span>
                       </div>
                     ))}
                   </div>
-                </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white">
-                      <Bot className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900">{t.aiAuthor}</p>
-                      <p className="truncate text-xs text-slate-500">{t.generated}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-                      <Timer className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">1.4s</p>
-                      <p className="text-xs text-slate-500">Full run completed</p>
-                    </div>
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                    <Stat label="Tests" value="248" />
+                    <Stat label="Passed" value="247" accent />
+                    <Stat label="Duration" value="42s" />
                   </div>
                 </div>
               </div>
+
+              {/* Floating badge */}
+              <div className="hidden md:flex absolute -bottom-4 -left-6 items-center gap-3 bg-white border border-slate-200 shadow-lg rounded-lg px-4 py-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-orange-500 pulse-dot"></span>
+                <div>
+                  <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
+                    AI Author
+                  </div>
+                  <div className="text-sm font-medium text-slate-900">
+                    Generated 12 tests
+                  </div>
+                </div>
+              </div>
+            </div>
             </Parallax>
+            </Root>
           </div>
         </div>
-      </section>
-    </Root>
+      </div>
+    </section>
+  );
+}
+
+function Stat({ label, value, accent }) {
+  return (
+    <div>
+      <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </div>
+      <div className={`font-display font-semibold text-lg ${accent ? "text-orange-600" : "text-slate-900"}`}>
+        {value}
+      </div>
+    </div>
   );
 }
