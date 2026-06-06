@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import API_BASE_URL from "../../config";
-import { Menu, X, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Settings, User, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
 import { navbarT } from "../../content/landing";
-import { AboutButton, AboutModal } from "./AboutModal";
+import { AboutModal } from "./AboutModal";
+
+const NAV_CATEGORIES = [
+  { label: "Product",   id: "nav-product" },
+  { label: "Company",   id: "nav-company" },
+  { label: "Resources", id: "nav-resources" },
+  { label: "Legal",     id: "nav-legal" },
+];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -51,6 +58,16 @@ export default function Navbar() {
     return () => window.removeEventListener("userUpdate", handleUserUpdate);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setAvatarMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user_avatar");
@@ -61,47 +78,42 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const handleCategoryClick = (id) => {
+    setOpen(false);
+    if (window.location.pathname === "/") {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } else {
+      navigate(`/#${id}`);
+    }
+  };
+
   return (
     <header data-testid="site-navbar" className="sticky top-0 z-50 backdrop-blur-xl bg-white/75 border-b border-slate-200/70">
       <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
 
-        <a href="/" className="group flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900">
+        <a href="/" className="group flex items-center gap-2 font-display font-bold text-lg tracking-tight text-slate-900 shrink-0">
           <img src="/logo.png" alt="TestPilot" className="h-8 w-8 rounded-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-3" />
           <span className="transition-colors duration-300 group-hover:text-orange-500">TestPilot</span>
         </a>
 
-        <nav className="hidden md:flex items-center gap-8">
-          {t.links.map((l, i) => (
-            <a key={l.href} href={l.href}
-              className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1"
-              style={{ animationDelay: `${i * 60}ms` }}
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1">
+          {NAV_CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => handleCategoryClick(cat.id)}
+              className="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 group/cat"
             >
-              {l.label}
-              <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
-            </a>
+              {cat.label}
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 transition-transform duration-200 group-hover/cat:translate-y-0.5" />
+            </button>
           ))}
-          <Link to="/pricing" className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1">
-            {t.pricing}
-            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
-          </Link>
-          <Link to="/docs" className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1">
-            Docs
-            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
-          </Link>
-          <Link to="/changelog" className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1">
-            Changelog
-            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
-          </Link>
-          <button
-            onClick={() => setAboutOpen(true)}
-            className="relative text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 group/link py-1"
-          >
-            About
-            <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-orange-500 transition-all duration-300 group-hover/link:w-full" />
-          </button>
         </nav>
-        <AboutModal open={aboutOpen} onOpenChange={setAboutOpen} />
 
+        {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-3 relative" ref={dropdownRef}>
           {isLoggedIn ? (
             <>
@@ -153,17 +165,23 @@ export default function Navbar() {
         </button>
       </div>
 
+      <AboutModal open={aboutOpen} onOpenChange={setAboutOpen} />
+
+      {/* Mobile menu */}
       {open && (
         <div className="md:hidden border-t border-slate-200 bg-white">
-          <div className="px-6 py-4 flex flex-col gap-4 text-left">
-            {t.links.map((l) => (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{l.label}</a>
+          <div className="px-6 py-4 flex flex-col gap-1 text-left">
+            {NAV_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => handleCategoryClick(cat.id)}
+                className="flex items-center justify-between py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900"
+              >
+                {cat.label}
+                <ChevronDown className="h-4 w-4 text-slate-400" />
+              </button>
             ))}
-            <Link to="/pricing" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">{t.pricing}</Link>
-            <Link to="/docs" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">Docs</Link>
-            <Link to="/changelog" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700">Changelog</Link>
-            <button onClick={() => { setOpen(false); setAboutOpen(true); }} className="text-sm font-medium text-slate-700 text-left">About</button>
-            <div className="h-px bg-slate-100" />
+            <div className="h-px bg-slate-100 my-2" />
             {isLoggedIn ? (
               <>
                 <Link to="/profile" onClick={() => setOpen(false)} className="text-sm font-medium text-slate-700 py-1 flex items-center gap-2">
