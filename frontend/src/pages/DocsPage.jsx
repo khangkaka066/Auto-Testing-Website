@@ -167,7 +167,7 @@ export default function DocsPage() {
           </div>
         </section>
 
-        <section className="bg-slate-950 text-white">
+        <section id="api-reference" className="bg-slate-950 text-white">
           <div className="max-w-7xl mx-auto px-6 md:px-8 py-16 text-left">
             <div className="flex items-center gap-2 text-orange-300 text-sm font-semibold uppercase tracking-[0.18em]">
               <Code2 className="h-4 w-4" /> API reference
