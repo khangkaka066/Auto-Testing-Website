@@ -37,7 +37,7 @@ const QUARTERS = [
   },
   {
     quarter: "Q2 2026",
-    status: "In progress",
+    status: "In Progress",
     title: "UI/UX refresh, test expansion, billing, and alpha version",
     description:
       "Improve the user experience, add more testing coverage, integrate payments, and prepare the alpha release.",
@@ -52,7 +52,7 @@ const QUARTERS = [
   },
   {
     quarter: "Q3 2026",
-    status: "Planned",
+    status: "Not Started",
     title: "Official version",
     description:
       "Launch the official version for real users with a stable onboarding, billing, testing, and reporting experience.",
@@ -66,7 +66,7 @@ const QUARTERS = [
   },
   {
     quarter: "Q4 2026",
-    status: "Exploring",
+    status: "Not Started",
     title: "Scale, collaboration, and workflow automation",
     description:
       "A flexible planning window for team workflows and deeper automation after the official launch.",
@@ -80,8 +80,24 @@ const QUARTERS = [
   },
 ];
 
+const STATUS_STYLES = {
+  Completed: {
+    badge: "border-emerald-200 bg-emerald-50 text-emerald-700 ring-emerald-100",
+    previewBadge: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  },
+  "In Progress": {
+    badge: "border-orange-200 bg-orange-50 text-orange-700 ring-orange-100",
+    previewBadge: "bg-orange-50 text-orange-700 ring-orange-100",
+  },
+  "Not Started": {
+    badge: "border-slate-200 bg-slate-50 text-slate-500 ring-slate-100",
+    previewBadge: "bg-slate-50 text-slate-500 ring-slate-100",
+  },
+};
+
 function QuarterCard({ quarter, index }) {
   const Icon = quarter.icon;
+  const statusStyle = STATUS_STYLES[quarter.status] || STATUS_STYLES["Not Started"];
 
   return (
     <article className="relative rounded-xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
@@ -90,7 +106,7 @@ function QuarterCard({ quarter, index }) {
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${quarter.accent}`}>
           <Icon className="h-5 w-5" />
         </div>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] ring-1 ${statusStyle.badge}`}>
           {quarter.status}
         </span>
       </div>
@@ -224,7 +240,7 @@ export default function RoadmapPage() {
                                 <p className="text-sm font-semibold text-slate-800">{item.quarter}</p>
                                 <p className="truncate text-xs text-slate-500">{item.title}</p>
                               </div>
-                              <span className="hidden shrink-0 rounded-full bg-white px-2 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-orange-600 ring-1 ring-orange-100 sm:inline-flex">
+                              <span className={`hidden shrink-0 rounded-full px-2 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.12em] ring-1 sm:inline-flex ${(STATUS_STYLES[item.status] || STATUS_STYLES["Not Started"]).previewBadge}`}>
                                 {item.status}
                               </span>
                             </div>

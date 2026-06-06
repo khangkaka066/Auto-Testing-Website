@@ -268,8 +268,6 @@ export const footerT = {
       "links": [
         "About",
         "Customers",
-        "Careers",
-        "Press kit",
         "Contact"
       ]
     },
