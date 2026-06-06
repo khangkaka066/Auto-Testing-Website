@@ -58,7 +58,7 @@ export default function Footer() {
           </div>
 
           {t.cols.map((c) => (
-            <div key={c.title}>
+            <div key={c.title} id={`nav-${c.title.toLowerCase()}`}>
               <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400 font-semibold">{c.title}</div>
               <ul className="mt-4 space-y-3">
                 {c.links.map((l) => (
