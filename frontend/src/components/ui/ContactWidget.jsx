@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Mail, X, Send, CheckCircle, AlertCircle, Loader2, ChevronDown } from "lucide-react";
 import axios from "axios";
 import API_BASE_URL from "../../config";
@@ -19,6 +19,12 @@ export default function ContactWidget() {
   const [errors, setErrors]   = useState(INIT_ERRORS);
   const [status, setStatus]   = useState("idle"); // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    const handler = () => { setOpen(true); setStatus("idle"); setErrorMsg(""); };
+    window.addEventListener("open-contact-widget", handler);
+    return () => window.removeEventListener("open-contact-widget", handler);
+  }, []);
 
   function validate() {
     const e = { ...INIT_ERRORS };

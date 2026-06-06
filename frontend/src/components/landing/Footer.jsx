@@ -64,7 +64,13 @@ export default function Footer() {
               <ul className="mt-4 space-y-3">
                 {c.links.map((l) => (
                   <li key={l}>
-                    {ROUTE_MAP[l] ? (
+                    {l === "Contact" ? (
+                      <button
+                        onClick={() => window.dispatchEvent(new CustomEvent("open-contact-widget"))}
+                        className="text-sm text-slate-600 hover:text-slate-900 transition-colors">
+                        {l}
+                      </button>
+                    ) : ROUTE_MAP[l] ? (
                       <Link to={ROUTE_MAP[l]} className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{l}</Link>
                     ) : (
                       <a href="#" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{l}</a>

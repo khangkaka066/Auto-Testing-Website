@@ -31,7 +31,7 @@ const SECTIONS = [
       { label: "Customers", href: "#testimonials", icon: Users, description: "Teams that trust TestPilot" },
       { label: "Careers", href: "#", icon: Briefcase, description: "Join our growing team" },
       { label: "Press kit", href: "#", icon: FileText, description: "Brand assets and media" },
-      { label: "Contact", href: "#", icon: Mail, description: "Get in touch with us" },
+      { label: "Contact", href: "#", icon: Mail, description: "Get in touch with us", isContact: true },
     ],
   },
   {
@@ -140,6 +140,15 @@ export default function NavHub({ onAboutOpen }) {
                       </div>
                     );
 
+                    if (item.isContact) {
+                      return (
+                        <li key={item.label}>
+                          <button className="w-full text-left" onClick={() => window.dispatchEvent(new CustomEvent("open-contact-widget"))}>
+                            {inner}
+                          </button>
+                        </li>
+                      );
+                    }
                     if (item.isAbout) {
                       return (
                         <li key={item.label}>
