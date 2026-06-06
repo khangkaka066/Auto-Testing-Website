@@ -9,6 +9,8 @@ const ROUTE_MAP = {
   Pricing: "/pricing",
   "Bảng giá": "/pricing",
   Changelog: "/changelog",
+  Docs: "/docs",
+  "API reference": "/docs#api-reference",
   Privacy: "/privacy-policy",
   "Bảo mật": "/privacy-policy",
   Terms: "/terms-of-service",
