@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import API_BASE_URL from "../../config";
-import { Menu, X, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Settings, User, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
@@ -13,13 +13,32 @@ const NAV_CATEGORIES = [
   { label: { en: "Reviews", vi: "Đánh giá" }, id: "testimonials" },
   { label: { en: "FAQ", vi: "FAQ" }, id: "faq" },
   { label: { en: "Pricing", vi: "Bảng giá" }, to: "/pricing" },
-  { label: { en: "Docs", vi: "Tài liệu" }, to: "/docs" },
-  { label: { en: "More", vi: "Thêm" }, id: "footer" },
+];
+
+const MORE_CATEGORIES = [
+  {
+    label: { en: "Docs", vi: "Tài liệu" },
+    description: {
+      en: "Guides for uploading projects, running tests, and reading reports",
+      vi: "Hướng dẫn upload dự án, chạy test và đọc báo cáo",
+    },
+    to: "/docs",
+  },
+  {
+    label: { en: "Contact", vi: "Liên hệ" },
+    description: {
+      en: "Get support or talk to the TestPilot team",
+      vi: "Nhận hỗ trợ hoặc liên hệ đội ngũ TestPilot",
+    },
+    id: "footer",
+  },
 ];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
@@ -27,6 +46,7 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+  const moreDropdownRef = useRef(null);
   const { navbarT: t } = useT("landing");
   const { language, setLanguage } = useLanguage();
 
@@ -67,6 +87,9 @@ export default function Navbar() {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setAvatarMenuOpen(false);
       }
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(e.target)) {
+        setMoreMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -84,6 +107,8 @@ export default function Navbar() {
 
   const handleCategoryClick = (item) => {
     setOpen(false);
+    setMoreMenuOpen(false);
+    setMobileMoreOpen(false);
     if (item.to) {
       navigate(item.to);
       return;
@@ -120,6 +145,36 @@ export default function Navbar() {
               {cat.label[language]}
             </button>
           ))}
+
+          <div className="relative" ref={moreDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setMoreMenuOpen((prev) => !prev)}
+              className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 flex items-center gap-1"
+              aria-expanded={moreMenuOpen}
+              aria-haspopup="menu"
+            >
+              {language === "vi" ? "Thêm" : "More"}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${moreMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {moreMenuOpen && (
+              <div className="absolute right-0 top-11 w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                {MORE_CATEGORIES.map((item) => (
+                  <button
+                    key={item.id || item.to}
+                    type="button"
+                    onClick={() => handleCategoryClick(item)}
+                    className="w-full rounded-lg px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
+                    role="menuitem"
+                  >
+                    <span className="block text-sm font-semibold text-slate-800">{item.label[language]}</span>
+                    <span className="mt-0.5 block text-xs leading-5 text-slate-500">{item.description[language]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Desktop auth */}
@@ -206,6 +261,33 @@ export default function Navbar() {
                 {cat.label[language]}
               </button>
             ))}
+
+            <button
+              type="button"
+              onClick={() => setMobileMoreOpen((prev) => !prev)}
+              className="flex items-center justify-between py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900"
+              aria-expanded={mobileMoreOpen}
+            >
+              <span>{language === "vi" ? "Thêm" : "More"}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${mobileMoreOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {mobileMoreOpen && (
+              <div className="rounded-lg border border-slate-100 bg-slate-50 p-1.5">
+                {MORE_CATEGORIES.map((item) => (
+                  <button
+                    key={item.id || item.to}
+                    type="button"
+                    onClick={() => handleCategoryClick(item)}
+                    className="w-full rounded-md px-3 py-2 text-left hover:bg-white transition-colors"
+                  >
+                    <span className="block text-sm font-semibold text-slate-700">{item.label[language]}</span>
+                    <span className="mt-0.5 block text-xs leading-5 text-slate-500">{item.description[language]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="h-px bg-slate-100 my-2" />
             <div className="flex items-center justify-between py-2">
               <span className="text-sm font-medium text-slate-700">{t.language || "Language"}</span>
