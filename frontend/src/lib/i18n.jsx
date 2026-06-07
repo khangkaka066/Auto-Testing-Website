@@ -118,7 +118,7 @@ const landingVi = {
       { title: "Sản phẩm", links: ["Tính năng", "Nhật ký thay đổi", "Lộ trình"] },
       { title: "Công ty", links: ["Giới thiệu", "Khách hàng", "Liên hệ"] },
       { title: "Tài nguyên", links: ["Tài liệu", "Blog", "Cộng đồng"] },
-      { title: "Pháp lý", links: ["Quyền riêng tư", "Điều khoản", "Bảo mật", "SOC 2", "DPA"] },
+      { title: "Pháp lý", links: ["Quyền riêng tư", "Điều khoản", "Bảo mật"] },
     ],
   },
 };
