@@ -252,7 +252,7 @@ export default function BillingPage() {
               <h2 className="text-sm font-bold text-slate-800">{t.packages.title}</h2>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_0.9fr] gap-4 pt-3">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 pt-3">
               <div className="bg-white rounded-xl border-2 border-orange-400 shadow-sm p-6 flex flex-col relative overflow-visible">
                 <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap bg-orange-500 text-white">
                   Monthly plan
@@ -354,38 +354,6 @@ export default function BillingPage() {
                 </button>
               </div>
 
-              {/* Right: what you get */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-6 text-white flex flex-col">
-                <div className="flex items-center gap-2 mb-5">
-                  <div className="h-8 w-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-orange-400" />
-                  </div>
-                  <h3 className="text-sm font-bold">What you get</h3>
-                </div>
-
-                <ul className="space-y-3.5 flex-1">
-                  {[
-                    { icon: "✦", label: "AI-powered test generation", sub: "Playwright scripts created automatically from your source code" },
-                    { icon: "✦", label: "Plus allowance", sub: "15 standard test runs per month once subscriptions are enabled" },
-                    { icon: "✦", label: "Flexible credits", sub: "Use credits for extra runs, larger projects, or one-off testing" },
-                    { icon: "✦", label: "Detailed reports", sub: "Health score, pass/fail breakdown, and prioritized bug list" },
-                  ].map((item, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span className="text-orange-400 text-xs mt-0.5 shrink-0">{item.icon}</span>
-                      <div>
-                        <p className="text-xs font-semibold text-white">{item.label}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{item.sub}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-6 pt-5 border-t border-slate-700">
-                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mb-3">Your selected top-up</p>
-                  <p className="text-3xl font-bold text-white">{creditAmount} <span className="text-base font-medium text-slate-400">credits</span></p>
-                  <p className="text-[11px] text-slate-500 mt-1">Estimated total: ${creditTotalUsd}</p>
-                </div>
-              </div>
             </div>
           </div>
 

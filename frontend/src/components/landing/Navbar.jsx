@@ -12,6 +12,7 @@ const NAV_CATEGORIES = [
   { label: "How it works", id: "how" },
   { label: "Reviews", id: "testimonials" },
   { label: "FAQ", id: "faq" },
+  { label: "Pricing", to: "/pricing" },
   { label: "More", id: "footer" },
 ];
 
@@ -79,8 +80,14 @@ export default function Navbar() {
     navigate("/");
   };
 
-  const handleCategoryClick = (id) => {
+  const handleCategoryClick = (item) => {
     setOpen(false);
+    if (item.to) {
+      navigate(item.to);
+      return;
+    }
+
+    const { id } = item;
     if (window.location.pathname === "/") {
       const el = document.getElementById(id);
       if (el) {
@@ -104,8 +111,8 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-1">
           {NAV_CATEGORIES.map((cat) => (
             <button
-              key={cat.id}
-              onClick={() => handleCategoryClick(cat.id)}
+              key={cat.id || cat.to}
+              onClick={() => handleCategoryClick(cat)}
               className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200"
             >
               {cat.label}
@@ -173,8 +180,8 @@ export default function Navbar() {
           <div className="px-6 py-4 flex flex-col gap-1 text-left">
             {NAV_CATEGORIES.map((cat) => (
               <button
-                key={cat.id}
-                onClick={() => handleCategoryClick(cat.id)}
+                key={cat.id || cat.to}
+                onClick={() => handleCategoryClick(cat)}
                 className="flex items-center justify-between py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900"
               >
                 {cat.label}

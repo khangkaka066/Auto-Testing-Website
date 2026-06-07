@@ -244,7 +244,6 @@ export const footerT = {
       "title": "Product",
       "links": [
         "Features",
-        "Pricing",
         "Changelog",
         "Roadmap"
       ]
