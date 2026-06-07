@@ -25,6 +25,14 @@ const MORE_CATEGORIES = [
     to: "/docs",
   },
   {
+    label: { en: "Community", vi: "Cộng đồng" },
+    description: {
+      en: "Ask questions, suggest features, and follow product updates",
+      vi: "Đặt câu hỏi, đề xuất tính năng và theo dõi cập nhật sản phẩm",
+    },
+    to: "/community",
+  },
+  {
     label: { en: "Contact", vi: "Liên hệ" },
     description: {
       en: "Get support or talk to the TestPilot team",
