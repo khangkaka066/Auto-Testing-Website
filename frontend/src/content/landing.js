@@ -270,9 +270,7 @@ export const footerT = {
       "links": [
         "Privacy",
         "Terms",
-        "Security",
-        "SOC 2",
-        "DPA"
+        "Security"
       ]
     }
   ]
