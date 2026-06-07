@@ -112,7 +112,7 @@ const landingVi = {
   },
   footerT: {
     tagline: "Nền tảng QA tự động cho những team ship mỗi ngày.",
-    copyright: "© 2026 TestPilot, Inc. All rights reserved.",
+    copyright: "© 2026 Automate, Inc. All rights reserved.",
     builtFor: "Xây dựng cho builders · v2.4.0",
     cols: [
       { title: "Sản phẩm", links: ["Tính năng", "Nhật ký thay đổi", "Lộ trình"] },
