@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useLanguage } from "../lib/i18n";
 
 const LAST_UPDATED = "June 6, 2026";
 
@@ -17,6 +18,22 @@ const sections = [
 { id: "governing-law", en: "12. Governing Law" },
 { id: "changes", en: "13. Changes to Terms" },
 { id: "contact", en: "14. Contact" }];
+
+const sectionsVi = [
+{ id: "acceptance", en: "1. Chấp nhận điều khoản" },
+{ id: "service", en: "2. Mô tả dịch vụ" },
+{ id: "accounts", en: "3. Đăng ký tài khoản" },
+{ id: "acceptable-use", en: "4. Chính sách sử dụng hợp lệ" },
+{ id: "ip", en: "5. Sở hữu trí tuệ" },
+{ id: "payments", en: "6. Thanh toán & Credits" },
+{ id: "data-storage", en: "7. Lưu trữ & lưu giữ dữ liệu" },
+{ id: "third-party", en: "8. Tích hợp bên thứ ba" },
+{ id: "disclaimers", en: "9. Tuyên bố miễn trừ bảo đảm" },
+{ id: "liability", en: "10. Giới hạn trách nhiệm" },
+{ id: "termination", en: "11. Chấm dứt" },
+{ id: "governing-law", en: "12. Luật điều chỉnh" },
+{ id: "changes", en: "13. Thay đổi điều khoản" },
+{ id: "contact", en: "14. Liên hệ" }];
 
 
 const content = {
@@ -182,6 +199,127 @@ We aim to respond to all inquiries within 5 business days.`
       }
     }
   }
+,
+  vi: {
+    title: "Điều khoản dịch vụ",
+    subtitle: "Vui lòng đọc kỹ các điều khoản này trước khi sử dụng Automate.",
+    sections: {
+      acceptance: { heading: "1. Chấp nhận điều khoản", body: `Bằng việc truy cập hoặc sử dụng nền tảng Automate ("Dịch vụ"), bạn đồng ý bị ràng buộc bởi Điều khoản dịch vụ này ("Điều khoản"). Nếu không đồng ý với toàn bộ Điều khoản, vui lòng không sử dụng Dịch vụ.
+
+Điều khoản áp dụng cho mọi khách truy cập và người dùng Dịch vụ. Automate có quyền cập nhật Điều khoản bất cứ lúc nào. Việc tiếp tục sử dụng Dịch vụ sau thay đổi đồng nghĩa bạn chấp nhận Điều khoản đã cập nhật.` },
+      service: { heading: "2. Mô tả dịch vụ", body: `Automate là nền tảng kiểm thử tự động trên web cho phép developer và QA engineer:
+
+• Upload source code (ZIP) hoặc kết nối repository GitHub/Google
+• Tạo Playwright test scripts bằng phân tích AI
+• Thực thi automated tests gồm UI, API và functional tests
+• Chụp screenshots và video recordings của lượt test
+• Xem và tải báo cáo chất lượng cùng kết quả test
+
+Dịch vụ được cung cấp "nguyên trạng" và có thể được cập nhật, sửa đổi hoặc ngừng cung cấp bất cứ lúc nào.` },
+      accounts: { heading: "3. Đăng ký tài khoản", body: `Để truy cập Dịch vụ, bạn phải tạo tài khoản với thông tin chính xác và đầy đủ. Bạn có thể đăng ký bằng:
+
+• Email và mật khẩu
+• Google OAuth
+• GitHub OAuth
+
+Bạn chịu trách nhiệm bảo mật thông tin đăng nhập và mọi hoạt động dưới tài khoản của mình. Nếu nghi ngờ truy cập trái phép, hãy thông báo ngay cho Automate qua legal@automate.io.
+
+Bạn phải từ 16 tuổi trở lên để sử dụng Dịch vụ.` },
+      "acceptable-use": { heading: "4. Chính sách sử dụng hợp lệ", body: `Bạn đồng ý không sử dụng Dịch vụ để:
+
+• Upload source code hoặc file độc hại, nguy hiểm hoặc bất hợp pháp
+• Reverse engineer, decompile hoặc disassemble bất kỳ phần nào của nền tảng
+• Lạm dụng hoặc khai thác hệ thống credit/subscription
+• Chia sẻ thông tin tài khoản hoặc access token với bên không được uỷ quyền
+• Scraping tự động hoặc gọi API quá mức gây giảm hiệu năng
+• Upload code vi phạm quyền sở hữu trí tuệ của bên thứ ba
+• Vượt qua cơ chế bảo mật, rate limit hoặc kiểm soát truy cập
+
+Vi phạm có thể dẫn tới đình chỉ hoặc chấm dứt tài khoản ngay lập tức mà không hoàn tiền.` },
+      ip: { heading: "5. Sở hữu trí tuệ", body: `Nội dung người dùng: Bạn giữ toàn quyền sở hữu source code, test scripts và nội dung khác upload lên Dịch vụ. Khi upload, bạn cấp cho Automate giấy phép giới hạn, không độc quyền để xử lý nội dung chỉ nhằm cung cấp Dịch vụ.
+
+Nền tảng: Automate giữ mọi quyền đối với nền tảng, bao gồm AI models, hạ tầng thực thi test, UI và test frameworks được tạo. Điều khoản này không chuyển quyền sở hữu nền tảng cho bạn.
+
+Báo cáo & kết quả test: Báo cáo, logs và dữ liệu kết quả thuộc về bạn. Automate có thể giữ thống kê tổng hợp đã ẩn danh để cải thiện nền tảng.` },
+      payments: { heading: "6. Thanh toán & Credits", body: `Automate hoạt động theo mô hình credit và/hoặc subscription.
+
+Phương thức thanh toán: Thanh toán được xử lý qua chuyển khoản ngân hàng bằng QR code. Sau khi chuyển khoản, credits hoặc subscription sẽ được kích hoạt trong một (1) ngày làm việc sau khi xác nhận.
+
+Credits: Credits đã mua không hoàn tiền sau khi sử dụng. Credits chưa dùng hết hạn theo thời hạn được công bố.
+
+Subscriptions: Phí subscription được tính định kỳ. Bạn có thể huỷ bất cứ lúc nào; việc huỷ có hiệu lực vào cuối kỳ thanh toán hiện tại.
+
+Refunds: Automate không hoàn tiền cho credits đã dùng hoặc thời gian subscription đã trôi qua, trừ khi luật yêu cầu.
+
+Thay đổi giá: Automate có quyền thay đổi giá với thông báo trước ít nhất 14 ngày tới người dùng đã đăng ký.` },
+      "data-storage": { heading: "7. Lưu trữ & lưu giữ dữ liệu", body: `Automate lưu dữ liệu theo lịch sau:
+
+• Source code upload (ZIP): Tự động xoá sau 30 ngày kể từ khi test hoàn tất
+• Log thực thi test: Lưu 30 ngày rồi xoá vĩnh viễn
+• Báo cáo và kết quả test: Có thể tải xuống trong 30 ngày rồi xoá
+• Screenshots và video: Lưu 30 ngày sau lượt test
+• Dữ liệu tài khoản: Lưu khi tài khoản hoạt động và 90 ngày sau khi xoá
+• Hồ sơ thanh toán: Lưu 7 năm theo quy định tài chính
+
+Bạn chịu trách nhiệm tải và sao lưu báo cáo/artifacts muốn giữ trước khi hết hạn 30 ngày.` },
+      "third-party": { heading: "8. Tích hợp bên thứ ba", body: `Dịch vụ tích hợp với các dịch vụ bên thứ ba gồm:
+
+• GitHub để truy cập repository và OAuth
+• Google để OAuth và analytics
+• Supabase cho database và authentication
+• Cloudflare R2 cho file storage
+• PostHog & Mixpanel cho product analytics
+
+Việc sử dụng các tích hợp này chịu sự điều chỉnh của điều khoản từng bên thứ ba. Automate không chịu trách nhiệm về khả dụng hoặc hành vi của dịch vụ bên thứ ba.
+
+Khi kết nối GitHub hoặc Google, bạn uỷ quyền Automate truy cập đúng scopes bạn phê duyệt. Bạn có thể thu hồi quyền bất cứ lúc nào trong cài đặt GitHub hoặc Google.` },
+      disclaimers: { heading: "9. Tuyên bố miễn trừ bảo đảm", body: `DỊCH VỤ ĐƯỢC CUNG CẤP "NGUYÊN TRẠNG" VÀ "NHƯ HIỆN CÓ", KHÔNG KÈM BẤT KỲ BẢO ĐẢM NÀO, DÙ RÕ RÀNG HAY NGỤ Ý.
+
+Automate không bảo đảm rằng:
+• Dịch vụ luôn không gián đoạn hoặc không lỗi
+• Kết quả test luôn chính xác hoặc đầy đủ
+• Dịch vụ đáp ứng yêu cầu cụ thể của bạn
+
+Bạn sử dụng Dịch vụ với rủi ro của riêng mình.` },
+      liability: { heading: "10. Giới hạn trách nhiệm", body: `TRONG PHẠM VI TỐI ĐA LUẬT CHO PHÉP, AUTOMATE KHÔNG CHỊU TRÁCH NHIỆM CHO THIỆT HẠI GIÁN TIẾP, NGẪU NHIÊN, ĐẶC BIỆT, HỆ QUẢ HOẶC MANG TÍNH TRỪNG PHẠT, BAO GỒM MẤT LỢI NHUẬN, DỮ LIỆU HOẶC CƠ HỘI KINH DOANH.
+
+TỔNG TRÁCH NHIỆM CỘNG DỒN CỦA AUTOMATE ĐỐI VỚI BẠN KHÔNG VƯỢT QUÁ GIÁ TRỊ LỚN HƠN GIỮA (A) SỐ TIỀN BẠN ĐÃ TRẢ TRONG 12 THÁNG TRƯỚC KHI PHÁT SINH KHIẾU NẠI HOẶC (B) 100 USD.
+
+Một số khu vực pháp lý không cho phép loại trừ bảo đảm hoặc giới hạn trách nhiệm nhất định; khi đó giới hạn trên áp dụng trong phạm vi luật cho phép.` },
+      termination: { heading: "11. Chấm dứt", body: `Bạn có thể chấm dứt tài khoản bất cứ lúc nào bằng cách liên hệ legal@automate.io hoặc dùng tính năng xoá tài khoản trong profile.
+
+Automate có thể đình chỉ hoặc chấm dứt tài khoản ngay lập tức nếu bạn:
+• Vi phạm Điều khoản hoặc Acceptable Use Policy
+• Có hành vi gian lận hoặc lạm dụng
+• Không thanh toán phí áp dụng
+
+Khi chấm dứt:
+• Quyền truy cập Dịch vụ bị thu hồi ngay
+• Source code, test logs và reports được xoá trong 30 ngày
+• Dữ liệu tài khoản được giữ 90 ngày trước khi xoá vĩnh viễn
+• Credits và phí subscription đã trả không hoàn tiền
+
+Các mục về Sở hữu trí tuệ, Miễn trừ, Giới hạn trách nhiệm và Luật điều chỉnh vẫn có hiệu lực sau chấm dứt.` },
+      "governing-law": { heading: "12. Luật điều chỉnh & giải quyết tranh chấp", body: `Điều khoản này được điều chỉnh bởi các nguyên tắc thương mại được công nhận quốc tế. Với người dùng EU, quyền GDPR và bảo vệ người tiêu dùng EU được ưu tiên khi áp dụng.
+
+Tranh chấp trước tiên sẽ được giải quyết bằng thương lượng thiện chí. Nếu không giải quyết trong 30 ngày, tranh chấp sẽ được đưa ra trọng tài ràng buộc theo quy tắc của [PLACEHOLDER: arbitration body], thủ tục bằng tiếng Anh.
+
+Với người dùng EU, không điều gì trong Điều khoản này giới hạn quyền theo luật EU hiện hành.` },
+      changes: { heading: "13. Thay đổi Điều khoản", body: `Automate có quyền sửa đổi Điều khoản bất cứ lúc nào. Khi có thay đổi quan trọng, chúng tôi sẽ:
+
+• Gửi email thông báo tới địa chỉ đăng ký
+• Hiển thị thông báo trên nền tảng ít nhất 14 ngày trước khi thay đổi có hiệu lực
+
+Việc tiếp tục sử dụng Dịch vụ sau ngày hiệu lực đồng nghĩa bạn chấp nhận thay đổi. Nếu không đồng ý, bạn phải ngừng sử dụng Dịch vụ và có thể xoá tài khoản.` },
+      contact: { heading: "14. Liên hệ", body: `Nếu có câu hỏi về Điều khoản, vui lòng liên hệ:
+
+Automate Legal Team
+Email: legal@automate.io
+[PLACEHOLDER: Company address]
+
+Chúng tôi cố gắng phản hồi mọi yêu cầu trong 5 ngày làm việc.` },
+    }
+  }
 
 
 
@@ -341,8 +479,10 @@ We aim to respond to all inquiries within 5 business days.`
 };
 
 export default function TermsOfService() {
-
-  const t = content.en;
+  const { language, setLanguage } = useLanguage();
+  const vi = language === "vi";
+  const t = vi ? content.vi : content.en;
+  const activeSections = vi ? sectionsVi : sections;
 
   return (
     <div className="min-h-screen bg-white font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -353,8 +493,22 @@ export default function TermsOfService() {
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="text-sm font-medium">Back to Automate</span>
+            <span className="text-sm font-medium">{vi ? "Quay lại Automate" : "Back to Automate"}</span>
           </Link>
+          <div className="flex items-center rounded-md border border-slate-200 bg-white p-0.5">
+            {["en", "vi"].map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
+                  language === lang ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
 
@@ -363,10 +517,10 @@ export default function TermsOfService() {
         <aside className="hidden lg:block lg:w-64 lg:shrink-0">
           <div className="sticky top-24">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
-              Contents
+              {vi ? "Mục lục" : "Contents"}
             </p>
             <nav className="space-y-1">
-              {sections.map((s) =>
+              {activeSections.map((s) =>
               <a
                 key={s.id}
                 href={`#${s.id}`}
@@ -377,7 +531,7 @@ export default function TermsOfService() {
               )}
             </nav>
             <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-400">Last updated</p>
+              <p className="text-xs text-slate-400">{vi ? "Cập nhật lần cuối" : "Last updated"}</p>
               <p className="text-sm font-medium text-slate-700">{LAST_UPDATED}</p>
             </div>
           </div>
@@ -388,9 +542,9 @@ export default function TermsOfService() {
           <div className="mb-10">
             <div className="mb-2 flex items-center gap-2">
               <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-orange-600">
-                Legal
+                {vi ? "Pháp lý" : "Legal"}
               </span>
-              <span className="text-sm text-slate-400">Updated {LAST_UPDATED}</span>
+              <span className="text-sm text-slate-400">{vi ? "Cập nhật" : "Updated"} {LAST_UPDATED}</span>
             </div>
             <h1
               className="text-4xl font-bold text-slate-900"
@@ -402,7 +556,7 @@ export default function TermsOfService() {
           </div>
 
           <div className="space-y-12">
-            {sections.map((s) => {
+            {activeSections.map((s) => {
               const sec = t.sections[s.id];
               return (
                 <section key={s.id} id={s.id} className="scroll-mt-24">
@@ -427,18 +581,18 @@ export default function TermsOfService() {
 
           {/* Related links */}
           <div className="mt-16 flex flex-wrap gap-4 rounded-xl border border-slate-200 bg-slate-50 p-6">
-            <p className="w-full text-sm font-medium text-slate-700">Related legal documents:</p>
+            <p className="w-full text-sm font-medium text-slate-700">{vi ? "Tài liệu pháp lý liên quan:" : "Related legal documents:"}</p>
             <Link
               to="/privacy-policy"
               className="text-sm text-orange-600 underline underline-offset-4 hover:text-orange-700">
 
-              Privacy Policy
+              {vi ? "Chính sách quyền riêng tư" : "Privacy Policy"}
             </Link>
             <Link
               to="/cookie-policy"
               className="text-sm text-orange-600 underline underline-offset-4 hover:text-orange-700">
 
-              Cookie Policy
+              {vi ? "Chính sách Cookie" : "Cookie Policy"}
             </Link>
           </div>
         </main>

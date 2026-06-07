@@ -9,15 +9,23 @@ const ROUTE_MAP = {
   Pricing: "/pricing",
   "Bảng giá": "/pricing",
   Changelog: "/changelog",
+  "Nhật ký thay đổi": "/changelog",
   Docs: "/docs",
+  "Tài liệu": "/docs",
   "API reference": "/docs#api-reference",
+  "Tham chiếu API": "/docs#api-reference",
   Roadmap: "/roadmap",
+  "Lộ trình": "/roadmap",
   About: "/about",
+  "Giới thiệu": "/about",
   Privacy: "/privacy-policy",
+  "Quyền riêng tư": "/privacy-policy",
   "Bảo mật": "/privacy-policy",
   Terms: "/terms-of-service",
   "Điều khoản": "/terms-of-service",
 };
+
+const CONTACT_LABELS = new Set(["Contact", "Liên hệ"]);
 
 export default function Footer() {
   const { footerT: t } = useT("landing");
@@ -64,7 +72,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-3">
                 {c.links.map((l) => (
                   <li key={l}>
-                    {l === "Contact" ? (
+                    {CONTACT_LABELS.has(l) ? (
                       <button
                         onClick={() => window.dispatchEvent(new CustomEvent("open-contact-widget"))}
                         className="text-sm text-slate-600 hover:text-slate-900 transition-colors">

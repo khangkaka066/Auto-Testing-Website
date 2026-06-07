@@ -19,6 +19,7 @@ import {
 import Navbar from "../components/landing/Navbar";
 import Footer from "../components/landing/Footer";
 import HeroParticleNetwork from "../components/landing/HeroParticleNetwork";
+import { useLanguage } from "../lib/i18n";
 
 const QUARTERS = [
   {
@@ -95,7 +96,53 @@ const STATUS_STYLES = {
   },
 };
 
-function QuarterCard({ quarter, index }) {
+const ROADMAP_VI = {
+  quarters: [
+    {
+      status: "Đã hoàn tất",
+      title: "Lập kế hoạch và bản beta",
+      description: "Xác định hướng sản phẩm, validate workflow QA cốt lõi và phát hành bản beta cho giai đoạn test sớm.",
+      items: ["Phạm vi sản phẩm và kế hoạch kỹ thuật", "Workflow upload source ban đầu", "Bản beta cho kiểm thử có kiểm soát"],
+    },
+    {
+      status: "Đang thực hiện",
+      title: "Làm mới UI/UX, mở rộng test, billing và bản alpha",
+      description: "Cải thiện trải nghiệm người dùng, thêm coverage kiểm thử, tích hợp thanh toán và chuẩn bị bản alpha.",
+      items: ["Thiết kế lại UI/UX trên landing và workspace", "Thêm loại test cho UI, API và functional flows", "Tích hợp thanh toán và credit billing", "Bản alpha để validate sản phẩm rộng hơn"],
+    },
+    {
+      status: "Chưa bắt đầu",
+      title: "Phiên bản chính thức",
+      description: "Ra mắt bản chính thức cho người dùng thực với onboarding, billing, testing và reporting ổn định.",
+      items: ["Public launch cho end users", "Workflow GitHub repository ổn định", "Báo cáo test và dashboard sẵn sàng production"],
+    },
+    {
+      status: "Chưa bắt đầu",
+      title: "Scale, cộng tác và tự động hoá workflow",
+      description: "Giai đoạn kế hoạch linh hoạt cho team workflows và tự động hoá sâu hơn sau khi launch chính thức.",
+      items: ["Team workspace và phân quyền vai trò", "CI/CD và trigger test từ pull request", "Thông báo email hoặc chat khi hoàn tất lượt chạy"],
+    },
+  ],
+  statusMap: { Completed: "Đã hoàn tất", "In Progress": "Đang thực hiện", "Not Started": "Chưa bắt đầu" },
+  badge: "Roadmap sản phẩm 2026",
+  titleA: "Xây dựng TestPilot từ",
+  titleHighlight: "beta đến launch",
+  subtitle: "Góc nhìn theo từng quý về cách TestPilot phát triển qua planning, cải tiến UI/UX, mở rộng kiểm thử, thanh toán và bản phát hành chính thức.",
+  viewFeatures: "Xem tính năng",
+  seeChangelog: "Xem changelog",
+  timeline: "Timeline phát hành",
+  executionPlan: "Kế hoạch thực thi 2026",
+  milestones: "Milestones theo quý",
+  milestoneTitle: "Mỗi quý sẽ ship những gì",
+  milestoneBody: "Kế hoạch giữ Q4 linh hoạt nhưng vẫn cho người dùng định hướng rõ ràng về cộng tác và tự động hoá sau launch.",
+  direction: "Định hướng sản phẩm",
+  directionTitle: "Bắt đầu với workflow hiện tại, phát triển thành tự động hoá",
+  directionBody: "TestPilot bắt đầu bằng upload source, kết nối repository, test do AI tạo và báo cáo rõ ràng. Sau launch, roadmap tiến tới team workflows, CI/CD triggers và notifications.",
+  dashboard: "Đi tới Dashboard",
+  docs: "Đọc tài liệu",
+};
+
+function QuarterCard({ quarter, index, statusLabel }) {
   const Icon = quarter.icon;
   const statusStyle = STATUS_STYLES[quarter.status] || STATUS_STYLES["Not Started"];
 
@@ -107,7 +154,7 @@ function QuarterCard({ quarter, index }) {
           <Icon className="h-5 w-5" />
         </div>
         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] ring-1 ${statusStyle.badge}`}>
-          {quarter.status}
+          {statusLabel || quarter.status}
         </span>
       </div>
 
@@ -145,6 +192,19 @@ function QuarterCard({ quarter, index }) {
 }
 
 export default function RoadmapPage() {
+  const { language } = useLanguage();
+  const vi = language === "vi";
+  const copy = vi ? ROADMAP_VI : null;
+  const quarters = vi
+    ? QUARTERS.map((quarter, i) => ({
+        ...quarter,
+        statusLabel: copy.quarters[i].status,
+        title: copy.quarters[i].title,
+        description: copy.quarters[i].description,
+        items: quarter.items.map((item, j) => ({ ...item, label: copy.quarters[i].items[j] })),
+      }))
+    : QUARTERS;
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <HeroParticleNetwork />
@@ -169,7 +229,7 @@ export default function RoadmapPage() {
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
                     </span>
                     <span className="text-xs font-mono font-semibold uppercase tracking-[0.18em] text-orange-700">
-                      2026 Product Roadmap
+                      {copy?.badge || "2026 Product Roadmap"}
                     </span>
                   </div>
 
@@ -177,9 +237,9 @@ export default function RoadmapPage() {
                     className="hero-fade-in mt-6 font-display text-4xl font-bold leading-[1.03] tracking-tight text-slate-900 sm:text-5xl lg:text-7xl"
                     style={{ animationDelay: "140ms" }}
                   >
-                    Building TestPilot from{" "}
+                    {copy?.titleA || "Building TestPilot from"}{" "}
                     <span className="relative inline-block">
-                      <span className="relative z-10 text-orange-500">beta to launch</span>
+                      <span className="relative z-10 text-orange-500">{copy?.titleHighlight || "beta to launch"}</span>
                       <span className="absolute -bottom-1 left-0 right-0 h-3 bg-orange-200/70 -z-0"></span>
                     </span>
                   </h1>
@@ -188,8 +248,7 @@ export default function RoadmapPage() {
                     className="hero-fade-in mt-6 max-w-2xl text-lg leading-relaxed text-slate-600"
                     style={{ animationDelay: "260ms" }}
                   >
-                    A quarter-by-quarter view of how TestPilot evolves through planning,
-                    UI/UX improvements, expanded testing, payments, and the official release.
+                    {copy?.subtitle || "A quarter-by-quarter view of how TestPilot evolves through planning, UI/UX improvements, expanded testing, payments, and the official release."}
                   </p>
 
                   <div
@@ -200,14 +259,14 @@ export default function RoadmapPage() {
                       to="/features"
                       className="group inline-flex items-center gap-2 rounded-md bg-orange-500 px-6 py-3.5 font-medium text-white shadow-sm transition-all hover:bg-orange-600 hover:shadow-md"
                     >
-                      View Features
+                      {copy?.viewFeatures || "View Features"}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                     <Link
                       to="/changelog"
                       className="inline-flex items-center gap-2 px-2 py-3.5 font-medium text-slate-700 hover:text-slate-900"
                     >
-                      See Changelog
+                      {copy?.seeChangelog || "See Changelog"}
                     </Link>
                   </div>
                 </div>
@@ -227,21 +286,21 @@ export default function RoadmapPage() {
 
                       <div className="p-5">
                         <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
-                          Release timeline
+                          {copy?.timeline || "Release timeline"}
                         </div>
                         <div className="mt-1 font-display font-semibold text-slate-900">
-                          2026 execution plan
+                          {copy?.executionPlan || "2026 execution plan"}
                         </div>
 
                         <div className="mt-5 space-y-3">
-                          {QUARTERS.map((item) => (
+                          {quarters.map((item) => (
                             <div key={item.quarter} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-slate-800">{item.quarter}</p>
                                 <p className="truncate text-xs text-slate-500">{item.title}</p>
                               </div>
                               <span className={`hidden shrink-0 rounded-full px-2 py-1 text-[10px] font-mono font-semibold uppercase tracking-[0.12em] ring-1 sm:inline-flex ${(STATUS_STYLES[item.status] || STATUS_STYLES["Not Started"]).previewBadge}`}>
-                                {item.status}
+                                {item.statusLabel || item.status}
                               </span>
                             </div>
                           ))}
@@ -258,23 +317,22 @@ export default function RoadmapPage() {
             <div className="mx-auto max-w-7xl px-6 md:px-8">
               <div className="mx-auto mb-14 max-w-2xl text-center">
                 <span className="text-xs font-mono font-semibold uppercase tracking-[0.2em] text-orange-600">
-                  Quarterly milestones
+                  {copy?.milestones || "Quarterly milestones"}
                 </span>
                 <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-                  What ships in each quarter
+                  {copy?.milestoneTitle || "What ships in each quarter"}
                 </h2>
                 <p className="mt-3 leading-relaxed text-slate-600">
-                  The plan keeps Q4 flexible while still giving users a clear direction for
-                  collaboration and automation after launch.
+                  {copy?.milestoneBody || "The plan keeps Q4 flexible while still giving users a clear direction for collaboration and automation after launch."}
                 </p>
               </div>
 
               <div className="relative">
                 <div className="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-orange-200 via-orange-300 to-transparent lg:left-1/2 lg:block" />
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  {QUARTERS.map((quarter, index) => (
+                  {quarters.map((quarter, index) => (
                     <div key={quarter.quarter} className={index % 2 === 0 ? "lg:pr-10" : "lg:pl-10 lg:translate-y-16"}>
-                      <QuarterCard quarter={quarter} index={index} />
+                      <QuarterCard quarter={quarter} index={index} statusLabel={quarter.statusLabel} />
                     </div>
                   ))}
                 </div>
@@ -285,28 +343,26 @@ export default function RoadmapPage() {
           <section className="border-t border-slate-200 py-20 md:py-24">
             <div className="mx-auto max-w-3xl px-6 text-center md:px-8">
               <span className="text-xs font-mono font-semibold uppercase tracking-[0.2em] text-orange-600">
-                Product direction
+                {copy?.direction || "Product direction"}
               </span>
               <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-                Start with the current workflow, grow into automation
+                {copy?.directionTitle || "Start with the current workflow, grow into automation"}
               </h2>
               <p className="mt-4 leading-relaxed text-slate-600">
-                TestPilot begins with source upload, repository connection, AI-generated tests,
-                and clear reports. After launch, the roadmap moves toward team workflows,
-                CI/CD triggers, and notifications.
+                {copy?.directionBody || "TestPilot begins with source upload, repository connection, AI-generated tests, and clear reports. After launch, the roadmap moves toward team workflows, CI/CD triggers, and notifications."}
               </p>
               <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   to="/dashboard"
                   className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-7 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-600"
                 >
-                  Go to Dashboard <ArrowRight className="h-4 w-4" />
+                  {copy?.dashboard || "Go to Dashboard"} <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/docs"
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-7 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300"
                 >
-                  Read Docs
+                  {copy?.docs || "Read Docs"}
                 </Link>
               </div>
             </div>

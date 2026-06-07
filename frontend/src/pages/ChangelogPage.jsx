@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { TimelineContent } from "@/components/ui/timeline-animation";
 import changelog from "../data/changelog.json";
+import { useLanguage } from "../lib/i18n";
 
 const TAG = {
   feature:     { label: "New",      bg: "bg-orange-50",  border: "border-orange-200", text: "text-orange-600",  dot: "bg-orange-500" },
@@ -13,18 +14,48 @@ const TAG = {
   improvement: { label: "Improve",  bg: "bg-violet-50",  border: "border-violet-200", text: "text-violet-600",  dot: "bg-violet-500" },
 };
 
-function Tag({ type }) {
+const TAG_LABELS_VI = {
+  feature: "Mới",
+  fix: "Sửa lỗi",
+  breaking: "Breaking",
+  improvement: "Cải tiến",
+};
+
+const CHANGE_TEXT_VI = {
+  "Added About modal with team info and tech stack": "Thêm About modal với thông tin team và tech stack",
+  "Built Changelog public page with timeline layout": "Xây dựng trang Changelog public với layout timeline",
+  "Upgraded About modal animations to match Pricing page style": "Nâng cấp animation của About modal để đồng bộ với style trang Pricing",
+  "Fixed Google OAuth authorization error on localhost": "Sửa lỗi uỷ quyền Google OAuth trên localhost",
+  "Internationalization: migrated language context to content files": "Internationalization: chuyển language context sang các file content",
+  "Added billing, dashboard, landing, profile, testing content files": "Thêm content files cho billing, dashboard, landing, profile và testing",
+  "Updated dependencies in useEffect hooks across multiple components": "Cập nhật dependencies trong useEffect hooks ở nhiều component",
+  "AI-powered test authoring from plain English prompts": "AI tạo test từ prompt ngôn ngữ tự nhiên",
+  "Cross-browser parallel test execution (Chrome, Firefox, Safari)": "Chạy test song song nhiều trình duyệt (Chrome, Firefox, Safari)",
+  "10x faster test runs with smart parallelization": "Chạy test nhanh hơn 10 lần nhờ song song hoá thông minh",
+  "Renamed runTest to executeTest in the public API": "Đổi tên runTest thành executeTest trong public API",
+  "Visual regression diffs with side-by-side comparison": "Visual regression diff với so sánh song song",
+  "GitHub, GitLab and CircleCI CI/CD integrations": "Tích hợp CI/CD với GitHub, GitLab và CircleCI",
+  "Fixed flaky test detection in Firefox viewport": "Sửa phát hiện flaky test trong viewport Firefox",
+  "Resolved token expiry issue on long-running sessions": "Sửa lỗi token hết hạn trong session chạy lâu",
+  "Migrated from REST polling to WebSocket for live test progress": "Chuyển từ REST polling sang WebSocket cho tiến trình test realtime",
+  "Self-healing selectors powered by vision model": "Selector tự phục hồi nhờ vision model",
+  "New dashboard with real-time run statistics": "Dashboard mới với thống kê lượt chạy realtime",
+  "Redesigned onboarding flow — setup in under 60 seconds": "Thiết kế lại onboarding, setup trong chưa tới 60 giây",
+};
+
+function Tag({ type, language }) {
   const t = TAG[type] || TAG.improvement;
+  const label = language === "vi" ? TAG_LABELS_VI[type] || t.label : t.label;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${t.bg} ${t.border} ${t.text}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
-      {t.label}
+      {label}
     </span>
   );
 }
 
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
+function formatDate(dateStr, language) {
+  return new Date(dateStr).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
     year: "numeric", month: "long", day: "numeric",
   });
 }
@@ -47,6 +78,8 @@ const changeVariants = {
 
 export default function ChangelogPage() {
   const pageRef = useRef(null);
+  const { language, setLanguage } = useLanguage();
+  const vi = language === "vi";
 
   return (
     <div className="min-h-screen bg-white text-slate-900" ref={pageRef}>
@@ -59,13 +92,27 @@ export default function ChangelogPage() {
             className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            {vi ? "Quay lại" : "Back"}
           </Link>
           <div className="h-5 w-px bg-slate-200" />
           <Link to="/" className="flex items-center gap-2 font-bold text-slate-900">
             <img src="/logo.png" alt="TestPilot" className="h-7 w-7 rounded-md" />
             TestPilot
           </Link>
+          <div className="ml-auto flex items-center rounded-md border border-slate-200 bg-white p-0.5">
+            {["en", "vi"].map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
+                  language === lang ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -84,7 +131,7 @@ export default function ChangelogPage() {
             transition={{ duration: 0.4 }}
           >
             <Zap className="h-4 w-4 text-orange-500 fill-orange-500" />
-            <span className="text-sm font-medium text-orange-600">What's new</span>
+            <span className="text-sm font-medium text-orange-600">{vi ? "Có gì mới" : "What's new"}</span>
           </motion.div>
 
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 leading-tight">
@@ -95,7 +142,7 @@ export default function ChangelogPage() {
               containerClassName="justify-center"
               transition={{ type: "spring", stiffness: 260, damping: 38, delay: 0.2 }}
             >
-              Changelog
+              {vi ? "Nhật ký thay đổi" : "Changelog"}
             </VerticalCutReveal>
           </h1>
 
@@ -105,7 +152,7 @@ export default function ChangelogPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.4 }}
           >
-            Every release, fix, and improvement — documented by the team.
+            {vi ? "Mọi bản phát hành, sửa lỗi và cải tiến đều được team ghi lại." : "Every release, fix, and improvement — documented by the team."}
           </motion.p>
         </div>
       </div>
@@ -162,11 +209,11 @@ export default function ChangelogPage() {
                       </span>
                       {isLatest && (
                         <span className="inline-flex items-center rounded-full bg-orange-500 px-2.5 py-0.5 text-[11px] font-bold text-white shadow shadow-orange-500/30">
-                          Latest
+                          {vi ? "Mới nhất" : "Latest"}
                         </span>
                       )}
                       <span className="ml-auto text-xs text-slate-400 tabular-nums">
-                        {formatDate(entry.date)}
+                        {formatDate(entry.date, language)}
                       </span>
                     </div>
 
@@ -181,9 +228,9 @@ export default function ChangelogPage() {
                           animate="visible"
                           className="flex items-start gap-3"
                         >
-                          <Tag type={change.type} />
+                          <Tag type={change.type} language={language} />
                           <span className="text-sm text-slate-700 leading-relaxed pt-0.5">
-                            {change.text}
+                            {vi ? CHANGE_TEXT_VI[change.text] || change.text : change.text}
                           </span>
                         </motion.li>
                       ))}
@@ -199,11 +246,11 @@ export default function ChangelogPage() {
       {/* ── Footer note ── */}
       <div className="max-w-3xl mx-auto px-6 pb-16 text-center">
         <p className="text-xs text-slate-400">
-          To add a release — edit{" "}
+          {vi ? "Để thêm release, hãy chỉnh sửa " : "To add a release — edit "}
           <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-slate-500">
             frontend/src/data/changelog.json
           </code>{" "}
-          and commit with your PR.
+          {vi ? " và commit cùng PR của bạn." : " and commit with your PR."}
         </p>
       </div>
     </div>

@@ -18,6 +18,7 @@ import {
 import Navbar from "../components/landing/Navbar";
 import Footer from "../components/landing/Footer";
 import HeroParticleNetwork from "../components/landing/HeroParticleNetwork";
+import { useLanguage } from "../lib/i18n";
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,62 @@ const WORKFLOW_STEPS = [
   { label: "View Visual Report", sub: "Score · Issues" },
 ];
 
+const VI = {
+  features: [
+    { title: "Upload source code", description: "Thả file .zip của dự án, hệ thống sẽ giải nén, index và chuẩn bị cho AI pipeline ngay lập tức, không cần setup.", badge: "ZIP Upload", highlights: ["Giao diện kéo thả", "Tự giải nén & index", "Hỗ trợ mọi web framework"] },
+    { title: "Tích hợp GitHub", description: "Kết nối qua GitHub OAuth, chọn repository và branch bất kỳ, rồi chạy full test trực tiếp từ source trên GitHub.", badge: "OAuth", highlights: ["OAuth một chạm", "Chọn repo & branch", "Hỗ trợ private repos"] },
+    { title: "AI phân tích source code", description: "AI quét toàn bộ project, nhận diện frontend, backend và database, rồi xây context model để tạo test chính xác.", badge: "AI", highlights: ["Nhận diện stack", "Map dependencies", "Hiểu ngữ nghĩa code"] },
+    { title: "Tự động tạo test case", description: "AI planner tạo bộ test bao phủ UI flows, API endpoints và nghiệp vụ chức năng dựa trên codebase thực tế.", badge: "Test Planning", highlights: ["UI Testing", "API Testing", "Functional Testing"] },
+    { title: "Thực thi test bằng Playwright", description: "Test được tạo sẽ được validate, tự sửa lỗi syntax và chạy trong workspace cô lập bằng Playwright với tối đa 3 vòng tự phục hồi.", badge: "Playwright", highlights: ["Specs tự tạo", "Test tự phục hồi", "Sandbox cô lập"] },
+    { title: "Theo dõi tiến trình realtime", description: "Theo dõi pipeline theo từng bước gần thời gian thực: scan -> analyse -> plan -> generate -> validate -> run -> report.", badge: "Live", highlights: ["Tiến trình từng stage", "Sub-task breakdown", "Thông báo lỗi"] },
+    { title: "Báo cáo test trực quan", description: "Mỗi lượt chạy tạo health score /100, breakdown pass/fail, tổng runtime và danh sách issue được ưu tiên theo mức độ.", badge: "Reports", highlights: ["Health score 0-100", "Breakdown pass / fail", "Issue xếp theo severity"] },
+    { title: "Dashboard & lịch sử test", description: "Dashboard hiển thị quality score mới nhất, số dư credit, trạng thái GitHub và lịch sử mọi lượt test.", badge: "Dashboard", highlights: ["Lịch sử chạy", "Theo dõi credit", "Trạng thái GitHub"] },
+  ],
+  workflowSteps: [
+    { label: "Upload hoặc kết nối GitHub", sub: "ZIP hoặc OAuth" },
+    { label: "AI phân tích source code", sub: "Nhận diện stack" },
+    { label: "Tạo test cases", sub: "UI · API · Functional" },
+    { label: "Chạy Playwright tests", sub: "Sandbox cô lập" },
+    { label: "Xem báo cáo trực quan", sub: "Score · Issues" },
+  ],
+  heroBadge: "Tính năng nền tảng",
+  heroTitleA: "Tính năng mạnh mẽ cho",
+  heroTitleHighlight: "kiểm thử web tự động",
+  heroSubtitle: "Từ source code đến báo cáo chi tiết, TestPilot xử lý toàn bộ QA pipeline để team của bạn tập trung xây dựng sản phẩm.",
+  dashboard: "Đi tới Dashboard",
+  pricing: "Xem bảng giá",
+  heroBullets: ["AI phân tích code", "Chạy bằng Playwright", "Báo cáo trực quan"],
+  panelEyebrow: "AI test pipeline",
+  panelTitle: "Từ source đến báo cáo trong một lượt chạy",
+  panelRows: [
+    { label: "Kết nối repo hoặc upload source", meta: "GitHub OAuth · ZIP upload" },
+    { label: "Phân tích source code", meta: "Đã map stack" },
+    { label: "Tạo test cases", meta: "UI · API · Flow" },
+    { label: "Chạy và validate", meta: "Self-healing" },
+  ],
+  stats: [{ label: "Coverage", value: "92%" }, { label: "Passed", value: "48", accent: true }, { label: "Runtime", value: "3m" }],
+  workflow: "Workflow",
+  capabilitiesLinked: "8 khả năng được liên kết",
+  allCapabilities: "Tất cả khả năng",
+  allTitle: "Đủ mọi thứ bạn cần, không dư thừa",
+  allSubtitle: "Tám khả năng cốt lõi bao phủ toàn bộ vòng đời kiểm thử, không cần cấu hình.",
+  how: "Cách hoạt động",
+  howTitle: "Từ source code đến báo cáo trong vài phút",
+  howSubtitle: "Pipeline chạy hoàn toàn tự động, bạn chỉ cần trỏ hệ thống tới code.",
+  reports: "Báo cáo test",
+  reportTitle: "Nắm chất lượng trong nháy mắt",
+  reportBody: "Mỗi lượt test tạo báo cáo có cấu trúc để triage nhanh, không phải log thô. Xem health score, đào sâu lỗi và ưu tiên sửa theo severity.",
+  reportBullets: ["Health score từ 0 đến 100", "Tổng tests · pass · fail", "Đo runtime end-to-end", "Issue xếp theo severity", "Context lỗi theo page và file"],
+  healthScore: "Health Score",
+  reportStats: [{ label: "Tổng", value: "42", color: "text-slate-300" }, { label: "Passed", value: "37", color: "text-emerald-400" }, { label: "Failed", value: "5", color: "text-red-400" }],
+  topIssues: "Vấn đề nổi bật",
+  issues: [{ sev: "CAO", msg: "Form đăng nhập không có phản hồi khi submit" }, { sev: "TB", msg: "Menu mobile chưa hỗ trợ keyboard đầy đủ" }, { sev: "THẤP", msg: "Label biểu đồ dashboard bị tràn khi resize" }],
+  getStarted: "Bắt đầu",
+  ctaTitle: "Sẵn sàng tự động hoá QA?",
+  ctaBody: "Upload source code hoặc kết nối GitHub và nhận báo cáo test đầy đủ trong vài phút, không cấu hình, không viết test thủ công.",
+  startFree: "Bắt đầu miễn phí",
+};
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function FeatureCard({ feature, index }) {
@@ -157,6 +214,11 @@ function WorkflowStep({ step, index, total }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FeaturesPage() {
+  const { language } = useLanguage();
+  const copy = language === "vi" ? VI : null;
+  const features = copy ? FEATURES.map((feature, i) => ({ ...feature, ...copy.features[i] })) : FEATURES;
+  const workflowSteps = copy ? copy.workflowSteps : WORKFLOW_STEPS;
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <HeroParticleNetwork />
@@ -182,7 +244,7 @@ export default function FeaturesPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                 </span>
                 <span className="text-xs font-mono uppercase tracking-[0.18em] text-orange-700 font-semibold">
-                  Platform Features
+                  {copy?.heroBadge || "Platform Features"}
                 </span>
               </div>
 
@@ -190,9 +252,9 @@ export default function FeaturesPage() {
                 className="hero-fade-in font-display mt-6 text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.03]"
                 style={{ animationDelay: "140ms" }}
               >
-                Powerful features for{" "}
+                {copy?.heroTitleA || "Powerful features for"}{" "}
                 <span className="relative inline-block">
-                  <span className="relative z-10 text-orange-500">automated web testing</span>
+                  <span className="relative z-10 text-orange-500">{copy?.heroTitleHighlight || "automated web testing"}</span>
                   <span className="absolute -bottom-1 left-0 right-0 h-3 bg-orange-200/70 -z-0"></span>
                 </span>
               </h1>
@@ -201,8 +263,7 @@ export default function FeaturesPage() {
                 className="hero-fade-in mt-6 max-w-2xl text-lg leading-relaxed text-slate-600"
                 style={{ animationDelay: "260ms" }}
               >
-                From source code to detailed test reports, TestPilot handles the entire QA
-                pipeline so your team can focus on building.
+                {copy?.heroSubtitle || "From source code to detailed test reports, TestPilot handles the entire QA pipeline so your team can focus on building."}
               </p>
 
               <div
@@ -213,14 +274,14 @@ export default function FeaturesPage() {
                   to="/dashboard"
                   className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-6 py-3.5 rounded-md transition-all shadow-sm hover:shadow-md"
                 >
-                  Go to Dashboard
+                  {copy?.dashboard || "Go to Dashboard"}
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
                 <Link
                   to="/pricing"
                   className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900 font-medium px-2 py-3.5"
                 >
-                  View Pricing
+                  {copy?.pricing || "View Pricing"}
                 </Link>
               </div>
 
@@ -228,7 +289,7 @@ export default function FeaturesPage() {
                 className="hero-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600"
                 style={{ animationDelay: "480ms" }}
               >
-                {["AI code analysis", "Playwright execution", "Visual reports"].map((item) => (
+                {(copy?.heroBullets || ["AI code analysis", "Playwright execution", "Visual reports"]).map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-orange-500" />
                     {item}
@@ -253,20 +314,27 @@ export default function FeaturesPage() {
                   <div className="p-5 space-y-4">
                     <div>
                       <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
-                        AI test pipeline
+                        {copy?.panelEyebrow || "AI test pipeline"}
                       </div>
                       <div className="font-display font-semibold text-slate-900 mt-0.5">
-                        Source to report in one run
+                        {copy?.panelTitle || "Source to report in one run"}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      {[
+                      {(copy
+                        ? [
+                            { icon: Upload, ...copy.panelRows[0] },
+                            { icon: Brain, ...copy.panelRows[1] },
+                            { icon: ListChecks, ...copy.panelRows[2] },
+                            { icon: ShieldCheck, ...copy.panelRows[3] },
+                          ]
+                        : [
                         { icon: Upload, label: "Connect repo or upload source", meta: "GitHub OAuth · ZIP upload" },
                         { icon: Brain, label: "Analyse source code", meta: "Stack mapped" },
                         { icon: ListChecks, label: "Generate test cases", meta: "UI · API · Flow" },
                         { icon: ShieldCheck, label: "Run and validate", meta: "Self-healing" },
-                      ].map((row, i) => {
+                      ]).map((row, i) => {
                         const Icon = row.icon;
                         return (
                           <div
@@ -289,11 +357,11 @@ export default function FeaturesPage() {
                     </div>
 
                     <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-                      {[
+                      {(copy?.stats || [
                         { label: "Coverage", value: "92%" },
                         { label: "Passed", value: "48", accent: true },
                         { label: "Runtime", value: "3m" },
-                      ].map((stat) => (
+                      ]).map((stat) => (
                         <div key={stat.label}>
                           <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
                             {stat.label}
@@ -311,10 +379,10 @@ export default function FeaturesPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-orange-500 pulse-dot"></span>
                   <div>
                     <div className="text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
-                      Workflow
+                      {copy?.workflow || "Workflow"}
                     </div>
                     <div className="text-sm font-medium text-slate-900">
-                      8 capabilities linked
+                      {copy?.capabilitiesLinked || "8 capabilities linked"}
                     </div>
                   </div>
                 </div>
@@ -330,19 +398,18 @@ export default function FeaturesPage() {
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <div className="max-w-2xl mb-14">
             <span className="text-xs font-mono uppercase tracking-[0.2em] text-orange-600 font-semibold">
-              All capabilities
+              {copy?.allCapabilities || "All capabilities"}
             </span>
             <h2 className="font-display mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-              Everything you need, nothing you don't
+              {copy?.allTitle || "Everything you need, nothing you don't"}
             </h2>
             <p className="mt-3 text-slate-600 leading-relaxed">
-              Eight core capabilities that cover the full testing lifecycle — no
-              configuration required.
+              {copy?.allSubtitle || "Eight core capabilities that cover the full testing lifecycle — no configuration required."}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {FEATURES.map((f, i) => (
+            {features.map((f, i) => (
               <FeatureCard key={f.title} feature={f} index={i} />
             ))}
           </div>
@@ -354,26 +421,26 @@ export default function FeaturesPage() {
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <span className="text-xs font-mono uppercase tracking-[0.2em] text-orange-600 font-semibold">
-              How it works
+              {copy?.how || "How it works"}
             </span>
             <h2 className="font-display mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-              From source code to report in minutes
+              {copy?.howTitle || "From source code to report in minutes"}
             </h2>
             <p className="mt-3 text-slate-600 leading-relaxed">
-              The pipeline runs fully autonomously — you only need to point it at your code.
+              {copy?.howSubtitle || "The pipeline runs fully autonomously — you only need to point it at your code."}
             </p>
           </div>
 
           <div className="relative bg-white border border-slate-200 rounded-2xl px-8 py-10 shadow-sm">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 lg:gap-4">
-              {WORKFLOW_STEPS.map((step, i) => (
-                <WorkflowStep key={step.label} step={step} index={i} total={WORKFLOW_STEPS.length} />
+              {workflowSteps.map((step, i) => (
+                <WorkflowStep key={step.label} step={step} index={i} total={workflowSteps.length} />
               ))}
             </div>
 
             {/* Mobile connector */}
             <div className="lg:hidden mt-6 border-l-2 border-dashed border-orange-200 ml-6 pl-6 space-y-4">
-              {WORKFLOW_STEPS.map((step, i) => (
+              {workflowSteps.map((step, i) => (
                 <div key={step.label} className="flex items-center gap-3">
                   <span className="h-6 w-6 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center shrink-0">
                     {i + 1}
@@ -392,24 +459,22 @@ export default function FeaturesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <span className="text-xs font-mono uppercase tracking-[0.2em] text-orange-400 font-semibold">
-                Test Reports
+                {copy?.reports || "Test Reports"}
               </span>
               <h2 className="font-display mt-3 text-3xl sm:text-4xl font-semibold tracking-tight leading-tight">
-                Understand quality at a glance
+                {copy?.reportTitle || "Understand quality at a glance"}
               </h2>
               <p className="mt-4 text-slate-400 leading-relaxed">
-                Every test run produces a structured report designed for quick triage —
-                not raw logs. See your health score, drill into failures, and prioritise
-                fixes by severity.
+                {copy?.reportBody || "Every test run produces a structured report designed for quick triage — not raw logs. See your health score, drill into failures, and prioritise fixes by severity."}
               </p>
               <ul className="mt-8 space-y-3">
-                {[
+                {(copy?.reportBullets || [
                   "Health score from 0 to 100",
                   "Total tests · pass · fail breakdown",
                   "End-to-end runtime measurement",
                   "Issues ranked by severity",
                   "Per-page and per-file error context",
-                ].map((item) => (
+                ]).map((item) => (
                   <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
                     <CheckCircle2 className="h-4 w-4 text-orange-400 shrink-0" />
                     {item}
@@ -422,7 +487,7 @@ export default function FeaturesPage() {
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-5">
               {/* Score */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-[0.15em] text-slate-400">Health Score</span>
+                <span className="text-xs font-mono uppercase tracking-[0.15em] text-slate-400">{copy?.healthScore || "Health Score"}</span>
                 <span className="text-4xl font-display font-bold text-orange-400">87</span>
               </div>
               <div className="h-2 rounded-full bg-slate-700">
@@ -431,11 +496,11 @@ export default function FeaturesPage() {
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-3">
-                {[
+                {(copy?.reportStats || [
                   { label: "Total", value: "42", color: "text-slate-300" },
                   { label: "Passed", value: "37", color: "text-emerald-400" },
                   { label: "Failed", value: "5", color: "text-red-400" },
-                ].map((s) => (
+                ]).map((s) => (
                   <div key={s.label} className="bg-slate-900/60 rounded-lg p-3 text-center">
                     <p className={`text-xl font-display font-bold ${s.color}`}>{s.value}</p>
                     <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 mt-0.5">{s.label}</p>
@@ -445,12 +510,12 @@ export default function FeaturesPage() {
 
               {/* Issues */}
               <div className="space-y-2">
-                <span className="text-xs font-mono uppercase tracking-[0.15em] text-slate-400">Top Issues</span>
-                {[
+                <span className="text-xs font-mono uppercase tracking-[0.15em] text-slate-400">{copy?.topIssues || "Top Issues"}</span>
+                {(copy?.issues || [
                   { sev: "HIGH", msg: "Login form submit has no response feedback" },
                   { sev: "MED", msg: "Mobile nav menu not keyboard-accessible" },
                   { sev: "LOW", msg: "Dashboard chart label overflows on resize" },
-                ].map((issue) => (
+                ]).map((issue) => (
                   <div key={issue.msg} className="flex items-start gap-3 bg-slate-900/60 rounded-lg px-3 py-2">
                     <span
                       className={`text-[9px] font-mono font-bold uppercase tracking-wider shrink-0 mt-0.5 ${
@@ -476,27 +541,26 @@ export default function FeaturesPage() {
       <section className="py-20 md:py-28 border-t border-slate-200">
         <div className="max-w-3xl mx-auto px-6 md:px-8 text-center">
           <span className="text-xs font-mono uppercase tracking-[0.2em] text-orange-600 font-semibold">
-            Get started
+            {copy?.getStarted || "Get started"}
           </span>
           <h2 className="font-display mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-            Ready to automate your QA?
+            {copy?.ctaTitle || "Ready to automate your QA?"}
           </h2>
           <p className="mt-4 text-slate-600 leading-relaxed">
-            Upload your source code or connect GitHub and get a full test report in minutes —
-            no configuration, no writing tests by hand.
+            {copy?.ctaBody || "Upload your source code or connect GitHub and get a full test report in minutes — no configuration, no writing tests by hand."}
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/register"
               className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-7 py-3 rounded-lg transition-colors shadow-sm"
             >
-              Start for free <ArrowRight className="h-4 w-4" />
+              {copy?.startFree || "Start for free"} <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-sm font-semibold px-7 py-3 rounded-lg transition-colors"
             >
-              Go to Dashboard
+              {copy?.dashboard || "Go to Dashboard"}
             </Link>
           </div>
         </div>

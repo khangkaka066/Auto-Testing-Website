@@ -5,6 +5,7 @@ import { Rocket, Users, Code2, ArrowRight, Github, Globe } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import Footer from "../components/landing/Footer";
 import HeroParticleNetwork from "../components/landing/HeroParticleNetwork";
+import { useLanguage } from "../lib/i18n";
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
@@ -46,6 +47,30 @@ const MISSION_CARDS = [
     body: "Every deployment carries risk. TestPilot helps teams ship with confidence by automatically checking UI, APIs, performance, and security in a single unified pipeline.",
   },
 ];
+
+const ABOUT_VI = {
+  missionCards: [
+    { title: "QA automation dễ tiếp cận", body: "Chúng tôi loại bỏ rào cản kỹ thuật trong kiểm thử phần mềm. Chỉ cần upload source code, AI sẽ phân tích, tạo test case và chạy test tự động, không cần setup phức tạp." },
+    { title: "Bắt bug trước production", body: "Mỗi lần deploy đều có rủi ro. TestPilot giúp team ship tự tin bằng cách tự động kiểm tra UI, API, performance và security trong một pipeline thống nhất." },
+  ],
+  heroBadge: "Về TestPilot",
+  titleA: "Chúng tôi tin QA tốt",
+  titleB: "không nên phức tạp.",
+  subtitle: "TestPilot được xây dựng để mọi team phát triển đều tiếp cận được automated QA, từ founder solo đến enterprise squad. Bắt bug trước production nên nhẹ nhàng, không phải một công việc toàn thời gian.",
+  startFree: "Bắt đầu miễn phí",
+  viewFeatures: "Xem tính năng",
+  stats: [{ value: "8+", label: "Loại test" }, { value: "6", label: "Thành viên" }, { value: "AI", label: "Kiểm thử bằng AI" }],
+  mission: "Sứ mệnh",
+  missionSubtitle: "Sứ mệnh mà chúng tôi xây dựng xoay quanh",
+  team: "Đội ngũ",
+  teamSubtitle: "Những người đang xây dựng TestPilot",
+  techStack: "Tech Stack",
+  techSubtitle: "Công nghệ vận hành nền tảng",
+  ready: "Sẵn sàng ship tự tin?",
+  startToday: "Bắt đầu test hôm nay.",
+  ctaBody: "Bắt đầu miễn phí, không cần thẻ. Upload source code và nhận báo cáo đầy đủ trong vài phút.",
+  createAccount: "Tạo tài khoản miễn phí",
+};
 
 // ── Animation variants ────────────────────────────────────────────────────────
 
@@ -131,6 +156,10 @@ function SectionHeading({ icon: Icon, label, subtitle }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AboutPage() {
+  const { language } = useLanguage();
+  const copy = language === "vi" ? ABOUT_VI : null;
+  const missionCards = copy?.missionCards || MISSION_CARDS;
+
   return (
     <div className="min-h-screen text-slate-900">
       <HeroParticleNetwork />
@@ -159,7 +188,7 @@ export default function AboutPage() {
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
                 <span className="text-xs font-mono font-semibold uppercase tracking-widest text-orange-500">
-                  About TestPilot
+                  {copy?.heroBadge || "About TestPilot"}
                 </span>
               </motion.div>
 
@@ -170,10 +199,10 @@ export default function AboutPage() {
                 custom={1}
                 className="text-5xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.08] mb-6"
               >
-                We believe great QA
+                {copy?.titleA || "We believe great QA"}
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-400">
-                  shouldn't be complicated.
+                  {copy?.titleB || "shouldn't be complicated."}
                 </span>
               </motion.h1>
 
@@ -184,9 +213,7 @@ export default function AboutPage() {
                 custom={2}
                 className="text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto mb-10"
               >
-                TestPilot is built to make automated QA accessible for every development team —
-                from solo founders to enterprise squads. Catching bugs before production
-                should be effortless, not a full-time job.
+                {copy?.subtitle || "TestPilot is built to make automated QA accessible for every development team — from solo founders to enterprise squads. Catching bugs before production should be effortless, not a full-time job."}
               </motion.p>
 
               <motion.div
@@ -200,14 +227,14 @@ export default function AboutPage() {
                   to="/register"
                   className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors shadow-md shadow-orange-500/25"
                 >
-                  Start for free
+                  {copy?.startFree || "Start for free"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/features"
                   className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors"
                 >
-                  View features
+                  {copy?.viewFeatures || "View features"}
                 </Link>
               </motion.div>
             </div>
@@ -222,11 +249,11 @@ export default function AboutPage() {
             className="max-w-5xl mx-auto px-6 mb-24"
           >
             <div className="grid grid-cols-3 divide-x divide-slate-100 border border-slate-100 rounded-2xl bg-white/70 backdrop-blur-sm shadow-sm overflow-hidden">
-              {[
+              {(copy?.stats || [
                 { value: "8+", label: "Test types" },
                 { value: "6",  label: "Team members" },
                 { value: "AI", label: "Powered testing" },
-              ].map((s, i) => (
+              ]).map((s, i) => (
                 <div key={i} className="flex flex-col items-center justify-center py-8 px-4">
                   <span className="text-3xl font-bold text-slate-900">{s.value}</span>
                   <span className="text-sm text-slate-500 mt-1 text-center">{s.label}</span>
@@ -245,13 +272,13 @@ export default function AboutPage() {
             >
               <SectionHeading
                 icon={Rocket}
-                label="Mission"
-                subtitle="The mission we're built around"
+                label={copy?.mission || "Mission"}
+                subtitle={copy?.missionSubtitle || "The mission we're built around"}
               />
             </motion.div>
 
             <div className="grid md:grid-cols-2 gap-6">
-              {MISSION_CARDS.map((card, i) => (
+              {missionCards.map((card, i) => (
                 <motion.div
                   key={i}
                   variants={cardSpring}
@@ -281,8 +308,8 @@ export default function AboutPage() {
             >
               <SectionHeading
                 icon={Users}
-                label="Team"
-                subtitle="The people building TestPilot"
+                label={copy?.team || "Team"}
+                subtitle={copy?.teamSubtitle || "The people building TestPilot"}
               />
             </motion.div>
 
@@ -325,8 +352,8 @@ export default function AboutPage() {
             >
               <SectionHeading
                 icon={Code2}
-                label="Tech Stack"
-                subtitle="Technologies powering the platform"
+                label={copy?.techStack || "Tech Stack"}
+                subtitle={copy?.techSubtitle || "Technologies powering the platform"}
               />
             </motion.div>
 
@@ -385,19 +412,19 @@ export default function AboutPage() {
               <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
               <div className="relative px-10 py-14 text-center text-white">
                 <p className="text-xs font-mono uppercase tracking-widest text-orange-400 mb-4">
-                  Ready to ship with confidence?
+                  {copy?.ready || "Ready to ship with confidence?"}
                 </p>
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                  Start testing today.
+                  {copy?.startToday || "Start testing today."}
                 </h2>
                 <p className="text-slate-300 text-base mb-8 max-w-md mx-auto">
-                  Free to get started — no credit card required. Upload your source code and get a full report in minutes.
+                  {copy?.ctaBody || "Free to get started — no credit card required. Upload your source code and get a full report in minutes."}
                 </p>
                 <Link
                   to="/register"
                   className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg shadow-orange-500/30"
                 >
-                  Create a free account
+                  {copy?.createAccount || "Create a free account"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
