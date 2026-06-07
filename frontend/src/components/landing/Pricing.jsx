@@ -2,10 +2,10 @@ import React, { useRef } from "react";
 import { Check } from "lucide-react";
 import { SectionHeader } from "./Features";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { pricingT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 export default function Pricing() {
-  const t = pricingT;
+  const { pricingT: t } = useT("landing");
 
   const headerRef = useRef(null);
   const t1 = useRef(null), t2 = useRef(null);

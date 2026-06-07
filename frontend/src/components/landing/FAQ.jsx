@@ -2,10 +2,10 @@ import React, { useRef } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { SectionHeader } from "./Features";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { faqT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 export default function FAQ() {
-  const t = faqT;
+  const { faqT: t } = useT("landing");
 
   const headerRef = useRef(null);
   const f1 = useRef(null), f2 = useRef(null), f3 = useRef(null);

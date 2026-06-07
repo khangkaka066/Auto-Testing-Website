@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { SectionHeader } from "./Features";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { testimonialsT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 const IMGS = [
   "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzF8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0JTIwb2ZmaWNlfGVufDB8fHx8MTc3ODg2MDk4MXww&ixlib=rb-4.1.0&q=85",
@@ -10,7 +10,7 @@ const IMGS = [
 ];
 
 export default function Testimonials() {
-  const t = testimonialsT;
+  const { testimonialsT: t } = useT("landing");
 
   const headerRef = useRef(null);
   const q1 = useRef(null), q2 = useRef(null), q3 = useRef(null);

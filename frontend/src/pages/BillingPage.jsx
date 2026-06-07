@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { billingT } from "../content/billing";
+import { useT } from "../lib/i18n";
 
 function formatDate(val) {
   if (!val) return "—";
@@ -23,7 +23,7 @@ const PRICE_PER_CREDIT_USD = 1;
 
 export default function BillingPage() {
   const navigate = useNavigate();
-  const t = billingT;
+  const { billingT: t } = useT("billing");
   const [user, setUser] = useState({ name: "Developer" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
   const [initial, setInitial] = useState(localStorage.getItem("user_name")?.charAt(0).toUpperCase() || "U");
@@ -71,7 +71,7 @@ export default function BillingPage() {
 
   const handleBuy = async (creditAmount) => {
     if (!creditAmount || creditAmount < MIN_CREDITS) {
-      toast.error(`Minimum purchase is ${MIN_CREDITS} credits`);
+      toast.error(`${t.packages.minimumPurchase} ${MIN_CREDITS} ${t.packages.creditsUnit}`);
       return;
     }
     const token = localStorage.getItem("token");
@@ -255,25 +255,20 @@ export default function BillingPage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 pt-3">
               <div className="bg-white rounded-xl border-2 border-orange-400 shadow-sm p-6 flex flex-col relative overflow-visible">
                 <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap bg-orange-500 text-white">
-                  Monthly plan
+                  {t.packages.monthlyPlan}
                 </span>
                 <div className="relative">
                   <h3 className="text-base font-bold text-slate-800">Plus</h3>
-                  <p className="text-xs text-slate-500 mt-1">Predictable monthly testing for regular users</p>
+                  <p className="text-xs text-slate-500 mt-1">{t.packages.plusDescription}</p>
                   <div className="flex items-baseline gap-1 mt-5">
                     <span className="text-4xl font-bold text-slate-900">$10</span>
                     <span className="text-slate-400 text-sm">/month</span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">15 standard test runs each billing cycle</p>
+                  <p className="text-xs text-slate-500 mt-1">{t.packages.plusRuns}</p>
                 </div>
 
                 <ul className="relative mt-6 space-y-3 flex-1">
-                  {[
-                    "15 standard tests/month",
-                    "Optional code fix suggestions",
-                    "Better test generation engine",
-                    "Extra runs continue with credits",
-                  ].map((feature) => (
+                  {t.packages.plusFeatures.map((feature) => (
                     <li key={feature} className="flex items-start gap-2 text-sm text-slate-700">
                       <span className="mt-1 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
                       {feature}
@@ -287,27 +282,27 @@ export default function BillingPage() {
                   className="relative mt-6 w-full py-3 rounded-xl text-sm font-bold bg-slate-200 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <CreditCard className="h-3.5 w-3.5" />
-                  Subscribe coming soon
+                  {t.packages.subscribeComingSoon}
                 </button>
               </div>
 
               <div className="bg-white rounded-xl border-2 border-violet-400 shadow-sm p-6 flex flex-col relative">
                 <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full whitespace-nowrap bg-violet-500 text-white">
-                  Pay as you go
+                  {t.packages.payAsYouGo}
                 </span>
                 <h3 className="text-base font-bold text-slate-800">Credits</h3>
-                <p className="text-xs text-slate-500 mt-1">Flexible top-ups for larger runs or extra capacity</p>
+                <p className="text-xs text-slate-500 mt-1">{t.packages.creditsDescription}</p>
                 <div className="flex items-baseline gap-1 mt-5">
                   <span className="text-4xl font-bold text-slate-900">$1</span>
                   <span className="text-slate-400 text-sm">/credit</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Minimum purchase is {MIN_CREDITS} credits</p>
+                <p className="text-xs text-slate-500 mt-1">{t.packages.minimumPurchase} {MIN_CREDITS} {t.packages.creditsUnit}</p>
 
                 <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Credit amount</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Credits never expire</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.packages.creditAmount}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{t.packages.neverExpire}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -330,7 +325,7 @@ export default function BillingPage() {
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-600">Total</span>
+                    <span className="text-sm font-medium text-slate-600">{t.packages.total}</span>
                     <span className="text-2xl font-bold text-slate-900">${creditTotalUsd}</span>
                   </div>
                 </div>
@@ -348,7 +343,11 @@ export default function BillingPage() {
                   ) : (
                     <>
                       <CreditCard className="h-3.5 w-3.5" />
-                      {stripeEnabled ? `Buy ${creditAmount} credits for $${creditTotalUsd}` : t.packages.notConfigured}
+                      {stripeEnabled
+                        ? t.packages.buyCredits
+                          .replace("{amount}", creditAmount)
+                          .replace("{total}", creditTotalUsd)
+                        : t.packages.notConfigured}
                     </>
                   )}
                 </button>

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
-import { testReportT } from "../content/testing";
+import { useT } from "../lib/i18n";
 
 function parseScore(value) {
   if (typeof value === "number") return Math.max(0, Math.min(100, value));
@@ -159,7 +159,7 @@ function ScoreRing({ score }) {
 export default function TestReport() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const t = testReportT;
+  const { testReportT: t } = useT("testing");
   const [run, setRun] = useState(() => loadLocalReport(projectId));
   const [loading, setLoading] = useState(true);
 

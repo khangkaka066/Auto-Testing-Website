@@ -4,16 +4,16 @@ import { Menu, X, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
-import { navbarT } from "../../content/landing";
 import { AboutModal } from "./AboutModal";
+import { useLanguage, useT } from "../../lib/i18n";
 
 const NAV_CATEGORIES = [
-  { label: "Features", id: "features" },
-  { label: "How it works", id: "how" },
-  { label: "Reviews", id: "testimonials" },
-  { label: "FAQ", id: "faq" },
-  { label: "Pricing", to: "/pricing" },
-  { label: "More", id: "footer" },
+  { label: { en: "Features", vi: "Tính năng" }, id: "features" },
+  { label: { en: "How it works", vi: "Cách hoạt động" }, id: "how" },
+  { label: { en: "Reviews", vi: "Đánh giá" }, id: "testimonials" },
+  { label: { en: "FAQ", vi: "FAQ" }, id: "faq" },
+  { label: { en: "Pricing", vi: "Bảng giá" }, to: "/pricing" },
+  { label: { en: "More", vi: "Thêm" }, id: "footer" },
 ];
 
 export default function Navbar() {
@@ -26,7 +26,8 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
-  const t = navbarT;
+  const { navbarT: t } = useT("landing");
+  const { language, setLanguage } = useLanguage();
 
   const fetchNavbarUserData = () => {
     const token = localStorage.getItem("token");
@@ -115,13 +116,30 @@ export default function Navbar() {
               onClick={() => handleCategoryClick(cat)}
               className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200"
             >
-              {cat.label}
+              {cat.label[language]}
             </button>
           ))}
         </nav>
 
         {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-3 relative" ref={dropdownRef}>
+          <div className="flex items-center rounded-md border border-slate-200 bg-white p-0.5">
+            {["en", "vi"].map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
+                  language === lang
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+                aria-label={`Switch to ${lang === "en" ? "English" : "Vietnamese"}`}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
           {isLoggedIn ? (
             <>
               <Link to="/dashboard" className="text-xs font-semibold text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1 transition-colors">
@@ -184,9 +202,29 @@ export default function Navbar() {
                 onClick={() => handleCategoryClick(cat)}
                 className="flex items-center justify-between py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900"
               >
-                {cat.label}
+                {cat.label[language]}
               </button>
             ))}
+            <div className="h-px bg-slate-100 my-2" />
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm font-medium text-slate-700">{t.language || "Language"}</span>
+              <div className="flex items-center rounded-md border border-slate-200 bg-white p-0.5">
+                {["en", "vi"].map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLanguage(lang)}
+                    className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
+                      language === lang
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="h-px bg-slate-100 my-2" />
             {isLoggedIn ? (
               <>

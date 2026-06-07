@@ -28,36 +28,39 @@ import AboutPage from "./pages/AboutPage";
 import { Toaster } from "./components/ui/sonner";
 import ContactWidget from "./components/ui/ContactWidget";
 import ChatWidget from "./components/ui/ChatWidget";
+import { LanguageProvider } from "./lib/i18n";
 
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />       
-          <Route path="/register" element={<Register />} /> 
-          <Route path="/dashboard" element={<Dashboard />} /> 
-          <Route path="/profile" element={<Profile />} /> 
-          <Route path="/run-test" element={<TestRunner />} /> {/* 2. Khai báo route */}
-          <Route path="/test-progress/:projectId" element={<TestProgress />} />
-          <Route path="/test-report/:projectId" element={<TestReport />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/billing" element={<BillingPage />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/cookie-policy" element={<CookiePolicy />} />
-          <Route path="/changelog" element={<ChangelogPage />} />
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/roadmap" element={<RoadmapPage />} />
-          <Route path="/about" element={<AboutPage />} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster position="bottom-left" />
-      <ChatWidget />
-      <ContactWidget />
+      <LanguageProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/run-test" element={<TestRunner />} /> {/* 2. Khai báo route */}
+            <Route path="/test-progress/:projectId" element={<TestProgress />} />
+            <Route path="/test-report/:projectId" element={<TestReport />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/billing" element={<BillingPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/cookie-policy" element={<CookiePolicy />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/roadmap" element={<RoadmapPage />} />
+            <Route path="/about" element={<AboutPage />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster position="bottom-left" />
+        <ChatWidget />
+        <ContactWidget />
+      </LanguageProvider>
     </div>
   );
 }

@@ -2,8 +2,11 @@ import React from "react";
 import { ArrowRight, Check, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Root, Parallax } from "@bsmnt/scrollytelling";
+import { useT } from "../../lib/i18n";
 
 export default function Hero() {
+  const { heroT: t } = useT("landing");
+
   return (
     <section
       data-testid="hero-section"
@@ -23,7 +26,7 @@ export default function Hero() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
               </span>
               <span className="text-xs font-mono uppercase tracking-[0.18em] text-orange-700 font-semibold">
-                v2.4 — AI Test Authoring
+                {t.badge}
               </span>
             </div>
 
@@ -32,9 +35,9 @@ export default function Hero() {
               className="hero-fade-in font-display mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]"
               style={{ animationDelay: "140ms" }}
             >
-              Ship faster.<br />
-              With <span className="relative inline-block">
-                <span className="relative z-10">zero bugs</span>
+              {t.headline1}<br />
+              {t.headline2} <span className="relative inline-block">
+                <span className="relative z-10">{t.highlight}</span>
                 <span className="absolute -bottom-1 left-0 right-0 h-3 bg-orange-200/70 -z-0"></span>
               </span>.
             </h1>
@@ -43,8 +46,7 @@ export default function Hero() {
               className="hero-fade-in mt-6 max-w-xl text-lg leading-relaxed text-slate-600"
               style={{ animationDelay: "260ms" }}
             >
-              TestPilot is the autonomous QA platform that writes, runs, and maintains your
-              end-to-end tests. Catch regressions across every browser before they hit production.
+              {t.subtitle}
             </p>
 
             <div
@@ -56,7 +58,7 @@ export default function Hero() {
                 data-testid="hero-primary-cta"
                 className="group inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-6 py-3.5 rounded-md transition-all shadow-sm hover:shadow-md"
               >
-                Start testing
+                {t.primaryCta}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <a
@@ -67,7 +69,7 @@ export default function Hero() {
                 <span className="flex items-center justify-center h-7 w-7 rounded-full bg-slate-900 text-white">
                   <Play className="h-3 w-3 ml-0.5" />
                 </span>
-                Watch 2-min demo
+                {t.secondaryCta}
               </a>
             </div>
 
@@ -75,10 +77,10 @@ export default function Hero() {
               className="hero-fade-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600"
               style={{ animationDelay: "480ms" }}
             >
-              {["No credit card", "14-day free trial", "Cancel anytime"].map((t) => (
-                <li key={t} className="flex items-center gap-2">
+              {t.benefits.map((benefit) => (
+                <li key={benefit} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-orange-500" />
-                  {t}
+                  {benefit}
                 </li>
               ))}
             </ul>
@@ -104,15 +106,15 @@ export default function Hero() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-400">
-                        Live run
+                        {t.liveRun}
                       </div>
                       <div className="font-display font-semibold text-slate-900 mt-0.5">
-                        Checkout flow — Chrome
+                        {t.checkoutFlow}
                       </div>
                     </div>
                     <span className="inline-flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded-md bg-green-50 text-green-700 border border-green-200">
                       <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                      PASSING
+                      {t.passing}
                     </span>
                   </div>
 
@@ -139,9 +141,9 @@ export default function Hero() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-                    <Stat label="Tests" value="248" />
-                    <Stat label="Passed" value="247" accent />
-                    <Stat label="Duration" value="42s" />
+                    <Stat label={t.statLabels.tests} value="248" />
+                    <Stat label={t.statLabels.passed} value="247" accent />
+                    <Stat label={t.statLabels.duration} value="42s" />
                   </div>
                 </div>
               </div>
@@ -151,10 +153,10 @@ export default function Hero() {
                 <span className="h-2 w-2 rounded-full bg-orange-500 pulse-dot"></span>
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-400">
-                    AI Author
+                    {t.aiAuthor}
                   </div>
                   <div className="text-xs font-medium text-slate-900">
-                    Generated 12 tests
+                    {t.generated}
                   </div>
                 </div>
               </div>

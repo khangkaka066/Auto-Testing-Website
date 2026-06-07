@@ -2,10 +2,10 @@ import React, { useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import CTAIcosahedron from "./CTAIcosahedron";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { finalCtaT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 export default function FinalCTA() {
-  const t = finalCtaT;
+  const { finalCtaT: t } = useT("landing");
 
   const badgeRef = useRef(null);
   const headingRef = useRef(null);

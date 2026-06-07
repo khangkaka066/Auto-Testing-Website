@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { Sparkles, Globe, Eye, GitBranch, Zap, ShieldCheck } from "lucide-react";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { featuresT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 const ICONS = [
   <Sparkles className="h-5 w-5" />,
@@ -22,7 +22,7 @@ const TESTIDS = [
 ];
 
 export default function Features() {
-  const t = featuresT;
+  const { featuresT: t } = useT("landing");
 
   const headerRef = useRef(null);
   const c1 = useRef(null), c2 = useRef(null), c3 = useRef(null);

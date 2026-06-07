@@ -5,7 +5,7 @@ import axios from "axios";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
-import { testProgressT } from "../content/testing";
+import { useT } from "../lib/i18n";
 
 const STATUS_META = {
   queued: {
@@ -36,7 +36,7 @@ export default function TestProgress() {
   const { projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const t = testProgressT;
+  const { testProgressT: t } = useT("testing");
   const STAGE_LABELS = t.stageLabels;
   const missedStatusPolls = useRef(0);
   const latestProgress = useMemo(() => {

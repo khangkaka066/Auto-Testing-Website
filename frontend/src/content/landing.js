@@ -21,7 +21,8 @@ export const navbarT = {
   "signOut": "Sign out",
   "signIn": "Sign in",
   "start": "Start",
-  "loggedOut": "Logged out successfully!"
+  "loggedOut": "Logged out successfully!",
+  "language": "Language"
 };
 
 export const heroT = {

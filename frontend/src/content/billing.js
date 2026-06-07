@@ -25,7 +25,24 @@ export const billingT = {
     "creditsUnit": "credits",
     "buyFor": "Buy for",
     "notConfigured": "Payment not configured",
-    "redirecting": "Redirecting…"
+    "redirecting": "Redirecting…",
+    "monthlyPlan": "Monthly plan",
+    "plusDescription": "Predictable monthly testing for regular users",
+    "plusRuns": "15 standard test runs each billing cycle",
+    "plusFeatures": [
+      "15 standard tests/month",
+      "Optional code fix suggestions",
+      "Better test generation engine",
+      "Extra runs continue with credits"
+    ],
+    "subscribeComingSoon": "Subscribe coming soon",
+    "payAsYouGo": "Pay as you go",
+    "creditsDescription": "Flexible top-ups for larger runs or extra capacity",
+    "minimumPurchase": "Minimum purchase is",
+    "creditAmount": "Credit amount",
+    "neverExpire": "Credits never expire",
+    "total": "Total",
+    "buyCredits": "Buy {amount} credits for ${total}"
   },
   "history": {
     "title": "Transaction History",

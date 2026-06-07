@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { SiFacebook, SiTiktok } from "react-icons/si";
-import { footerT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 const ROUTE_MAP = {
   Features: "/features",
@@ -20,7 +20,7 @@ const ROUTE_MAP = {
 };
 
 export default function Footer() {
-  const t = footerT;
+  const { footerT: t } = useT("landing");
 
   return (
     <footer id="footer" className="bg-white/85 backdrop-blur-sm border-t border-slate-200">

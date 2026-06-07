@@ -1,10 +1,10 @@
 import React, { useRef } from "react";
 import { SectionHeader } from "./Features";
 import { Root, Animation } from "@bsmnt/scrollytelling";
-import { howItWorksT } from "../../content/landing";
+import { useT } from "../../lib/i18n";
 
 export default function HowItWorks() {
-  const t = howItWorksT;
+  const { howItWorksT: t } = useT("landing");
 
   const headerRef = useRef(null);
   const s1 = useRef(null), s2 = useRef(null), s3 = useRef(null), s4 = useRef(null);

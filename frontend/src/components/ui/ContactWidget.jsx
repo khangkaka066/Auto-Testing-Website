@@ -2,18 +2,79 @@ import React, { useState, useEffect } from "react";
 import { Mail, X, Send, CheckCircle, AlertCircle, Loader2, ChevronDown } from "lucide-react";
 import axios from "axios";
 import API_BASE_URL from "../../config";
+import { useLanguage } from "../../lib/i18n";
 
 const SUBJECTS = [
-  { value: "consulting", label: "Consulting" },
-  { value: "complaint",  label: "Complaint" },
-  { value: "feedback",   label: "Feedback" },
-  { value: "other",      label: "Other" },
+  { value: "consulting", label: { en: "Consulting", vi: "Tư vấn" } },
+  { value: "complaint",  label: { en: "Complaint", vi: "Khiếu nại" } },
+  { value: "feedback",   label: { en: "Feedback", vi: "Góp ý" } },
+  { value: "other",      label: { en: "Other", vi: "Khác" } },
 ];
 
 const INIT = { name: "", email: "", phone: "", subject: "", message: "" };
 const INIT_ERRORS = { name: "", email: "", subject: "", message: "" };
+const TEXT = {
+  en: {
+    title: "Contact us",
+    sent: "Message sent!",
+    sentBody: "Thank you! Your message has been sent successfully.",
+    response: "Our team will respond within 24 hours.",
+    sendAnother: "Send another message",
+    fullName: "Full name",
+    namePlaceholder: "Alex Nguyen",
+    email: "Email",
+    phone: "Phone number",
+    optional: "Optional",
+    reason: "Contact reason",
+    selectReason: "-- Select a reason --",
+    message: "Message",
+    messagePlaceholder: "Describe your question or issue...",
+    sending: "Sending...",
+    send: "Send message",
+    contact: "Contact",
+    aria: "Open contact form",
+    errors: {
+      name: "Full name is required.",
+      email: "Email is required.",
+      invalidEmail: "Please enter a valid email address.",
+      subject: "Please choose a contact reason.",
+      message: "Message is required.",
+      submit: "Something went wrong while sending your message. Please try again later or contact us directly through the hotline.",
+    },
+  },
+  vi: {
+    title: "Liên hệ với chúng tôi",
+    sent: "Gửi thành công!",
+    sentBody: "Cảm ơn bạn! Tin nhắn của bạn đã được gửi thành công.",
+    response: "Đội ngũ của chúng tôi sẽ phản hồi trong vòng 24 giờ.",
+    sendAnother: "Gửi tin nhắn khác",
+    fullName: "Họ và tên",
+    namePlaceholder: "Nguyễn Văn A",
+    email: "Email",
+    phone: "Số điện thoại",
+    optional: "Tuỳ chọn",
+    reason: "Mục đích liên hệ",
+    selectReason: "-- Chọn mục đích --",
+    message: "Nội dung tin nhắn",
+    messagePlaceholder: "Mô tả câu hỏi hoặc vấn đề của bạn...",
+    sending: "Đang gửi...",
+    send: "Gửi liên hệ",
+    contact: "Liên hệ",
+    aria: "Mở form liên hệ",
+    errors: {
+      name: "Họ và tên là bắt buộc.",
+      email: "Email là bắt buộc.",
+      invalidEmail: "Vui lòng nhập email hợp lệ.",
+      subject: "Vui lòng chọn mục đích liên hệ.",
+      message: "Nội dung tin nhắn là bắt buộc.",
+      submit: "Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau hoặc liên hệ trực tiếp qua hotline.",
+    },
+  },
+};
 
 export default function ContactWidget() {
+  const { language } = useLanguage();
+  const text = TEXT[language] || TEXT.en;
   const [open, setOpen]       = useState(false);
   const [form, setForm]       = useState(INIT);
   const [errors, setErrors]   = useState(INIT_ERRORS);
@@ -29,12 +90,12 @@ export default function ContactWidget() {
   function validate() {
     const e = { ...INIT_ERRORS };
     let ok = true;
-    if (!form.name.trim())    { e.name    = "Full name is required."; ok = false; }
-    if (!form.email.trim())   { e.email   = "Email is required."; ok = false; }
+    if (!form.name.trim())    { e.name    = text.errors.name; ok = false; }
+    if (!form.email.trim())   { e.email   = text.errors.email; ok = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-                               e.email   = "Please enter a valid email address."; ok = false; }
-    if (!form.subject)        { e.subject = "Please choose a contact reason."; ok = false; }
-    if (!form.message.trim()) { e.message = "Message is required."; ok = false; }
+                               e.email   = text.errors.invalidEmail; ok = false; }
+    if (!form.subject)        { e.subject = text.errors.subject; ok = false; }
+    if (!form.message.trim()) { e.message = text.errors.message; ok = false; }
     setErrors(e);
     return ok;
   }
@@ -63,7 +124,7 @@ export default function ContactWidget() {
     } catch (err) {
       setStatus("error");
       setErrorMsg(
-        "Something went wrong while sending your message. Please try again later or contact us directly through the hotline."
+        text.errors.submit
       );
     }
   }
@@ -93,7 +154,7 @@ export default function ContactWidget() {
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-400 text-white flex-shrink-0">
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
-              <span className="font-semibold text-sm">Contact us</span>
+              <span className="font-semibold text-sm">{text.title}</span>
             </div>
             <button onClick={handleClose}
               className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
@@ -108,15 +169,15 @@ export default function ContactWidget() {
             {status === "success" && (
               <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
                 <CheckCircle className="h-12 w-12 text-emerald-500" />
-                <p className="font-semibold text-slate-800">Message sent!</p>
+                <p className="font-semibold text-slate-800">{text.sent}</p>
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Thank you! Your message has been sent successfully.<br />
-                  Our team will respond within 24 hours.
+                  {text.sentBody}<br />
+                  {text.response}
                 </p>
                 <button
                   onClick={() => setStatus("idle")}
                   className="mt-2 text-sm text-orange-500 hover:underline">
-                  Send another message
+                  {text.sendAnother}
                 </button>
               </div>
             )}
@@ -136,13 +197,13 @@ export default function ContactWidget() {
                 {/* Name */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Full name <span className="text-red-500">*</span>
+                    {text.fullName} <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    placeholder="Alex Nguyen"
+                    placeholder={text.namePlaceholder}
                     className={`w-full text-sm px-3 py-2 rounded-lg border bg-slate-50 outline-none transition-colors
                       ${errors.name
                         ? "border-red-400 focus:border-red-400"
@@ -156,7 +217,7 @@ export default function ContactWidget() {
                 {/* Email */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Email <span className="text-red-500">*</span>
+                    {text.email} <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="email"
@@ -177,7 +238,7 @@ export default function ContactWidget() {
                 {/* Phone */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Phone number <span className="text-slate-400">(Optional)</span>
+                    {text.phone} <span className="text-slate-400">({text.optional})</span>
                   </label>
                   <input
                     name="phone"
@@ -192,7 +253,7 @@ export default function ContactWidget() {
                 {/* Contact reason */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Contact reason <span className="text-red-500">*</span>
+                    {text.reason} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <select
@@ -204,9 +265,9 @@ export default function ContactWidget() {
                           ? "border-red-400 focus:border-red-400"
                           : "border-slate-200 focus:border-orange-400"}`}
                     >
-                      <option value="">-- Select a reason --</option>
+                      <option value="">{text.selectReason}</option>
                       {SUBJECTS.map(s => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
+                        <option key={s.value} value={s.value}>{s.label[language]}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -219,14 +280,14 @@ export default function ContactWidget() {
                 {/* Message */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Message <span className="text-red-500">*</span>
+                    {text.message} <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     name="message"
                     value={form.message}
                     onChange={handleChange}
                     rows={4}
-                    placeholder="Describe your question or issue..."
+                    placeholder={text.messagePlaceholder}
                     className={`w-full text-sm px-3 py-2 rounded-lg border bg-slate-50 outline-none resize-none transition-colors
                       ${errors.message
                         ? "border-red-400 focus:border-red-400"
@@ -245,12 +306,12 @@ export default function ContactWidget() {
                   {status === "loading" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Sending...
+                      {text.sending}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Send message
+                      {text.send}
                     </>
                   )}
                 </button>
@@ -263,7 +324,7 @@ export default function ContactWidget() {
       {/* Floating button */}
       <button
         onClick={open ? handleClose : handleOpen}
-        aria-label="Open contact form"
+        aria-label={text.aria}
         className="fixed top-1/2 right-6 z-50 h-14 w-14 translate-y-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group">
         {open
           ? <X className="h-6 w-6" />
@@ -271,7 +332,7 @@ export default function ContactWidget() {
         }
         {!open && (
           <span className="absolute -top-10 right-0 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            Contact
+            {text.contact}
           </span>
         )}
       </button>

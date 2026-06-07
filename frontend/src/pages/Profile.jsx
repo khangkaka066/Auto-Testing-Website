@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
 import { User, Mail, Lock, ArrowLeft, Camera } from "lucide-react";
-import { profileT } from "../content/profile";
+import { useT } from "../lib/i18n";
 
 export default function Profile() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
@@ -14,12 +14,12 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const t = profileT;
+  const { profileT: t } = useT("profile");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error(t.signInRequired);
+      toast.error(t.toasts.signInRequired);
       navigate("/login");
       return;
     }
@@ -43,17 +43,17 @@ export default function Profile() {
         setLoading(false);
       })
       .catch((err) => {
-        toast.error(err.response?.data?.message || "Failed to load profile");
+        toast.error(err.response?.data?.message || t.toasts.loadFailed);
         setLoading(false);
       });
-  }, [navigate, t.signInRequired]);
+  }, [navigate, t.toasts.loadFailed, t.toasts.signInRequired]);
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file only!");
+      toast.error(t.toasts.imageOnly);
       return;
     }
 
@@ -73,10 +73,10 @@ export default function Profile() {
         setAvatar(res.data.avatar_url);
         localStorage.setItem("user_avatar", res.data.avatar_url);
         window.dispatchEvent(new Event("userUpdate"));
-        toast.success("Profile photo updated successfully!");
+        toast.success(t.toasts.photoUpdated);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to upload photo");
+      toast.error(err.response?.data?.message || t.toasts.photoFailed);
     } finally {
       setUploading(false);
     }
@@ -98,7 +98,7 @@ export default function Profile() {
         navigate("/dashboard");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update profile");
+      toast.error(err.response?.data?.message || t.toasts.updateFailed);
     }
   };
 

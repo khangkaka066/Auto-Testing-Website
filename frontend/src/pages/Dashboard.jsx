@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { dashboardT } from "../content/dashboard";
+import { useT } from "../lib/i18n";
 
 function scoreBadgeVariant(score) {
   if (score === null || score === undefined) return { bar: "bg-slate-200", text: "text-slate-400" };
@@ -87,7 +87,7 @@ function lastResultFromRun(data) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const t = dashboardT;
+  const { dashboardT: t } = useT("dashboard");
 
   const [user, setUser] = useState({ name: "Developer", email: "" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");

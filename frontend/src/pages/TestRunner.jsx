@@ -5,12 +5,12 @@ import Navbar from "../components/landing/Navbar";
 import { ArrowLeft, UploadCloud, FileText, Play, X } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { testRunnerT } from "../content/testing";
+import { useT } from "../lib/i18n";
 
 export default function TestRunner() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const t = testRunnerT;
+  const { testRunnerT: t } = useT("testing");
 
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
