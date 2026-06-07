@@ -23,7 +23,7 @@ export default function Footer() {
   const t = footerT;
 
   return (
-    <footer className="bg-white/85 backdrop-blur-sm border-t border-slate-200">
+    <footer id="footer" className="bg-white/85 backdrop-blur-sm border-t border-slate-200">
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12">
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import API_BASE_URL from "../../config";
-import { Menu, X, Settings, User, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
+import { Menu, X, Settings, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
@@ -8,10 +8,11 @@ import { navbarT } from "../../content/landing";
 import { AboutModal } from "./AboutModal";
 
 const NAV_CATEGORIES = [
-  { label: "Product",   id: "nav-product" },
-  { label: "Company",   id: "nav-company" },
-  { label: "Resources", id: "nav-resources" },
-  { label: "Legal",     id: "nav-legal" },
+  { label: "Features", id: "features" },
+  { label: "How it works", id: "how" },
+  { label: "Reviews", id: "testimonials" },
+  { label: "FAQ", id: "faq" },
+  { label: "More", id: "footer" },
 ];
 
 export default function Navbar() {
@@ -105,10 +106,9 @@ export default function Navbar() {
             <button
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
-              className="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 group/cat"
+              className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200"
             >
               {cat.label}
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400 transition-transform duration-200 group-hover/cat:translate-y-0.5" />
             </button>
           ))}
         </nav>
@@ -178,7 +178,6 @@ export default function Navbar() {
                 className="flex items-center justify-between py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900"
               >
                 {cat.label}
-                <ChevronDown className="h-4 w-4 text-slate-400" />
               </button>
             ))}
             <div className="h-px bg-slate-100 my-2" />

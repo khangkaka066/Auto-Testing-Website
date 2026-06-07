@@ -86,7 +86,7 @@ export default function ContactWidget() {
     <>
       {/* Panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[360px] flex flex-col rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200"
+        <div className="fixed top-1/2 right-24 z-50 w-[360px] -translate-y-1/2 flex flex-col rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           style={{ maxHeight: "560px" }}>
 
           {/* Header */}
@@ -264,7 +264,7 @@ export default function ContactWidget() {
       <button
         onClick={open ? handleClose : handleOpen}
         aria-label="Open contact form"
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group">
+        className="fixed top-1/2 right-6 z-50 h-14 w-14 translate-y-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group">
         {open
           ? <X className="h-6 w-6" />
           : <Mail className="h-6 w-6 group-hover:scale-110 transition-transform" />

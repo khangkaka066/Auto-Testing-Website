@@ -19,7 +19,7 @@ export default function Testimonials() {
 
   return (
     <Root start="top 85%" end="top 10%" scrub={1}>
-      <section data-testid="testimonials-section" className="py-24 md:py-32 border-b border-slate-200">
+      <section id="testimonials" data-testid="testimonials-section" className="py-24 md:py-32 border-b border-slate-200">
         <Animation tween={{ target: headerRef, start: 0, end: 35, fromTo: [{ opacity: 0, y: 35 }, { opacity: 1, y: 0 }] }} />
         <Animation tween={cardRefs.map((ref, i) => ({
           target: ref, start: 10 + i * 15, end: 50 + i * 15,
