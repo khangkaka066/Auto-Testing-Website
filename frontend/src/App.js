@@ -24,6 +24,7 @@ import CookiePolicy from "./pages/CookiePolicy";
 import ChangelogPage from "./pages/ChangelogPage";
 import DocsPage from "./pages/DocsPage";
 import CommunityPage from "./pages/CommunityPage";
+import BlogPage from "./pages/BlogPage";
 import RoadmapPage from "./pages/RoadmapPage";
 import AboutPage from "./pages/AboutPage";
 import { Toaster } from "./components/ui/sonner";
@@ -55,6 +56,7 @@ function App() {
             <Route path="/changelog" element={<ChangelogPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/community" element={<CommunityPage />} />
+            <Route path="/blog" element={<BlogPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Routes>
