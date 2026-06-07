@@ -13,6 +13,7 @@ const NAV_CATEGORIES = [
   { label: { en: "Reviews", vi: "Đánh giá" }, id: "testimonials" },
   { label: { en: "FAQ", vi: "FAQ" }, id: "faq" },
   { label: { en: "Pricing", vi: "Bảng giá" }, to: "/pricing" },
+  { label: { en: "More", vi: "Thêm" }, id: "footer" },
 ];
 
 export default function Navbar() {
