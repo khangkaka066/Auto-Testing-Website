@@ -261,7 +261,6 @@ export const footerT = {
       "title": "Resources",
       "links": [
         "Docs",
-        "API reference",
         "Blog",
         "Community"
       ]
