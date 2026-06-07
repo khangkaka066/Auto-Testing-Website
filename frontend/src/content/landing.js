@@ -263,8 +263,7 @@ export const footerT = {
         "Docs",
         "API reference",
         "Blog",
-        "Community",
-        "Status"
+        "Community"
       ]
     },
     {
