@@ -27,6 +27,7 @@ import RoadmapPage from "./pages/RoadmapPage";
 import AboutPage from "./pages/AboutPage";
 import { Toaster } from "./components/ui/sonner";
 import ContactWidget from "./components/ui/ContactWidget";
+import ChatWidget from "./components/ui/ChatWidget";
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-left" />
+      <ChatWidget />
       <ContactWidget />
     </div>
   );

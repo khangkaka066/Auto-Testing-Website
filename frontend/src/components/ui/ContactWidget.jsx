@@ -4,10 +4,10 @@ import axios from "axios";
 import API_BASE_URL from "../../config";
 
 const SUBJECTS = [
-  { value: "consulting", label: "Tư vấn" },
-  { value: "complaint",  label: "Khiếu nại" },
-  { value: "feedback",   label: "Góp ý" },
-  { value: "other",      label: "Khác" },
+  { value: "consulting", label: "Consulting" },
+  { value: "complaint",  label: "Complaint" },
+  { value: "feedback",   label: "Feedback" },
+  { value: "other",      label: "Other" },
 ];
 
 const INIT = { name: "", email: "", phone: "", subject: "", message: "" };
@@ -29,12 +29,12 @@ export default function ContactWidget() {
   function validate() {
     const e = { ...INIT_ERRORS };
     let ok = true;
-    if (!form.name.trim())    { e.name    = "Họ và tên là bắt buộc."; ok = false; }
-    if (!form.email.trim())   { e.email   = "Email là bắt buộc."; ok = false; }
+    if (!form.name.trim())    { e.name    = "Full name is required."; ok = false; }
+    if (!form.email.trim())   { e.email   = "Email is required."; ok = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-                               e.email   = "Email không hợp lệ."; ok = false; }
-    if (!form.subject)        { e.subject = "Vui lòng chọn mục đích."; ok = false; }
-    if (!form.message.trim()) { e.message = "Nội dung tin nhắn là bắt buộc."; ok = false; }
+                               e.email   = "Please enter a valid email address."; ok = false; }
+    if (!form.subject)        { e.subject = "Please choose a contact reason."; ok = false; }
+    if (!form.message.trim()) { e.message = "Message is required."; ok = false; }
     setErrors(e);
     return ok;
   }
@@ -63,8 +63,7 @@ export default function ContactWidget() {
     } catch (err) {
       setStatus("error");
       setErrorMsg(
-        err?.response?.data?.message ||
-        "Có lỗi xảy ra trong quá trình gửi. Vui lòng thử lại sau hoặc liên hệ trực tiếp qua hotline."
+        "Something went wrong while sending your message. Please try again later or contact us directly through the hotline."
       );
     }
   }
@@ -94,7 +93,7 @@ export default function ContactWidget() {
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-400 text-white flex-shrink-0">
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
-              <span className="font-semibold text-sm">Liên hệ với chúng tôi</span>
+              <span className="font-semibold text-sm">Contact us</span>
             </div>
             <button onClick={handleClose}
               className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
@@ -109,15 +108,15 @@ export default function ContactWidget() {
             {status === "success" && (
               <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
                 <CheckCircle className="h-12 w-12 text-emerald-500" />
-                <p className="font-semibold text-slate-800">Gửi thành công!</p>
+                <p className="font-semibold text-slate-800">Message sent!</p>
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Cảm ơn bạn! Liên hệ của bạn đã được gửi thành công.<br />
-                  Admin sẽ phản hồi trong vòng 24h.
+                  Thank you! Your message has been sent successfully.<br />
+                  Our team will respond within 24 hours.
                 </p>
                 <button
                   onClick={() => setStatus("idle")}
                   className="mt-2 text-sm text-orange-500 hover:underline">
-                  Gửi liên hệ khác
+                  Send another message
                 </button>
               </div>
             )}
@@ -134,16 +133,16 @@ export default function ContactWidget() {
             {status !== "success" && (
               <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
 
-                {/* Tên */}
+                {/* Name */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Họ và tên <span className="text-red-500">*</span>
+                    Full name <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    placeholder="Nguyễn Văn A"
+                    placeholder="Alex Nguyen"
                     className={`w-full text-sm px-3 py-2 rounded-lg border bg-slate-50 outline-none transition-colors
                       ${errors.name
                         ? "border-red-400 focus:border-red-400"
@@ -175,10 +174,10 @@ export default function ContactWidget() {
                   )}
                 </div>
 
-                {/* Điện thoại */}
+                {/* Phone */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Số điện thoại <span className="text-slate-400">(Tùy chọn)</span>
+                    Phone number <span className="text-slate-400">(Optional)</span>
                   </label>
                   <input
                     name="phone"
@@ -190,10 +189,10 @@ export default function ContactWidget() {
                   />
                 </div>
 
-                {/* Mục đích */}
+                {/* Contact reason */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Mục đích liên hệ <span className="text-red-500">*</span>
+                    Contact reason <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <select
@@ -205,7 +204,7 @@ export default function ContactWidget() {
                           ? "border-red-400 focus:border-red-400"
                           : "border-slate-200 focus:border-orange-400"}`}
                     >
-                      <option value="">-- Chọn mục đích --</option>
+                      <option value="">-- Select a reason --</option>
                       {SUBJECTS.map(s => (
                         <option key={s.value} value={s.value}>{s.label}</option>
                       ))}
@@ -217,17 +216,17 @@ export default function ContactWidget() {
                   )}
                 </div>
 
-                {/* Nội dung */}
+                {/* Message */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Nội dung tin nhắn <span className="text-red-500">*</span>
+                    Message <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     name="message"
                     value={form.message}
                     onChange={handleChange}
                     rows={4}
-                    placeholder="Mô tả vấn đề hoặc câu hỏi của bạn..."
+                    placeholder="Describe your question or issue..."
                     className={`w-full text-sm px-3 py-2 rounded-lg border bg-slate-50 outline-none resize-none transition-colors
                       ${errors.message
                         ? "border-red-400 focus:border-red-400"
@@ -246,12 +245,12 @@ export default function ContactWidget() {
                   {status === "loading" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Đang xử lý...
+                      Sending...
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Gửi liên hệ
+                      Send message
                     </>
                   )}
                 </button>
@@ -261,10 +260,10 @@ export default function ContactWidget() {
         </div>
       )}
 
-      {/* Floating button — right-24 to sit left of ChatWidget (right-6) */}
+      {/* Floating button */}
       <button
         onClick={open ? handleClose : handleOpen}
-        aria-label="Mở form liên hệ"
+        aria-label="Open contact form"
         className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group">
         {open
           ? <X className="h-6 w-6" />
@@ -272,7 +271,7 @@ export default function ContactWidget() {
         }
         {!open && (
           <span className="absolute -top-10 right-0 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            Liên hệ
+            Contact
           </span>
         )}
       </button>
