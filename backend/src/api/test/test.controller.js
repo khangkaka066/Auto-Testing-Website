@@ -222,6 +222,8 @@ function addRunStorageToSummary(summary, runStorage) {
     manifest_key: runStorage.manifestKey,
     json_file_count: runStorage.jsonFileCount,
     total_json_bytes: runStorage.totalJsonBytes,
+    log_file_count: runStorage.logFileCount || 0,
+    total_log_bytes: runStorage.totalLogBytes || 0,
   };
 
   if (!summary) return { run_artifacts: storageSummary };
@@ -263,6 +265,8 @@ async function persistRunJsonArtifacts(jobId, pipeline, status) {
         manifest_key: runStorage.manifestKey,
         json_file_count: runStorage.jsonFileCount,
         total_json_bytes: runStorage.totalJsonBytes,
+        log_file_count: runStorage.logFileCount || 0,
+        total_log_bytes: runStorage.totalLogBytes || 0,
       },
       artifact_upload_error: null,
     });
