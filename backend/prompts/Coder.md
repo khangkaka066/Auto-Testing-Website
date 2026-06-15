@@ -157,6 +157,7 @@ Before returning, verify:
 - NO markdown code blocks.
 - NO explanations.
 - NO conversational text.
+- `spec_file` MUST be a single basename only, never a path. Do not include `/`, `\`, or directories.
 - The JSON MUST strictly match this schema:
 {
   "generated": [

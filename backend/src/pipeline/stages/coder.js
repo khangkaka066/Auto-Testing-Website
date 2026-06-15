@@ -28,6 +28,15 @@ function sanitizeName(value) {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/^_+|_+$/g, '') || 'generated';
 }
 
+function normalizeSpecFileName(value) {
+  const raw = String(value || 'generated.spec.ts').replace(/[\\/]+/g, '_');
+  const suffix = '.spec.ts';
+  if (raw.endsWith(suffix)) {
+    return `${sanitizeName(raw.slice(0, -suffix.length))}${suffix}`;
+  }
+  return `${sanitizeName(raw)}${suffix}`;
+}
+
 function validateOutput(output) {
   const violations = [];
   if (output.generated.length !== 1) {
@@ -216,10 +225,7 @@ async function run(filteredDir, outputDir, baseUrl, cacheDir, options = {}) {
     const output = outputs[i];
     if (!output) return;
     for (const gen of output.generated) {
-      let specName = gen.spec_file;
-      if (!specName.endsWith('.spec.ts')) {
-        specName = `${sanitizeName(specName)}.spec.ts`;
-      }
+      let specName = normalizeSpecFileName(gen.spec_file);
       if (usedNames.has(specName)) {
         const stem = sanitizeName(path.parse(item.source_file).name);
         specName = `${stem}_${specName}`;
