@@ -5,6 +5,7 @@ import {
   Zap, CreditCard, History, LogOut,
   LayoutDashboard, User, Menu, ChevronRight, Coins,
   TrendingUp, Package, AlertTriangle, Receipt,
+  QrCode, Copy, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -13,46 +14,74 @@ import { useT } from "../lib/i18n";
 function formatDate(val) {
   if (!val) return "—";
   return new Date(val).toLocaleString("en-US", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
-
-function formatCredits(value) {
-  const number = Number(value || 0);
-  return number.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 const MIN_CREDITS = 4;
-const PRICE_PER_CREDIT_USD = 1;
+const DEFAULT_PRICE_PER_CREDIT_USD = 1;
+const DEFAULT_PRICE_PER_CREDIT_VND = 25_000;
+
+function formatVnd(value) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function formatUsd(value) {
+  return `$${Number(value || 0).toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })}`;
+}
 
 export default function BillingPage() {
   const navigate = useNavigate();
   const { billingT: t } = useT("billing");
+
   const [user, setUser] = useState({ name: "Developer" });
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
   const [initial, setInitial] = useState(localStorage.getItem("user_name")?.charAt(0).toUpperCase() || "U");
   const [credits, setCredits] = useState(null);
   const [creditsUsed, setCreditsUsed] = useState(0);
   const [transactions, setTransactions] = useState([]);
-  const [stripeEnabled, setStripeEnabled] = useState(false);
   const [buying, setBuying] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [creditAmount, setCreditAmount] = useState(MIN_CREDITS);
 
+  const [pricePerCreditVnd, setPricePerCreditVnd] = useState(DEFAULT_PRICE_PER_CREDIT_VND);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [copiedKey, setCopiedKey] = useState("");
+
+  const loadTransactions = async (token) => {
+    try {
+      const r = await axios.get(`${API_BASE_URL}/api/billing/transactions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (r.data.success) {
+        setTransactions(r.data.data);
+      }
+    } catch (_) {}
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) { navigate("/login"); return; }
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
     const name = localStorage.getItem("user_name") || "Developer";
     setUser({ name });
     setAvatar(localStorage.getItem("user_avatar") || "");
     setInitial(name.charAt(0).toUpperCase());
 
-    // Check success/cancel từ Stripe redirect
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "1") {
       toast.success(t.toasts.paymentSuccess);
@@ -65,21 +94,23 @@ export default function BillingPage() {
     const headers = { Authorization: `Bearer ${token}` };
 
     axios.get(`${API_BASE_URL}/api/auth/stats`, { headers })
-      .then(r => {
+      .then((r) => {
         if (r.data.success) {
           setCredits(r.data.data.credits);
-          setCreditsUsed(r.data.data.credits_used ?? ((r.data.data.tokens_used || 0) / 500_000));
+          setTokensUsed(r.data.data.tokens_used);
         }
       })
       .catch(() => {});
 
     axios.get(`${API_BASE_URL}/api/billing/packages`, { headers })
-      .then(r => { if (r.data.success) setStripeEnabled(r.data.stripe_enabled); })
+      .then((r) => {
+        if (r.data.success) {
+          setPricePerCreditVnd(r.data.price_per_credit_vnd || DEFAULT_PRICE_PER_CREDIT_VND);
+        }
+      })
       .catch(() => {});
 
-    axios.get(`${API_BASE_URL}/api/billing/transactions`, { headers })
-      .then(r => { if (r.data.success) setTransactions(r.data.data); })
-      .catch(() => {});
+    loadTransactions(token);
   }, [navigate, t.toasts.paymentCancelled, t.toasts.paymentSuccess]);
 
   const handleBuy = async (creditAmount) => {
@@ -87,19 +118,37 @@ export default function BillingPage() {
       toast.error(`${t.packages.minimumPurchase} ${MIN_CREDITS} ${t.packages.creditsUnit}`);
       return;
     }
+
     const token = localStorage.getItem("token");
     setBuying(true);
+
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/billing/create-checkout`,
+      const res = await axios.post(
+        `${API_BASE_URL}/api/billing/create-bank-transfer`,
         { credit_amount: creditAmount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       if (res.data.success) {
-        window.location.href = res.data.data.url;
+        setPaymentInfo(res.data.data);
+        toast.success(t.toasts.qrReady || "Đã tạo mã QR thanh toán");
+        await loadTransactions(token);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || t.toasts.checkoutFailed);
-      setBuying(null);
+      toast.error(err.response?.data?.message || t.toasts.checkoutFailed || "Không thể tạo QR thanh toán");
+    } finally {
+      setBuying(false);
+    }
+  };
+
+  const copyToClipboard = async (value, key) => {
+    try {
+      await navigator.clipboard.writeText(String(value || ""));
+      setCopiedKey(key);
+      toast.success(t.toasts.copied || "Đã copy");
+      setTimeout(() => setCopiedKey(""), 1200);
+    } catch (_) {
+      toast.error("Không thể copy");
     }
   };
 
@@ -111,11 +160,20 @@ export default function BillingPage() {
     navigate("/");
   };
 
-  const totalSpent = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.amount_usd || 0), 0);
-  const totalCreditsBought = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.credits_added || 0), 0);
-  const usedPct = credits != null && (creditsUsed + credits) > 0
-    ? Math.round((creditsUsed / (creditsUsed + credits)) * 100) : 0;
-  const creditTotalUsd = creditAmount * PRICE_PER_CREDIT_USD;
+  const totalSpentVnd = transactions
+    .filter((tx) => tx.status === "completed")
+    .reduce((s, tx) => s + Number(tx.amount_vnd || tx.amount_usd || 0), 0);
+
+  const totalCreditsBought = transactions
+    .filter((tx) => tx.status === "completed")
+    .reduce((s, tx) => s + (tx.credits_added || 0), 0);
+
+  const usedPct = credits != null && (tokensUsed + credits) > 0
+    ? Math.round((tokensUsed / (tokensUsed + credits)) * 100)
+    : 0;
+
+  const creditTotalUsd = creditAmount * DEFAULT_PRICE_PER_CREDIT_USD;
+  const creditTotalVnd = creditAmount * pricePerCreditVnd;
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -231,7 +289,7 @@ export default function BillingPage() {
                   <TrendingUp className="h-4 w-4" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${totalSpent.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800">{formatVnd(totalSpentVnd)}</p>
               <p className="text-xs text-slate-400 mt-1">{t.overview.lifetimeSpend}</p>
             </div>
           </div>
@@ -243,15 +301,6 @@ export default function BillingPage() {
               <div>
                 <p className="text-sm font-semibold text-orange-800">{t.warnings.lowCredits}</p>
                 <p className="text-xs text-orange-600 mt-0.5">{formatCredits(credits)} {t.warnings.lowCreditsHint}</p>
-              </div>
-            </div>
-          )}
-          {!stripeEnabled && (
-            <div className="mb-6 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-              <AlertTriangle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-blue-800">{t.warnings.notConfigured}</p>
-                <p className="text-xs text-blue-600 mt-0.5">{t.warnings.notConfiguredHint}</p>
               </div>
             </div>
           )}
@@ -305,11 +354,17 @@ export default function BillingPage() {
                 </span>
                 <h3 className="text-base font-bold text-slate-800">Credits</h3>
                 <p className="text-xs text-slate-500 mt-1">{t.packages.creditsDescription}</p>
+
                 <div className="flex items-baseline gap-1 mt-5">
-                  <span className="text-4xl font-bold text-slate-900">$1</span>
+                  <span className="text-4xl font-bold text-slate-900">
+                    {formatUsd(DEFAULT_PRICE_PER_CREDIT_USD)}
+                  </span>
                   <span className="text-slate-400 text-sm">/credit</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">{t.packages.minimumPurchase} {MIN_CREDITS} {t.packages.creditsUnit}</p>
+
+                <p className="text-xs text-slate-500 mt-1">
+                  {t.packages.minimumPurchase} {MIN_CREDITS} {t.packages.creditsUnit}
+                </p>
 
                 <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -337,33 +392,125 @@ export default function BillingPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
+
+                  <div className="mt-4 pt-4 border-t border-slate-200 flex items-start justify-between gap-4">
                     <span className="text-sm font-medium text-slate-600">{t.packages.total}</span>
-                    <span className="text-2xl font-bold text-slate-900">${creditTotalUsd}</span>
+
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-slate-900">
+                        {formatUsd(creditTotalUsd)}
+                      </p>
+                      <p className="text-xs font-semibold text-slate-500 mt-1">
+                        {formatVnd(creditTotalVnd)}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => handleBuy(creditAmount)}
-                  disabled={!stripeEnabled || buying}
+                  disabled={buying}
                   className="mt-6 w-full py-3 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm shadow-orange-200"
                 >
                   {buying ? (
                     <>
                       <span className="h-3.5 w-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      {t.packages.redirecting}
+                      {t.packages.generatingQr || "Đang tạo QR..."}
                     </>
                   ) : (
                     <>
-                      <CreditCard className="h-3.5 w-3.5" />
-                      {stripeEnabled
-                        ? t.packages.buyCredits
-                          .replace("{amount}", creditAmount)
-                          .replace("{total}", creditTotalUsd)
-                        : t.packages.notConfigured}
+                      <QrCode className="h-3.5 w-3.5" />
+                      Purchase
                     </>
                   )}
                 </button>
+
+                {paymentInfo && (
+                  <div className="mt-5 rounded-xl border border-violet-200 bg-violet-50 p-4">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="h-9 w-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                        <QrCode className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">
+                          {t.packages.paymentQrTitle || "Quét VietQR để thanh toán"}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {t.packages.paymentQrHint || "Vui lòng chuyển khoản đúng số tiền và nội dung bên dưới để admin đối chiếu."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
+                      <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-center">
+                        <img
+                          src={paymentInfo.qr_url}
+                          alt="VietQR payment"
+                          className="w-40 h-40 object-contain"
+                        />
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                          <span className="text-slate-500">Ngân hàng</span>
+                          <span className="font-semibold text-slate-800">{paymentInfo.bank.bank_name}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                          <span className="text-slate-500">Số tài khoản</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-800">{paymentInfo.bank.account_no}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(paymentInfo.bank.account_no, "account")}
+                              className="text-slate-400 hover:text-orange-600"
+                            >
+                              {copiedKey === "account" ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                          <span className="text-slate-500">Tên tài khoản</span>
+                          <span className="font-semibold text-slate-800 text-right">{paymentInfo.bank.account_name}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                          <span className="text-slate-500">Số tiền</span>
+                          <span className="font-bold text-orange-600">{formatVnd(paymentInfo.amount_vnd)}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 bg-white border border-orange-200 rounded-lg px-3 py-2">
+                          <span className="text-slate-500">Nội dung chuyển khoản</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl font-black tracking-widest text-orange-600">
+                              {paymentInfo.transfer_content}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(paymentInfo.transfer_content, "content")}
+                              className="text-slate-400 hover:text-orange-600"
+                            >
+                              {copiedKey === "content" ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                          Giao dịch đang ở trạng thái pending. Admin sẽ cộng credit sau khi xác nhận chuyển khoản.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -408,18 +555,18 @@ export default function BillingPage() {
                           +{(tx.credits_added || 0).toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-slate-700 font-semibold">
-                          ${(tx.amount_usd || 0).toFixed(2)}
+                          {formatVnd(tx.amount_vnd || tx.amount_usd || 0)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
                             tx.status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : tx.status === "pending" ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
-                            : "bg-red-50 text-red-700 border border-red-200"
+                              : tx.status === "pending" ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
+                                : "bg-red-50 text-red-700 border border-red-200"
                           }`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${
                               tx.status === "completed" ? "bg-emerald-500"
-                              : tx.status === "pending" ? "bg-yellow-500"
-                              : "bg-red-500"
+                                : tx.status === "pending" ? "bg-yellow-500"
+                                  : "bg-red-500"
                             }`} />
                             {tx.status === "completed" ? t.history.completed : tx.status === "pending" ? t.history.pending : tx.status}
                           </span>

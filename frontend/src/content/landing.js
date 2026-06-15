@@ -238,7 +238,7 @@ export const finalCtaT = {
 
 export const footerT = {
   "tagline": "The autonomous QA platform for teams that ship every day.",
-  "copyright": "© 2026 TestPilot, Inc. All rights reserved.",
+  "copyright": "© 2026 Automate, Inc. All rights reserved.",
   "builtFor": "Built for builders · v2.4.0",
   "cols": [
     {
@@ -261,10 +261,8 @@ export const footerT = {
       "title": "Resources",
       "links": [
         "Docs",
-        "API reference",
         "Blog",
-        "Community",
-        "Status"
+        "Community"
       ]
     },
     {
@@ -272,9 +270,7 @@ export const footerT = {
       "links": [
         "Privacy",
         "Terms",
-        "Security",
-        "SOC 2",
-        "DPA"
+        "Security"
       ]
     }
   ]

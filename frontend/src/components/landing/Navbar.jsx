@@ -205,6 +205,7 @@ export default function Navbar() {
                 {cat.label[language]}
               </button>
             ))}
+
             <div className="h-px bg-slate-100 my-2" />
             <div className="flex items-center justify-between py-2">
               <span className="text-sm font-medium text-slate-700">{t.language || "Language"}</span>
