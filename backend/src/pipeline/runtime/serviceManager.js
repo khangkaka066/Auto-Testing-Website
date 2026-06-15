@@ -128,12 +128,24 @@ function commandExists(command, env) {
 }
 
 function serviceEnv(baseEnv, projectRoot) {
-  const nodeBinDir = path.dirname(process.execPath);
-  const localBinDir = path.join(path.resolve(projectRoot), 'node_modules', '.bin');
+ const nodeBinDir = path.dirname(process.execPath);
+ const localBinDir = path.join(path.resolve(projectRoot), 'node_modules', '.bin');
   return {
     ...baseEnv,
     PATH: [localBinDir, nodeBinDir, baseEnv.PATH || process.env.PATH].filter(Boolean).join(path.delimiter),
-  };
+ };
+}
+
+function installEnv(baseEnv) {
+ return {
+ ...baseEnv,
+ NODE_ENV: 'development',
+ NPM_CONFIG_PRODUCTION: 'false',
+ npm_config_production: 'false',
+ NPM_CONFIG_INCLUDE: 'dev',
+ npm_config_include: 'dev',
+ YARN_PRODUCTION: 'false',
+ };
 }
 
 function readPackageScript(projectRoot, scriptName) {
@@ -164,21 +176,54 @@ function withYarnInstallNetworkOptions(args) {
   const hasRegistry = parts.some(part => part === '--registry' || part.startsWith('--registry='));
   const hasNetworkTimeout = parts.some(part => part === '--network-timeout' || part.startsWith('--network-timeout='));
   const hasNonInteractive = parts.includes('--non-interactive');
-  const hasIgnoreOptional = parts.includes('--ignore-optional');
+ const hasIgnoreOptional = parts.includes('--ignore-optional');
+ const hasProduction = parts.some(part => part === '--production' || part.startsWith('--production='));
 
   if (!hasRegistry) parts.push('--registry', 'https://registry.npmjs.org');
   if (!hasNetworkTimeout) parts.push('--network-timeout', '600000');
-  if (!hasNonInteractive) parts.push('--non-interactive');
-  if (!hasIgnoreOptional) parts.push('--ignore-optional');
+ if (!hasNonInteractive) parts.push('--non-interactive');
+ if (!hasIgnoreOptional) parts.push('--ignore-optional');
+ if (!hasProduction) parts.push('--production=false');
 
-  return parts.join(' ');
+ return parts.join(' ');
+}
+
+function withNpmInstallDevOptions(args) {
+ const parts = String(args || '').trim().split(/\s+/).filter(Boolean);
+ if (!['install', 'i', 'ci'].includes(parts[0])) return args || '';
+
+ const hasIncludeDev = parts.some(part => part === '--include=dev' || part === '--also=dev');
+ const hasOmitDev = parts.some(part => part === '--omit=dev');
+ const hasProduction = parts.some(part => part === '--production' || part.startsWith('--production='));
+
+ if (!hasIncludeDev && !hasOmitDev) parts.push('--include=dev');
+ if (!hasProduction) parts.push('--production=false');
+
+ return parts.join(' ');
+}
+
+function withPnpmInstallDevOptions(args) {
+ const parts = String(args || '').trim().split(/\s+/).filter(Boolean);
+ if (parts[0] !== 'install') return args || '';
+
+ const hasProdFlag = parts.some(part => part === '--prod' || part === '-P' || part.startsWith('--prod='));
+ if (!hasProdFlag) parts.push('--prod=false');
+
+ return parts.join(' ');
 }
 
 function resolvePackageManagerCommand(command, env) {
-  if (!command) return command;
-  const trimmed = command.trim();
-  const yarnMatch = trimmed.match(/^yarn(?:\s+(.*))?$/);
-  if (yarnMatch) {
+ if (!command) return command;
+ const trimmed = command.trim();
+
+ const npmMatch = trimmed.match(/^npm(?:\s+(.*))?$/);
+ if (npmMatch) {
+ const args = withNpmInstallDevOptions(npmMatch[1] || '');
+ return `npm${args ? ` ${args}` : ''}`;
+ }
+
+ const yarnMatch = trimmed.match(/^yarn(?:\s+(.*))?$/);
+ if (yarnMatch) {
     const args = withYarnInstallNetworkOptions(yarnMatch[1] || '');
     if (commandExists('yarn', env)) {
       return `yarn${args ? ` ${args}` : ''}`;
@@ -189,12 +234,15 @@ function resolvePackageManagerCommand(command, env) {
     return `npx --yes yarn${args ? ` ${args}` : ''}`;
   }
 
-  const pnpmMatch = trimmed.match(/^pnpm(?:\s+(.*))?$/);
-  if (pnpmMatch && !commandExists('pnpm', env)) {
-    const args = pnpmMatch[1] || '';
-    if (commandExists('corepack', env)) {
-      return `corepack pnpm${args ? ` ${args}` : ''}`;
-    }
+ const pnpmMatch = trimmed.match(/^pnpm(?:\s+(.*))?$/);
+ if (pnpmMatch) {
+ const args = withPnpmInstallDevOptions(pnpmMatch[1] || '');
+ if (commandExists('pnpm', env)) {
+ return `pnpm${args ? ` ${args}` : ''}`;
+ }
+ if (commandExists('corepack', env)) {
+ return `corepack pnpm${args ? ` ${args}` : ''}`;
+ }
     return `npx --yes pnpm${args ? ` ${args}` : ''}`;
   }
 
@@ -327,15 +375,16 @@ async function startService(service, logsDir, env) {
   );
   appendLog(logFile, `[service] ${service.name}\n[command] ${service.start_command}\n[resolved_command] ${startCommandText}\n[cwd] ${service.root_path}\n[url] ${service.url}\n\n`);
 
-  if (service.install_command && shouldInstall(service.root_path)) {
-    const installCommandText = resolvePackageManagerCommand(service.install_command, runtimeEnv);
-    appendLog(logFile, `[install] ${service.install_command}\n[resolved_install] ${installCommandText}\n`);
-    await runCommand(installCommandText, {
-      cwd: service.root_path,
-      env: runtimeEnv,
-      logFile,
-      timeoutMs: SERVICE_INSTALL_TIMEOUT_MS,
-    });
+ if (service.install_command && shouldInstall(service.root_path)) {
+ const dependencyInstallEnv = installEnv(runtimeEnv);
+ const installCommandText = resolvePackageManagerCommand(service.install_command, dependencyInstallEnv);
+ appendLog(logFile, `[install] ${service.install_command}\n[resolved_install] ${installCommandText}\n`);
+ await runCommand(installCommandText, {
+ cwd: service.root_path,
+ env: dependencyInstallEnv,
+ logFile,
+ timeoutMs: SERVICE_INSTALL_TIMEOUT_MS,
+ });
     fs.writeFileSync(path.join(service.root_path, INSTALL_MARKER), new Date().toISOString(), 'utf-8');
     appendLog(logFile, '\n[install complete]\n');
   }
