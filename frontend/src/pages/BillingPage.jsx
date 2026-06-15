@@ -18,6 +18,14 @@ function formatDate(val) {
   });
 }
 
+function formatCredits(value) {
+  const number = Number(value || 0);
+  return number.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 const MIN_CREDITS = 4;
 const PRICE_PER_CREDIT_USD = 1;
 
@@ -28,7 +36,7 @@ export default function BillingPage() {
   const [avatar, setAvatar] = useState(localStorage.getItem("user_avatar") || "");
   const [initial, setInitial] = useState(localStorage.getItem("user_name")?.charAt(0).toUpperCase() || "U");
   const [credits, setCredits] = useState(null);
-  const [tokensUsed, setTokensUsed] = useState(0);
+  const [creditsUsed, setCreditsUsed] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -57,7 +65,12 @@ export default function BillingPage() {
     const headers = { Authorization: `Bearer ${token}` };
 
     axios.get(`${API_BASE_URL}/api/auth/stats`, { headers })
-      .then(r => { if (r.data.success) { setCredits(r.data.data.credits); setTokensUsed(r.data.data.tokens_used); } })
+      .then(r => {
+        if (r.data.success) {
+          setCredits(r.data.data.credits);
+          setCreditsUsed(r.data.data.credits_used ?? ((r.data.data.tokens_used || 0) / 500_000));
+        }
+      })
       .catch(() => {});
 
     axios.get(`${API_BASE_URL}/api/billing/packages`, { headers })
@@ -100,8 +113,8 @@ export default function BillingPage() {
 
   const totalSpent = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.amount_usd || 0), 0);
   const totalCreditsBought = transactions.filter(tx => tx.status === "completed").reduce((s, tx) => s + (tx.credits_added || 0), 0);
-  const usedPct = credits != null && (tokensUsed + credits) > 0
-    ? Math.round((tokensUsed / (tokensUsed + credits)) * 100) : 0;
+  const usedPct = credits != null && (creditsUsed + credits) > 0
+    ? Math.round((creditsUsed / (creditsUsed + credits)) * 100) : 0;
   const creditTotalUsd = creditAmount * PRICE_PER_CREDIT_USD;
 
   return (
@@ -191,12 +204,12 @@ export default function BillingPage() {
                   <Zap className="h-4 w-4" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-800">{credits != null ? parseFloat(credits).toFixed(2) : "—"}</p>
+              <p className="text-2xl font-bold text-slate-800">{credits != null ? formatCredits(credits) : "—"}</p>
               <div className="mt-2">
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-violet-500 rounded-full transition-all duration-700" style={{ width: `${usedPct}%` }} />
                 </div>
-                <p className="text-xs text-slate-400 mt-1">{usedPct}% {t.overview.usedPercent} · {tokensUsed.toLocaleString()} {t.overview.tokensSpent}</p>
+                <p className="text-xs text-slate-400 mt-1">{usedPct}% {t.overview.usedPercent} · {formatCredits(creditsUsed)} credits used</p>
               </div>
             </div>
 
@@ -229,7 +242,7 @@ export default function BillingPage() {
               <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-orange-800">{t.warnings.lowCredits}</p>
-                <p className="text-xs text-orange-600 mt-0.5">{credits.toLocaleString()} {t.warnings.lowCreditsHint}</p>
+                <p className="text-xs text-orange-600 mt-0.5">{formatCredits(credits)} {t.warnings.lowCreditsHint}</p>
               </div>
             </div>
           )}

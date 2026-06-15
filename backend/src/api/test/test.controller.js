@@ -3,11 +3,11 @@ const path = require('path');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const AdmZip = require('adm-zip');
-const { createJob, updateJob, getJobByProject, getJob } = require('../../lib/jobStore');
+const { createJob, updateJob, getJobByProject, getJob, hasActiveJobsForUser } = require('../../lib/jobStore');
 const Pipeline = require('../../pipeline/Pipeline');
 const { addUserTokens } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
-const { uploadSourceArchiveWithManifest } = require('../../lib/r2Storage');
+const { getJsonObject, uploadRunJsonArtifacts } = require('../../lib/r2Storage');
 const {
   WORKSPACE_BASE_PATH,
   SOURCE_WORKSPACE_BASE_PATH,
@@ -179,6 +179,9 @@ function buildJobState(job) {
     started_at: job.started_at,
     finished_at: job.finished_at,
     error: job.error,
+    run_workspace_dir: job.run_workspace_dir,
+    run_storage: job.run_storage,
+    artifact_upload_error: job.artifact_upload_error,
   };
 }
 
@@ -208,6 +211,68 @@ function finalReportToResultSummary(finalReport, score = null) {
     issues_count: (finalReport.issues ?? []).length,
     issues: (finalReport.issues ?? []).slice(0, 20),
   };
+}
+
+function addRunStorageToSummary(summary, runStorage) {
+  if (!runStorage) return summary;
+  const storageSummary = {
+    provider: 'cloudflare-r2',
+    bucket: runStorage.bucket,
+    prefix: runStorage.prefix,
+    manifest_key: runStorage.manifestKey,
+    json_file_count: runStorage.jsonFileCount,
+    total_json_bytes: runStorage.totalJsonBytes,
+  };
+
+  if (!summary) return { run_artifacts: storageSummary };
+  if (summary.job_state) {
+    return {
+      ...summary,
+      run_artifacts: storageSummary,
+      job_state: {
+        ...summary.job_state,
+        run_storage: storageSummary,
+      },
+    };
+  }
+  return {
+    ...summary,
+    run_artifacts: storageSummary,
+  };
+}
+
+async function persistRunJsonArtifacts(jobId, pipeline, status) {
+  if (!pipeline?.runWorkspaceDir || !pipeline?.runId) return null;
+
+  const job = getJob(jobId);
+  try {
+    const runStorage = await uploadRunJsonArtifacts({
+      runWorkspaceDir: pipeline.runWorkspaceDir,
+      userId: job?.user_id || pipeline.userId,
+      projectId: job?.project_id || pipeline.projectId,
+      runId: pipeline.runId,
+      jobId,
+      status,
+    });
+
+    updateJob(jobId, {
+      run_storage: {
+        provider: 'cloudflare-r2',
+        bucket: runStorage.bucket,
+        prefix: runStorage.prefix,
+        manifest_key: runStorage.manifestKey,
+        json_file_count: runStorage.jsonFileCount,
+        total_json_bytes: runStorage.totalJsonBytes,
+      },
+      artifact_upload_error: null,
+    });
+    return runStorage;
+  } catch (err) {
+    const message = err?.message || 'Unknown run artifact upload error';
+    console.error('[persistRunJsonArtifacts] R2 upload failed:', message);
+    updateJob(jobId, { artifact_upload_error: message });
+    return null;
+  }
 }
 
 async function persistJobSnapshot(job) {
@@ -271,6 +336,25 @@ function reportSummaryToFinalReport(summary, score) {
   };
 }
 
+function finalReportKeyFromRunArtifacts(runArtifacts) {
+  const prefix = runArtifacts?.prefix;
+  if (!prefix) return null;
+  return `${String(prefix).replace(/\/+$/, '')}/7_reporter/final_report.json`;
+}
+
+async function loadFinalReportFromR2Summary(summary) {
+  const runArtifacts = summary?.run_artifacts || summary?.job_state?.run_storage;
+  const finalReportKey = finalReportKeyFromRunArtifacts(runArtifacts);
+  if (!finalReportKey) return null;
+
+  try {
+    return await getJsonObject(finalReportKey);
+  } catch (err) {
+    console.error('[loadFinalReportFromR2Summary] Failed to read final report from R2:', err.message);
+    return null;
+  }
+}
+
 function loadFinalReportFromJobState(jobState) {
   if (!jobState?.run_id || !jobState?.user_id) return null;
   const reportPath = path.join(
@@ -290,9 +374,11 @@ function loadFinalReportFromJobState(jobState) {
   }
 }
 
-function hydrateJobWithPersistedReport(job, persisted) {
+async function hydrateJobWithPersistedReport(job, persisted) {
   if (!job || !persisted?.result_summary || persisted.result_summary.job_state) return job;
-  const finalReport = reportSummaryToFinalReport(persisted.result_summary, persisted.score);
+  if (job.result?.final_report) return job;
+  const finalReport = await loadFinalReportFromR2Summary(persisted.result_summary)
+    || reportSummaryToFinalReport(persisted.result_summary, persisted.score);
   if (!finalReport) return job;
   return {
     ...job,
@@ -327,11 +413,16 @@ async function getPersistedJobByProject(projectId, userId) {
 
   const jobState = data.result_summary?.job_state;
   if (jobState) {
-    const finalReport = reportSummaryToFinalReport(data.result_summary, data.score)
+    const finalReport = await loadFinalReportFromR2Summary(data.result_summary)
+      || reportSummaryToFinalReport(data.result_summary, data.score)
       || loadFinalReportFromJobState(jobState);
     if (finalReport && !jobState.result?.final_report) {
+      const nextSummary = finalReportToResultSummary(finalReport);
+      const existingArtifacts = data.result_summary?.run_artifacts || data.result_summary?.job_state?.run_storage;
       updateTestHistoryByJob(data.job_id, {
-        result_summary: finalReportToResultSummary(finalReport),
+        result_summary: existingArtifacts
+          ? { ...nextSummary, run_artifacts: existingArtifacts }
+          : nextSummary,
         score: finalReport.health_score,
       }).catch(err => {
         console.error('[getPersistedJobByProject] Failed to repair persisted report:', err.message);
@@ -344,7 +435,8 @@ async function getPersistedJobByProject(projectId, userId) {
     };
   }
 
-  const finalReport = reportSummaryToFinalReport(data.result_summary, data.score);
+  const finalReport = await loadFinalReportFromR2Summary(data.result_summary)
+    || reportSummaryToFinalReport(data.result_summary, data.score);
   return {
     success: true,
     job_id: data.job_id,
@@ -426,6 +518,49 @@ function isPathInside(parentDir, candidatePath) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+function removeDirIfInside(parentDir, targetDir, label) {
+  if (!targetDir) return;
+  const parent = path.resolve(parentDir);
+  const target = path.resolve(targetDir);
+  if (!isPathInside(parent, target)) {
+    console.warn(`[cleanup] Skip ${label}: path is outside ${parent}`);
+    return;
+  }
+  fs.rmSync(target, { recursive: true, force: true });
+}
+
+function cleanupLocalPipelineFiles({ jobId, userId, sourcePath, runWorkspaceDir, cleanupWorkspace = false }) {
+  if (!userId) return;
+  const workspaceRoot = path.resolve(WORKSPACE_BASE_PATH);
+  const sourceRoot = path.resolve(SOURCE_WORKSPACE_BASE_PATH);
+  const userWorkspaceDir = path.join(workspaceRoot, safeName(userId));
+  const userSourceDir = path.join(sourceRoot, safeName(userId));
+
+  try {
+    if (sourcePath) {
+      const resolvedSource = path.resolve(sourcePath);
+      if (isPathInside(workspaceRoot, resolvedSource)) {
+        removeDirIfInside(workspaceRoot, resolvedSource, 'workspace source');
+      } else if (isPathInside(sourceRoot, resolvedSource)) {
+        removeDirIfInside(sourceRoot, resolvedSource, 'uploaded source');
+      }
+    }
+
+    if (cleanupWorkspace && runWorkspaceDir) {
+      removeDirIfInside(workspaceRoot, runWorkspaceDir, 'run workspace');
+    }
+
+    if (cleanupWorkspace && !hasActiveJobsForUser(userId, jobId)) {
+      removeDirIfInside(workspaceRoot, userWorkspaceDir, 'user workspace');
+      removeDirIfInside(sourceRoot, userSourceDir, 'user uploaded sources');
+    } else if (!cleanupWorkspace && !hasActiveJobsForUser(userId, jobId)) {
+      removeDirIfInside(sourceRoot, userSourceDir, 'user uploaded sources');
+    }
+  } catch (err) {
+    console.error('[cleanupLocalPipelineFiles] Failed to clean local files:', err.message);
+  }
+}
+
 function extractZipSafely(zipPath, extractRoot) {
   const zip = new AdmZip(zipPath);
   const entries = zip.getEntries();
@@ -455,9 +590,10 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
   await updateTestHistoryByJob(jobId, { start_time: startedAt, status: 'running' });
 
   const job = getJob(jobId);
+  let pipeline = null;
 
   try {
-    const pipeline = new Pipeline({
+    pipeline = new Pipeline({
       userId: job.user_id,
       projectId: job.project_id,
       sourceCodePath: sourcePath,
@@ -469,13 +605,15 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
     await pipeline.execute(baseUrl || TARGET_BASE_URL);
 
     const tokensUsed   = pipeline.tokensUsed   || 0;
+    const inputTokens = pipeline.inputTokens || 0;
+    const outputTokens = pipeline.outputTokens || 0;
     const finishedAt = new Date().toISOString();
     const result = pipeline.loadFinalReport();
     const score = result.final_report && result.final_report.health_score != null
       ? parseScoreValue(result.final_report.health_score)
       : null;
 
-    updateJobAndSnapshot(jobId, {
+    const completedJob = updateJobAndSnapshot(jobId, {
       status: 'completed',
       stage: 'completed',
       progress_percent: 100,
@@ -483,16 +621,32 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       sub_progress: null,
       finished_at: finishedAt,
       tokens_used: tokensUsed,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
       result,
     });
+    if (completedJob?.persisted) await completedJob.persisted;
 
-    const resultSummary = finalReportToResultSummary(result?.final_report);
+    const runStorage = await persistRunJsonArtifacts(jobId, pipeline, 'completed');
+    const resultSummary = addRunStorageToSummary(
+      finalReportToResultSummary(result?.final_report),
+      runStorage
+    );
 
     await updateTestHistoryByJob(jobId, {
       end_time: finishedAt,
       status: 'completed',
       score,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
       result_summary: resultSummary,
+    });
+    cleanupLocalPipelineFiles({
+      jobId,
+      userId: job.user_id,
+      sourcePath,
+      runWorkspaceDir: pipeline.runWorkspaceDir,
+      cleanupWorkspace: !!runStorage,
     });
     addUserTokens(job.user_id, tokensUsed).catch(err => {
       console.error('[runPipelineJob] token accounting error:', err.message);
@@ -513,11 +667,20 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       finished_at: finishedAt,
       error,
     });
+    if (failedJob?.persisted) await failedJob.persisted;
+    const runStorage = await persistRunJsonArtifacts(jobId, pipeline, 'failed');
     await updateTestHistoryByJob(jobId, {
       end_time: finishedAt,
       status: 'failed',
       score: null,
-      result_summary: { job_state: buildJobState(failedJob) },
+      result_summary: addRunStorageToSummary({ job_state: buildJobState(getJob(jobId) || failedJob) }, runStorage),
+    });
+    cleanupLocalPipelineFiles({
+      jobId,
+      userId: currentJob?.user_id || failedJob?.user_id,
+      sourcePath,
+      runWorkspaceDir: pipeline?.runWorkspaceDir,
+      cleanupWorkspace: !!runStorage,
     });
   }
 }
@@ -549,14 +712,6 @@ async function uploadSource(req, res) {
     fs.rmSync(extractDir, { recursive: true, force: true });
     fs.renameSync(tempExtractDir, extractDir);
 
-    const fileSizeBytes = req.file.size || 0;
-    const sourceStorage = await uploadSourceArchiveWithManifest({
-      archivePath,
-      originalFilename: req.file.originalname,
-      userId,
-      projectId,
-      projectName,
-    });
     fs.rmSync(archivePath, { force: true });
 
     await ensureProjectRecord({
@@ -565,17 +720,6 @@ async function uploadSource(req, res) {
       projectName: path.basename(req.file.originalname, '.zip'),
       description: `Uploaded from ${req.file.originalname}`,
     });
-
-    // Ghi log upload file zip vào Supabase
-    const { error: uploadedFileError } = await supabase.from('uploaded_files').insert([{
-      project_id: projectId,
-      file_name: req.file.originalname,
-      file_path: sourceStorage.archiveKey,
-      file_size: fileSizeBytes,
-    }]);
-    if (uploadedFileError) {
-      throw new Error(`Could not save uploaded file record: ${uploadedFileError.message}`);
-    }
 
     return res.json({
       success: true,
@@ -586,15 +730,6 @@ async function uploadSource(req, res) {
         project_name: projectName,
         workspace_path: path.join(workspaceRoot, safeName(userId)),
         source_path: extractDir,
-        source_archive_path: sourceStorage.archiveKey,
-        source_manifest_path: sourceStorage.manifestKey,
-        source_storage: {
-          provider: 'cloudflare-r2',
-          bucket: sourceStorage.bucket,
-          prefix: sourceStorage.prefix,
-          archive_key: sourceStorage.archiveKey,
-          manifest_key: sourceStorage.manifestKey,
-        },
       },
     });
   } catch (err) {
@@ -654,7 +789,7 @@ async function getTestStatus(req, res) {
   const job = getJobByProject(project_id);
   if (job) {
     const persisted = await getPersistedTestReport(project_id, req.user.id);
-    return res.json({ success: true, data: hydrateJobWithPersistedReport(job, persisted) });
+    return res.json({ success: true, data: await hydrateJobWithPersistedReport(job, persisted) });
   }
 
   const persistedJob = await getPersistedJobByProject(project_id, req.user.id);

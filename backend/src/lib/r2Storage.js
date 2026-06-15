@@ -1,6 +1,5 @@
 const fs = require('fs');
-const crypto = require('crypto');
-const AdmZip = require('adm-zip');
+const path = require('path');
 const {
   R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID,
@@ -44,79 +43,6 @@ function safeKeySegment(value, fallback = 'item') {
     .replace(/^[._-]+|[._-]+$/g, '') || fallback;
 }
 
-function normalizeZipEntryName(entryName) {
-  return String(entryName || '')
-    .replace(/\\/g, '/')
-    .replace(/^\/+/, '');
-}
-
-function sha256File(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
-    const stream = fs.createReadStream(filePath);
-    stream.on('data', chunk => hash.update(chunk));
-    stream.on('error', reject);
-    stream.on('end', () => resolve(hash.digest('hex')));
-  });
-}
-
-function crc32Hex(value) {
-  if (!Number.isFinite(value)) return null;
-  return (value >>> 0).toString(16).padStart(8, '0');
-}
-
-function getCommonRoot(files) {
-  if (files.length === 0) return null;
-  const firstParts = files[0].path.split('/');
-  if (firstParts.length <= 1) return null;
-  const candidate = firstParts[0];
-  return files.every(file => file.path.split('/')[0] === candidate) ? candidate : null;
-}
-
-async function createSourceManifest({
-  archivePath,
-  originalFilename,
-  userId,
-  projectId,
-  projectName,
-}) {
-  const zip = new AdmZip(archivePath);
-  const entries = zip.getEntries();
-  const files = entries
-    .filter(entry => !entry.isDirectory)
-    .map(entry => ({
-      path: normalizeZipEntryName(entry.entryName),
-      size: entry.header.size,
-      compressed_size: entry.header.compressedSize,
-      crc32: crc32Hex(entry.header.crc),
-    }))
-    .filter(file => file.path)
-    .sort((a, b) => a.path.localeCompare(b.path));
-
-  const archiveStats = fs.statSync(archivePath);
-  const topLevel = [...new Set(files.map(file => file.path.split('/')[0]).filter(Boolean))].sort();
-
-  return {
-    schema_version: 1,
-    generated_at: new Date().toISOString(),
-    user_id: userId,
-    project_id: projectId,
-    project_name: projectName,
-    original_filename: originalFilename,
-    archive: {
-      size: archiveStats.size,
-      sha256: await sha256File(archivePath),
-    },
-    zip: {
-      file_count: files.length,
-      total_uncompressed_size: files.reduce((sum, file) => sum + (file.size || 0), 0),
-      common_root: getCommonRoot(files),
-      top_level_entries: topLevel,
-    },
-    files,
-  };
-}
-
 async function putObject({ key, body, contentType, contentLength, metadata }) {
   const { PutObjectCommand } = require('@aws-sdk/client-s3');
   await getClient().send(new PutObjectCommand({
@@ -129,47 +55,120 @@ async function putObject({ key, body, contentType, contentLength, metadata }) {
   }));
 }
 
-async function uploadSourceArchiveWithManifest({
-  archivePath,
-  originalFilename,
+function streamToString(stream) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on('data', chunk => chunks.push(Buffer.from(chunk)));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+  });
+}
+
+async function getJsonObject(key) {
+  const { GetObjectCommand } = require('@aws-sdk/client-s3');
+  const response = await getClient().send(new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+  }));
+  return JSON.parse(await streamToString(response.Body));
+}
+
+function isJsonFile(filePath) {
+  return path.extname(filePath).toLowerCase() === '.json';
+}
+
+function walkJsonFiles(rootDir) {
+  if (!rootDir || !fs.existsSync(rootDir)) return [];
+
+  const files = [];
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+      } else if (entry.isFile() && isJsonFile(fullPath)) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
+function toObjectKeyPath(relativePath) {
+  return relativePath.split(path.sep).map(segment => safeKeySegment(segment, 'item')).join('/');
+}
+
+function stageFromRelativePath(relativePath) {
+  const [first] = relativePath.split(/[\\/]/);
+  return first || 'run';
+}
+
+async function uploadRunJsonArtifacts({
+  runWorkspaceDir,
   userId,
   projectId,
-  projectName,
+  runId,
+  jobId,
+  status,
 }) {
+  const rootDir = path.resolve(runWorkspaceDir);
   const safeUserId = safeKeySegment(userId, 'user');
   const safeProjectId = safeKeySegment(projectId, 'project');
-  const prefix = `users/${safeUserId}/projects/${safeProjectId}/source`;
-  const archiveKey = `${prefix}/source.zip`;
-  const manifestKey = `${prefix}/manifest.json`;
+  const prefix = `users/${safeUserId}/${safeProjectId}`;
+  const jsonFiles = walkJsonFiles(rootDir);
 
-  const manifest = await createSourceManifest({
-    archivePath,
-    originalFilename,
-    userId,
-    projectId,
-    projectName,
-  });
-  const archiveStats = fs.statSync(archivePath);
-  const manifestBody = JSON.stringify({
-    ...manifest,
+  const uploadedFiles = [];
+  for (const filePath of jsonFiles) {
+    const relativePath = path.relative(rootDir, filePath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) continue;
+
+    const stats = fs.statSync(filePath);
+    const key = `${prefix}/${toObjectKeyPath(relativePath)}`;
+    await putObject({
+      key,
+      body: fs.createReadStream(filePath),
+      contentType: 'application/json',
+      contentLength: stats.size,
+      metadata: {
+        user_id: String(userId),
+        project_id: String(projectId),
+        run_id: String(runId),
+        job_id: String(jobId || ''),
+        stage: stageFromRelativePath(relativePath),
+      },
+    });
+
+    uploadedFiles.push({
+      path: relativePath.replace(/\\/g, '/'),
+      key,
+      size: stats.size,
+      stage: stageFromRelativePath(relativePath),
+    });
+  }
+
+  const manifestKey = `${prefix}/manifest.json`;
+  const manifest = {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    user_id: userId,
+    project_id: projectId,
+    run_id: runId,
+    job_id: jobId || null,
+    status: status || null,
     storage: {
       provider: 'cloudflare-r2',
       bucket: R2_BUCKET_NAME,
-      archive_key: archiveKey,
+      prefix,
       manifest_key: manifestKey,
     },
-  }, null, 2);
-
-  await putObject({
-    key: archiveKey,
-    body: fs.createReadStream(archivePath),
-    contentType: 'application/zip',
-    contentLength: archiveStats.size,
-    metadata: {
-      user_id: String(userId),
-      project_id: String(projectId),
-    },
-  });
+    json_file_count: uploadedFiles.length,
+    total_json_bytes: uploadedFiles.reduce((sum, file) => sum + file.size, 0),
+    files: uploadedFiles,
+  };
+  const manifestBody = JSON.stringify(manifest, null, 2);
 
   await putObject({
     key: manifestKey,
@@ -179,18 +178,23 @@ async function uploadSourceArchiveWithManifest({
     metadata: {
       user_id: String(userId),
       project_id: String(projectId),
+      run_id: String(runId),
+      job_id: String(jobId || ''),
+      status: String(status || ''),
     },
   });
 
   return {
     bucket: R2_BUCKET_NAME,
     prefix,
-    archiveKey,
     manifestKey,
-    manifest,
+    jsonFileCount: manifest.json_file_count,
+    totalJsonBytes: manifest.total_json_bytes,
+    files: uploadedFiles,
   };
 }
 
 module.exports = {
-  uploadSourceArchiveWithManifest,
+  getJsonObject,
+  uploadRunJsonArtifacts,
 };

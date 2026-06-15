@@ -43,6 +43,26 @@ function formatDuration(seconds) {
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
+function formatCredits(value) {
+  const number = Number(value || 0);
+  return number.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+function creditUsage(stats) {
+  if (!stats) return { creditsLeft: 0, creditsUsed: 0, usedPercent: 0 };
+  const creditsLeft = Number(stats.credits || 0);
+  const creditsUsed = Number(stats.credits_used ?? ((stats.tokens_used || 0) / 500_000));
+  const total = creditsLeft + creditsUsed;
+  return {
+    creditsLeft,
+    creditsUsed,
+    usedPercent: total > 0 ? Math.round((creditsUsed / total) * 100) : 0,
+  };
+}
+
 function normalizeResultSummary(item) {
   const s = item?.result_summary;
   if (!s || s.job_state) return null;
@@ -299,7 +319,6 @@ export default function Dashboard() {
           user_id: src.user_id,
           project_id: src.project_id,
           source_path: src.source_path,
-          source_archive_path: src.source_archive_path,
           source_name: src.project_name,
           test_type: testType,
         }, { headers: { Authorization: `Bearer ${token}` } });
@@ -379,8 +398,8 @@ export default function Dashboard() {
     },
     {
       icon: Zap, iconBg: "bg-violet-100", iconColor: "text-violet-600",
-      label: t.stats.creditsLeft, value: usageStats ? usageStats.credits.toLocaleString() : "—",
-      sub: usageStats ? `${usageStats.tokens_used.toLocaleString()} used` : t.stats.loading,
+      label: t.stats.creditsLeft, value: usageStats ? formatCredits(creditUsage(usageStats).creditsLeft) : "—",
+      sub: usageStats ? `${formatCredits(creditUsage(usageStats).creditsUsed)} credits used` : t.stats.loading,
       accent: "border-l-violet-500",
     },
   ];
@@ -451,7 +470,7 @@ export default function Dashboard() {
           >
             <CreditCard className="h-4 w-4 shrink-0" />
             {sidebarOpen && <span className="whitespace-nowrap flex-1">{t.nav.billing}</span>}
-            {sidebarOpen && usageStats && usageStats.credits < 100_000 && (
+            {sidebarOpen && usageStats && creditUsage(usageStats).creditsLeft < 1 && (
               <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">Low</span>
             )}
           </Link>
@@ -517,11 +536,11 @@ export default function Dashboard() {
         <main ref={mainRef} className="flex-1 overflow-y-auto p-6">
 
           {/* Low credits warning */}
-          {usageStats && usageStats.credits < 1 && (
+          {usageStats && creditUsage(usageStats).creditsLeft < 1 && (
             <div className="mb-5 flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
               <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-orange-800">{t.credits.warning} — {usageStats.credits.toLocaleString()} {t.credits.remaining}</p>
+                <p className="text-sm font-semibold text-orange-800">{t.credits.warning} — {formatCredits(creditUsage(usageStats).creditsLeft)} {t.credits.remaining}</p>
                 <p className="text-xs text-orange-600 mt-0.5">{t.credits.hint}</p>
               </div>
               <Link to="/billing"
@@ -838,14 +857,14 @@ export default function Dashboard() {
                         <Zap className="h-3.5 w-3.5 text-violet-600" />
                         <span className="text-xs font-semibold text-violet-700">{t.stats.creditsLeft}</span>
                       </div>
-                      <span className="text-sm font-bold text-violet-700">{parseFloat(usageStats.credits).toFixed(2)}</span>
+                      <span className="text-sm font-bold text-violet-700">{formatCredits(creditUsage(usageStats).creditsLeft)}</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-violet-100 overflow-hidden">
                       <div className="h-full rounded-full bg-violet-500 transition-all duration-700"
-                        style={{ width: `${(() => { const cu = usageStats.tokens_used / 500_000; return cu + usageStats.credits > 0 ? Math.round((cu / (cu + usageStats.credits)) * 100) : 0; })()}%` }}
+                        style={{ width: `${creditUsage(usageStats).usedPercent}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-violet-400 mt-1">{usageStats.tokens_used.toLocaleString()} tokens used</p>
+                    <p className="text-[10px] text-violet-400 mt-1">{formatCredits(creditUsage(usageStats).creditsUsed)} credits used</p>
                   </div>
                 </div>
               )}
@@ -892,7 +911,8 @@ export default function Dashboard() {
                       const summary = normalizeResultSummary(item);
                       const score = parseScore(item.score ?? summary?.health_score);
                       const variant = scoreBadgeVariant(score);
-                      const canOpenReport = Boolean(item.project_id);
+                      const canOpenProgress = item.status === "running" && Boolean(item.project_id);
+                      const canOpenReport = item.status !== "running" && Boolean(item.project_id);
 
                       const durationSec = item.start_time && item.end_time
                         ? Math.round((new Date(item.end_time) - new Date(item.start_time)) / 1000)
@@ -962,13 +982,19 @@ export default function Dashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            {canOpenReport && (
+                            {canOpenProgress ? (
+                              <button onClick={() => navigate(`/test-progress/${item.project_id}`)}
+                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 whitespace-nowrap"
+                              >
+                                View Progress <ChevronRight className="h-3 w-3" />
+                              </button>
+                            ) : canOpenReport ? (
                               <button onClick={() => navigate(`/test-report/${item.project_id}`)}
                                 className="text-xs font-semibold text-orange-600 hover:text-orange-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 whitespace-nowrap"
                               >
                                 {t.history.report} <ChevronRight className="h-3 w-3" />
                               </button>
-                            )}
+                            ) : null}
                           </td>
                         </tr>
                       );

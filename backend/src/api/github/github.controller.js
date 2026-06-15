@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const { findById, updateById } = require('../../lib/userStore');
+const { invalidateUserCache } = require('../../middleware/auth');
 const {
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
@@ -68,6 +69,7 @@ async function handleCallback(req, res) {
       github_login:  profileRes.data.login,
       github_avatar: profileRes.data.avatar_url,
     });
+    invalidateUserCache(pending.userId);
 
     res.redirect(dashboardRedirectUrl(`github=connected&login=${profileRes.data.login}`));
   } catch (err) {

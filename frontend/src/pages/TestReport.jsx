@@ -94,6 +94,16 @@ function normalizeResultSummary(item) {
 }
 
 function reportFromHistoryItem(item) {
+  const jobState = item?.result_summary?.job_state;
+  if (jobState) {
+    return {
+      ...jobState,
+      project_id: item.project_id || jobState.project_id,
+      job_id: item.job_id || jobState.job_id,
+      finished_at: item.end_time || jobState.finished_at,
+    };
+  }
+
   const finalReport = normalizeResultSummary(item);
   if (!finalReport) return null;
   return {
@@ -126,6 +136,26 @@ function formatDate(value) {
   });
 }
 
+function readableStage(value) {
+  if (!value) return "Unknown";
+  return String(value)
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function failureInfoFromRun(run) {
+  const error = run?.error || {};
+  const details = error.details && typeof error.details === "object" ? error.details : null;
+  return {
+    stage: error.details?.stage || run?.stage || "failed",
+    message: error.message || run?.message || "The pipeline failed before returning a detailed error message.",
+    type: error.type || "PipelineError",
+    details,
+    stack: error.stack || null,
+    finishedAt: run?.finished_at || run?.result?.finished_at,
+  };
+}
+
 function ScoreRing({ score }) {
   const colors = scoreColors(score);
   const radius = 52;
@@ -151,6 +181,82 @@ function ScoreRing({ score }) {
       <div className="relative text-center">
         <p className={`text-4xl font-black tabular-nums ${colors.text}`}>{score}</p>
         <p className="text-xs font-semibold text-slate-500">/100</p>
+      </div>
+    </div>
+  );
+}
+
+function FailureReport({ run, projectId }) {
+  const failure = failureInfoFromRun(run);
+  const detailEntries = failure.details ? Object.entries(failure.details) : [];
+
+  return (
+    <div className="text-left">
+      <div className="mb-8">
+        <p className="text-sm font-semibold uppercase tracking-wide text-red-600">Pipeline failed</p>
+        <h1 className="mt-2 text-3xl font-bold font-display tracking-tight text-slate-900">
+          Test run failed
+        </h1>
+        <p className="mt-2 text-sm text-slate-500 break-all">
+          {run?.project_id || projectId}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="rounded-lg border border-red-100 bg-red-50 p-4">
+          <XCircle className="h-5 w-5 text-red-600 mb-2" />
+          <p className="text-lg font-bold text-red-800">{readableStage(failure.stage)}</p>
+          <p className="text-sm text-red-600">Failed stage</p>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <AlertTriangle className="h-5 w-5 text-orange-600 mb-2" />
+          <p className="text-lg font-bold text-slate-900">{failure.type}</p>
+          <p className="text-sm text-slate-500">Error type</p>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <Clock3 className="h-5 w-5 text-blue-600 mb-2" />
+          <p className="text-base font-semibold text-slate-900">{formatDate(failure.finishedAt)}</p>
+          <p className="text-sm text-slate-500">Finished at</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-red-100 bg-white p-6">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Failure reason</h2>
+            <p className="text-sm text-slate-500">The pipeline stopped before a final report could be generated.</p>
+          </div>
+          <FileWarning className="h-5 w-5 text-red-500" />
+        </div>
+
+        <div className="rounded-lg border border-red-100 bg-red-50 p-4">
+          <p className="whitespace-pre-wrap text-sm leading-6 text-red-800">{failure.message}</p>
+        </div>
+
+        {detailEntries.length > 0 ? (
+          <div className="mt-5">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Details</h3>
+            <div className="space-y-2">
+              {detailEntries.map(([key, value]) => (
+                <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{readableStage(key)}</p>
+                  <pre className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+                    {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {failure.stack ? (
+          <div className="mt-5">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Stack trace</h3>
+            <pre className="max-h-80 overflow-auto rounded-lg border border-slate-100 bg-slate-950 p-4 text-xs leading-5 text-slate-100">
+              {failure.stack}
+            </pre>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -226,6 +332,7 @@ export default function TestReport() {
   const summary = report.summary || {};
   const issues = Array.isArray(report.issues) ? report.issues : [];
   const finishedAt = run?.finished_at || run?.result?.finished_at;
+  const isFailedWithoutReport = run?.status === "failed" && !hasReportContent(report);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -244,6 +351,8 @@ export default function TestReport() {
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-slate-500 text-left">
             {t.loading}
           </div>
+        ) : isFailedWithoutReport ? (
+          <FailureReport run={run} projectId={projectId} />
         ) : !hasReportContent(report) ? (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-left">
             <h1 className="text-2xl font-bold text-slate-900">{t.notAvailable}</h1>

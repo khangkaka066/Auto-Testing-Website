@@ -77,7 +77,7 @@ function welcomeEmail({ name, email }) {
         <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:12px;padding:16px;margin-bottom:24px;display:flex;align-items:center;gap:12px">
           <span style="font-size:20px">🎁</span>
           <div>
-            <p style="margin:0;font-size:13px;font-weight:600;color:#7c3aed">500,000 credits miễn phí đã được thêm vào tài khoản của bạn</p>
+            <p style="margin:0;font-size:13px;font-weight:600;color:#7c3aed">5 credits miễn phí đã được thêm vào tài khoản của bạn</p>
             <p style="margin:4px 0 0;font-size:12px;color:#9061f9">Đủ để chạy hàng chục test pipeline ngay hôm nay</p>
           </div>
         </div>

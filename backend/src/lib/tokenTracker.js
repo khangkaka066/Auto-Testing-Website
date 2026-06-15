@@ -5,17 +5,27 @@ const jobTokenStorage = new AsyncLocalStorage();
 
 const TOKENS_PER_CREDIT = 500_000;
 
+function weightedTokens(inputTokens = 0, outputTokens = 0) {
+  return Math.max(0, Math.round((inputTokens || 0) + ((outputTokens || 0) * 4)));
+}
+
+function creditsForTokens(tokenCount = 0) {
+  return (tokenCount || 0) / TOKENS_PER_CREDIT;
+}
+
 async function getUserStats(userId) {
   const user = await findById(userId);
+  const tokensUsed = user?.tokens_used ?? 0;
   return {
-    tokens_used: user?.tokens_used ?? 0,
+    tokens_used: tokensUsed,
+    credits_used: creditsForTokens(tokensUsed),
     credits:     user?.credits     ?? INITIAL_CREDITS,
   };
 }
 
 async function addUserTokens(userId, count) {
   if (!count || count <= 0) return;
-  const creditCost = count / TOKENS_PER_CREDIT; // float, e.g. 1.38
+  const creditCost = creditsForTokens(count); // float, e.g. 1.38
 
   // Try atomic RPC first (requires DB function to accept p_credits as NUMERIC)
   const supabase = require('./supabase');
@@ -55,4 +65,4 @@ function recordTokens(usageObj) {
   store.total  += usageObj.total_tokens      || 0;
 }
 
-module.exports = { getUserStats, addUserTokens, runWithTracking, recordTokens };
+module.exports = { getUserStats, addUserTokens, runWithTracking, recordTokens, weightedTokens, creditsForTokens, TOKENS_PER_CREDIT };

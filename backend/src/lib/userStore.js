@@ -1,6 +1,6 @@
 const supabase = require('./supabase');
 
-const INITIAL_CREDITS = 5; // 5 free credits = 2,500,000 tokens
+const INITIAL_CREDITS = 5; // 1 credit = 500,000 weighted tokens
 
 async function findByEmail(email) {
   const { data } = await supabase

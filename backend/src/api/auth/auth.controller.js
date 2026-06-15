@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { PORT, GOOGLE_CLIENT_ID, FRONTEND_URL } = require('../../config/env');
-const { findByEmail, findById } = require('../../lib/userStore');
+const { findByEmail, findById, INITIAL_CREDITS } = require('../../lib/userStore');
 const { getUserStats } = require('../../lib/tokenTracker');
 const { invalidateUserCache } = require('../../middleware/auth');
 const { sendMail } = require('../../lib/mailer');
@@ -99,7 +99,7 @@ async function register(req, res) {
     name: displayName,
     email: email.trim(),
     password_hash: await bcrypt.hash(password, 10),
-    credits: 500_000,
+    credits: INITIAL_CREDITS,
     email_verified: false,
     created_at: new Date().toISOString(),
   }]);
@@ -244,7 +244,7 @@ async function googleAuth(req, res) {
         name: displayName,
         email,
         password_hash: await bcrypt.hash(uuidv4(), 10),
-        credits: 500_000,
+        credits: INITIAL_CREDITS,
         email_verified: true, // Google already verified the email
         created_at: new Date().toISOString(),
       }]);

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { WORKSPACE_BASE_PATH, TARGET_BASE_URL } = require('../config/env');
-const { runWithTracking } = require('../lib/tokenTracker');
+const { runWithTracking, weightedTokens } = require('../lib/tokenTracker');
 
 const detector  = require('./stages/detector');
 const analyzer  = require('./stages/analyzer');
@@ -401,16 +401,17 @@ class Pipeline {
       }
     });
 
-    this.tokensUsed   = tokenResult.total;
     this.inputTokens  = tokenResult.input;
     this.outputTokens = tokenResult.output;
+    this.rawTokensUsed = tokenResult.total;
+    this.tokensUsed   = weightedTokens(this.inputTokens, this.outputTokens);
 
     // gpt-5-nano pricing (update if model changes)
     const PRICE_INPUT  = 1.10 / 1_000_000; // $1.10 per 1M input tokens
     const PRICE_OUTPUT = 4.40 / 1_000_000; // $4.40 per 1M output tokens
     this.costUsd = this.inputTokens * PRICE_INPUT + this.outputTokens * PRICE_OUTPUT;
 
-    console.log(`=== AI PIPELINE COMPLETED — input: ${this.inputTokens}, output: ${this.outputTokens}, total: ${this.tokensUsed}, cost: $${this.costUsd.toFixed(6)} ===\n`);
+    console.log(`=== AI PIPELINE COMPLETED — input: ${this.inputTokens}, output: ${this.outputTokens}, weighted: ${this.tokensUsed}, raw: ${this.rawTokensUsed}, cost: $${this.costUsd.toFixed(6)} ===\n`);
   }
 
   loadFinalReport() {

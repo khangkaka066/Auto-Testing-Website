@@ -50,4 +50,12 @@ function getJob(jobId) {
   return job ? { ...job } : null;
 }
 
-module.exports = { createJob, updateJob, getJobByProject, getJob };
+function hasActiveJobsForUser(userId, excludeJobId = null) {
+  return Object.values(_jobs).some(job =>
+    job.user_id === userId &&
+    job.job_id !== excludeJobId &&
+    ['queued', 'running'].includes(job.status)
+  );
+}
+
+module.exports = { createJob, updateJob, getJobByProject, getJob, hasActiveJobsForUser };
