@@ -534,6 +534,10 @@ function removeDirIfInside(parentDir, targetDir, label) {
 }
 
 function cleanupLocalPipelineFiles({ jobId, userId, sourcePath, runWorkspaceDir, cleanupWorkspace = false }) {
+  if (process.env.DEBUG_KEEP_RUNS === 'true') {
+    console.log('[cleanupLocalPipelineFiles] DEBUG_KEEP_RUNS=true → skip cleanup');
+    return;
+  }
   if (!userId) return;
   const workspaceRoot = path.resolve(WORKSPACE_BASE_PATH);
   const sourceRoot = path.resolve(SOURCE_WORKSPACE_BASE_PATH);

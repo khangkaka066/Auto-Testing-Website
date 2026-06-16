@@ -8,7 +8,7 @@ const apiRoutes = require('./api/index');
 const { errorMiddleware } = require('./middleware/error');
 
 const app = express();
-
+app.set("trust proxy", 1);
 // Nén response — giảm băng thông ~70% cho JSON responses
 app.use(compression());
 

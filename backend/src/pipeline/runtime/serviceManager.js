@@ -458,6 +458,13 @@ async function startRuntimeServices(infrastructure, outputDir, extraBackendEnv =
       const service = buildService(selected.frontend, 'frontend', port);
       const env = {
         ...process.env,
+        // Backend EC2 có thể NODE_ENV=production,
+        // nhưng frontend dev server như craco/react-scripts/vite start phải chạy development.
+        NODE_ENV: 'development',
+
+        // Đảm bảo yarn/npm không bỏ devDependencies như craco, react-scripts, vite...
+        YARN_PRODUCTION: 'false',
+        NPM_CONFIG_PRODUCTION: 'false',
         PORT: String(port),
         VITE_PORT: String(port),
         BASE_URL: service.url,
