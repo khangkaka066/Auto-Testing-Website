@@ -1,5 +1,25 @@
 // File: backend/utils/playwright_template.config.ts
 import { defineConfig, devices } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+
+function loadTestPilotRuntimeEnv() {
+  const runtimeEnvPath = path.resolve(process.cwd(), 'testpilot-runtime-env.json');
+  if (!fs.existsSync(runtimeEnvPath)) return;
+
+  try {
+    const runtimeEnv = JSON.parse(fs.readFileSync(runtimeEnvPath, 'utf-8'));
+    for (const [key, value] of Object.entries(runtimeEnv)) {
+      if (typeof value === 'string' && value && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    // Ignore malformed runtime metadata; executor still passes env directly.
+  }
+}
+
+loadTestPilotRuntimeEnv();
 
 const frontendInstallCommand = process.env.FRONTEND_INSTALL_COMMAND;
 const frontendStartCommand = process.env.FRONTEND_COMMAND;

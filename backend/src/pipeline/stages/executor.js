@@ -97,11 +97,34 @@ function runCommand(command, args, options) {
   });
 }
 
+function writeRuntimeEnvFiles(workingDir, env) {
+  const runtimeEnv = {
+    BASE_URL: env.BASE_URL || '',
+    FRONTEND_URL: env.FRONTEND_URL || env.BASE_URL || '',
+    API_BASE_URL: env.API_BASE_URL || '',
+    BACKEND_URL: env.BACKEND_URL || env.API_BASE_URL || '',
+    PLAYWRIGHT_MANAGED_SERVICES: env.PLAYWRIGHT_MANAGED_SERVICES || '',
+  };
+
+  fs.writeFileSync(
+    path.join(workingDir, 'testpilot-runtime-env.json'),
+    JSON.stringify(runtimeEnv, null, 2),
+    'utf-8'
+  );
+  fs.writeFileSync(
+    path.join(workingDir, 'executor_env.json'),
+    JSON.stringify(runtimeEnv, null, 2),
+    'utf-8'
+  );
+}
+
 async function run(specsDir, reportFile, workingDir, baseUrl, envOverrides = {}) {
   fs.mkdirSync(path.dirname(reportFile), { recursive: true });
 
   const env = Object.assign({}, process.env, envOverrides);
   if (baseUrl) env.BASE_URL = baseUrl;
+  if (env.BASE_URL && !env.FRONTEND_URL) env.FRONTEND_URL = env.BASE_URL;
+  writeRuntimeEnvFiles(workingDir, env);
   const playwrightJsonPath = path.join(workingDir, 'playwright-report.json');
 
   const result = await runCommand(
