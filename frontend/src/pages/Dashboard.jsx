@@ -156,12 +156,14 @@ export default function Dashboard() {
         if (cancelled) return;
         if (profileRes.data.success) {
           const profileUser = profileRes.data.user;
+          if (profileUser.is_admin) { navigate("/admin", { replace: true }); return; }
           const name = profileUser.name || "Developer";
-          setUser({ name, email: profileUser.email || "" });
+          setUser({ name, email: profileUser.email || "", is_pro: profileUser.is_pro || false });
           setAvatar(profileUser.avatar || "");
           setInitial(name.charAt(0).toUpperCase());
           localStorage.setItem("user_name", name);
           localStorage.setItem("user_avatar", profileUser.avatar || "");
+          localStorage.setItem("user", JSON.stringify(profileUser));
         }
 
         const [historyResult, dashboardStatsResult, usageStatsResult, githubStatusResult] =
@@ -485,7 +487,14 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white text-xs font-semibold truncate">{user.name}</p>
-                <p className="text-slate-500 text-[10px] truncate">{t.nav.freePlan}</p>
+                {user.is_pro ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300">
+                    <svg className="h-2.5 w-2.5 fill-amber-300" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    Pro
+                  </span>
+                ) : (
+                  <p className="text-slate-500 text-[10px] truncate">{t.nav.freePlan}</p>
+                )}
               </div>
               <button onClick={handleLogout} title={t.nav.signOut} className="text-slate-500 hover:text-red-400 transition-colors p-1 rounded">
                 <LogOut className="h-3.5 w-3.5" />

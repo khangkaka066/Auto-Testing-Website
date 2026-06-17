@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import API_BASE_URL from "../../config";
 import {
   MessageCircle,
@@ -113,7 +113,8 @@ function Bubble({ msg }) {
   }
 
   return (
-    <div className={`flex gap-2 ${isUser ? "flex-row-reverse" : "flex-row"} items-end`}>
+    <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
+      <div className={`flex max-w-[88%] items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       {/* Avatar */}
       <div
         className={`h-7 w-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold ${
@@ -131,7 +132,7 @@ function Bubble({ msg }) {
 
       {/* Bubble */}
       <div
-        className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+        className={`min-w-0 max-w-full break-words px-3 py-2 rounded-2xl text-sm leading-relaxed ${
           isUser
             ? "bg-orange-500 text-white rounded-br-sm"
             : msg.role === "agent"
@@ -140,6 +141,7 @@ function Bubble({ msg }) {
         }`}
         dangerouslySetInnerHTML={{ __html: formatText(msg.content) }}
       />
+      </div>
     </div>
   );
 }
@@ -189,6 +191,13 @@ export default function ChatWidget() {
   const [mode, setMode] = useState("bot");
   const [unread, setUnread] = useState(0);
   const [showEscalate, setShowEscalate] = useState(false);
+  // Real chat session
+  const [sessionId, setSessionId] = useState(null);
+  const pollRef = useRef(null);
+  const lastMsgIdRef = useRef(null);
+  const lastPollAtRef = useRef(null);
+  const seenAdminMsgIdsRef = useRef(new Set());
+  const isSendingRef = useRef(false); // sync guard against double-send
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -210,76 +219,142 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, { id: Date.now() + Math.random(), ...msg }]);
   };
 
-  // ── Send user message ──
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || isTyping) return;
-
+  const clearInput = useCallback(() => {
     setInput("");
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+      inputRef.current.value = "";
+      inputRef.current.style.height = "40px";
+      inputRef.current.style.overflowY = "hidden";
+    });
+  }, []);
+
+  // ── Poll for admin replies ──
+  const pollMessages = useCallback(async (sid) => {
+    try {
+      const params = lastPollAtRef.current ? { since: lastPollAtRef.current } : {};
+      const res = await axios.get(`${API_BASE_URL}/api/chat/messages/${sid}`, { params });
+      lastPollAtRef.current = new Date().toISOString();
+      const msgs = res.data.data || [];
+      const adminMsgs = msgs.filter(m => m.role === "admin");
+      if (adminMsgs.length === 0) return;
+
+      adminMsgs.forEach((msg) => {
+        if (seenAdminMsgIdsRef.current.has(msg.id)) return;
+        seenAdminMsgIdsRef.current.add(msg.id);
+        lastMsgIdRef.current = msg.id;
+        pushMessage({ role: "agent", content: msg.content });
+      });
+      if (!isOpen) setUnread(n => n + 1);
+    } catch {}
+  }, [isOpen]);
+
+  useEffect(() => {
+    clearInterval(pollRef.current);
+    if (mode === "human" && sessionId) {
+      pollRef.current = setInterval(() => pollMessages(sessionId), 3000);
+    }
+    return () => clearInterval(pollRef.current);
+  }, [mode, sessionId, pollMessages]);
+
+  // ── Send user message ──
+  const handleSend = async (overrideText) => {
+    const text = (typeof overrideText === "string" ? overrideText : input).trim();
+    if (!text || isTyping || isSendingRef.current) return;
+    isSendingRef.current = true;
+
+    clearInput();
     setShowEscalate(false);
     pushMessage({ role: "user", content: text });
 
     if (mode === "human") {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-        pushMessage({
-          role: "agent",
-          content:
-            "Cảm ơn bạn đã nhắn tin! Để được hỗ trợ nhanh nhất, hãy liên hệ trực tiếp qua **Zalo: 0999939979** 📱. Supporter sẽ phản hồi bạn trong thời gian sớm nhất.",
-        });
-      }, 1500);
+      if (sessionId) {
+        try {
+          const token = localStorage.getItem("token");
+          const storedUser = token ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+          await axios.post(`${API_BASE_URL}/api/chat/message`, {
+            session_id: sessionId,
+            content: text,
+            sender_name: storedUser.name || "Khách",
+          });
+        } catch {}
+      }
+      clearInput();
+      isSendingRef.current = false;
       return;
     }
 
-    // Bot mode: try backend first, fall back to local KB
+    // Bot mode: always use local knowledge base (no OpenAI for chat)
     setIsTyping(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `${API_BASE_URL}/api/chat`,
-        { message: text },
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-      );
-      setIsTyping(false);
-      const answer = res.data.reply || res.data.message || "";
-      pushMessage({ role: "bot", content: answer });
-      if (res.data.escalate) setShowEscalate(true);
-    } catch {
-      // Fallback to local knowledge base
-      await new Promise((r) => setTimeout(r, 900 + Math.random() * 600));
+      await new Promise((r) => setTimeout(r, 800 + Math.random() * 500));
       setIsTyping(false);
       const { text: answer, escalate } = getBotAnswer(text);
       pushMessage({ role: "bot", content: answer });
       if (escalate) setShowEscalate(true);
+    } finally {
+      isSendingRef.current = false;
     }
 
     if (!isOpen) setUnread((n) => n + 1);
   };
 
   // ── Escalate to human ──
-  const handleEscalate = () => {
+  const handleEscalate = async () => {
     setShowEscalate(false);
     setMode("connecting");
-    pushMessage({
-      role: "system",
-      content: "Connecting you to a live agent…",
-    });
+    pushMessage({ role: "system", content: "Đang kết nối với supporter…" });
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const sessionKey = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem("chat_session_key", sessionKey);
+
+      // Try to get user info: from localStorage first, then from API
+      const token = localStorage.getItem("token");
+      let storedUser = {};
+      try { storedUser = JSON.parse(localStorage.getItem("user") || "{}"); } catch {}
+
+      if (token && (!storedUser.email)) {
+        try {
+          const profileRes = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (profileRes.data.success) {
+            storedUser = profileRes.data.user;
+            localStorage.setItem("user", JSON.stringify(storedUser));
+          }
+        } catch {}
+      }
+
+      const res = await axios.post(`${API_BASE_URL}/api/chat/session`, {
+        session_key: sessionKey,
+        user_name: storedUser.name || "Khách",
+        user_email: storedUser.email || "",
+      });
+
+      if (!res.data.success) throw new Error(res.data.message || "Session creation failed");
+
+      const newSessionId = res.data.data?.id;
+      if (newSessionId) setSessionId(newSessionId);
+      lastPollAtRef.current = new Date().toISOString();
+      lastMsgIdRef.current = null;
+      seenAdminMsgIdsRef.current = new Set();
+
       setIsTyping(false);
       setMode("human");
-      pushMessage({
-        role: "system",
-        content: "Supporter đã tham gia cuộc trò chuyện",
-      });
+      pushMessage({ role: "system", content: "Yêu cầu hỗ trợ đã được gửi. Supporter sẽ phản hồi tại đây khi có người trực." });
+    } catch (err) {
+      console.error("[ChatWidget] Escalate failed:", err.response?.data || err.message);
+      // Tables not created yet or server error — show honest message
+      setIsTyping(false);
+      setMode("human");
+      pushMessage({ role: "system", content: "Đang kết nối qua kênh dự phòng" });
       pushMessage({
         role: "agent",
-        content:
-          "Xin chào! Tôi là supporter của TestPilot. Tôi đã xem qua cuộc trò chuyện của bạn.\n\nBạn có thể liên hệ trực tiếp với tôi qua **Zalo: 0999939979** 📱 để được hỗ trợ nhanh hơn. Tôi có thể giúp gì cho bạn?",
+        content: "Xin chào! Hệ thống chat trực tiếp đang được thiết lập. Trong thời gian chờ, bạn có thể liên hệ qua **Zalo: 0999939979** 📱 để được hỗ trợ ngay.",
       });
-    }, 2500);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -376,10 +451,7 @@ export default function ChatWidget() {
               {["How does it work?", "What's the pricing?", "Liên hệ Zalo"].map((q) => (
                 <button
                   key={q}
-                  onClick={() => {
-                    setInput(q);
-                    setTimeout(() => handleSend(), 50);
-                  }}
+                  onClick={() => handleSend(q)}
                   className="text-xs font-medium text-slate-600 bg-slate-100 hover:bg-orange-50 hover:text-orange-600 px-3 py-1.5 rounded-full transition-colors border border-slate-200"
                 >
                   {q}
@@ -401,15 +473,16 @@ export default function ChatWidget() {
                   : "Hỏi bất cứ điều gì…"
               }
               rows={1}
-              className="flex-1 resize-none text-sm rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent placeholder:text-slate-400 max-h-24 overflow-y-auto"
-              style={{ minHeight: "40px" }}
+              className="flex-1 resize-none text-sm leading-5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent placeholder:text-slate-400 max-h-24 overflow-y-hidden"
+              style={{ minHeight: "40px", scrollbarWidth: "none" }}
               onInput={(e) => {
                 e.target.style.height = "auto";
                 e.target.style.height = Math.min(e.target.scrollHeight, 96) + "px";
+                e.target.style.overflowY = e.target.scrollHeight > 96 ? "auto" : "hidden";
               }}
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isTyping}
               className="h-10 w-10 flex-shrink-0 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 text-white flex items-center justify-center transition-colors"
               aria-label="Send"

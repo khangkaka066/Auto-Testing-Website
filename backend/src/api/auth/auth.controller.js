@@ -8,6 +8,7 @@ const { invalidateUserCache } = require('../../middleware/auth');
 const { sendMail } = require('../../lib/mailer');
 const { welcomeEmail, loginNotificationEmail } = require('../../lib/emailTemplates');
 const { joinUrl } = require('../../lib/url');
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@123456,testpilotadmin@gmail.com').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 const supabase = require('../../lib/supabase');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../../lib/email');
 
@@ -203,7 +204,7 @@ async function login(req, res) {
     success: true,
     message: 'Login successful',
     token: makeToken(user.id),
-    user: { id: user.id, name: user.name, email: user.email },
+    user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin === true || ADMIN_EMAILS.includes((user.email || '').toLowerCase()) },
   });
 }
 
@@ -278,9 +279,20 @@ async function googleAuth(req, res) {
   }
 }
 
-function getProfile(req, res) {
-  const { name, email, avatar } = req.user;
-  return res.json({ success: true, user: { name, email, avatar: avatar || '' } });
+async function getProfile(req, res) {
+  const { id, name, email, avatar, is_admin } = req.user;
+  const isAdmin = is_admin === true || ADMIN_EMAILS.includes((email || '').toLowerCase());
+
+  // Pro = has at least one completed/succeeded transaction
+  const { count } = await supabase
+    .from('transactions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', id)
+    .in('status', ['completed', 'succeeded']);
+
+  const isPro = (count || 0) > 0;
+
+  return res.json({ success: true, user: { name, email, avatar: avatar || '', is_admin: isAdmin, is_pro: isPro } });
 }
 
 function getGoogleClientConfig(req, res) {

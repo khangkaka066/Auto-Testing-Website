@@ -27,6 +27,7 @@ import CommunityPage from "./pages/CommunityPage";
 import BlogPage from "./pages/BlogPage";
 import RoadmapPage from "./pages/RoadmapPage";
 import AboutPage from "./pages/AboutPage";
+import AdminPage from "./pages/AdminPage";
 import { Toaster } from "./components/ui/sonner";
 import ContactWidget from "./components/ui/ContactWidget";
 import ChatWidget from "./components/ui/ChatWidget";
@@ -59,6 +60,7 @@ function App() {
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </BrowserRouter>
         <Toaster position="bottom-left" />

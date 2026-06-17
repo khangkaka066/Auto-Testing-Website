@@ -24,7 +24,8 @@ function LoginContent({ enableGoogle = true }) {
         toast.success(res.data.message);
         localStorage.setItem("token", res.data.token);
         if (res.data.user?.name) localStorage.setItem("user_name", res.data.user.name);
-        navigate("/dashboard");
+        if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+        navigate(res.data.user?.is_admin ? "/admin" : "/dashboard");
       }
     } catch (err) {
       if (err.response?.data?.requiresVerification) {
@@ -67,7 +68,8 @@ function LoginContent({ enableGoogle = true }) {
         toast.success("Signed in with Google successfully!");
         localStorage.setItem("token", res.data.token);
         if (res.data.user?.name) localStorage.setItem("user_name", res.data.user.name);
-        navigate("/dashboard");
+        if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+        navigate(res.data.user?.is_admin ? "/admin" : "/dashboard");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Google authentication failed");
