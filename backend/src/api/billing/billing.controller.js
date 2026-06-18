@@ -22,7 +22,7 @@ const BANK_TRANSFER = {
   bank_bin: '970422',
   bank_name: 'MBBank',
   account_no: '0335828579',
-  account_name: 'Lai Hoan Minh Phuc',
+  account_name: 'Lai Hoang Minh Phuc',
   vietqr_account_name: 'Automate Inc.',
   template: 'compact2',
 };
