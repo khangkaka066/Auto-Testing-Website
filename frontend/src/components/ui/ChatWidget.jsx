@@ -382,7 +382,7 @@ export default function ChatWidget() {
     <>
       {/* ── Chat panel ── */}
       {isOpen && (
-        <div className="fixed top-1/2 right-24 z-50 w-[360px] max-h-[560px] -translate-y-1/2 flex flex-col rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed top-1/2 left-24 z-50 w-[360px] max-h-[560px] -translate-y-1/2 flex flex-col rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-slate-900 text-white">
@@ -516,7 +516,7 @@ export default function ChatWidget() {
       {/* ── Floating button ── */}
       <button
         onClick={() => setIsOpen((o) => !o)}
-        className="fixed top-1/2 right-6 z-50 h-14 w-14 -translate-y-[68px] rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group"
+        className="fixed top-1/2 left-6 z-50 h-14 w-14 -translate-y-[68px] rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group"
         aria-label="Open chat"
       >
         <div className={`transition-all duration-200 ${isOpen ? "rotate-90 scale-90" : "rotate-0 scale-100"}`}>

@@ -90,6 +90,7 @@ export const dashboardT = {
     "status": "Status",
     "passedFailed": "Passed / Failed",
     "score": "Score",
+    "creditsUsed": "Credits",
     "report": "Report",
     "empty": "No test history yet",
     "emptyHint": "Run your first test to see results here"

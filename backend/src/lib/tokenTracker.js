@@ -25,27 +25,63 @@ async function getUserStats(userId) {
 
 async function addUserTokens(userId, count) {
   if (!count || count <= 0) return;
-  const creditCost = creditsForTokens(count); // float, e.g. 1.38
+  const creditCost = creditsForTokens(count);
 
-  // Try atomic RPC first (requires DB function to accept p_credits as NUMERIC)
   const supabase = require('./supabase');
-  let error = null;
+
+  // Try atomic RPC first
   try {
-    const result = await supabase.rpc('increment_user_tokens', {
+    const { error } = await supabase.rpc('increment_user_tokens', {
       p_user_id: userId,
       p_tokens: count,
       p_credits: creditCost,
     });
-    error = result.error;
+    if (!error) {
+      console.log(`[tokenTracker] RPC ok — deducted ${creditCost.toFixed(6)} credits for user ${userId}`);
+      return;
+    }
+    console.warn('[tokenTracker] RPC failed, using fallback:', error.message);
   } catch (err) {
-    error = { message: err.message || 'rpc_failed' };
+    console.warn('[tokenTracker] RPC exception, using fallback:', err.message);
   }
 
-  if (error) {
-    // Fallback: read-modify-write (credits column must be NUMERIC in DB)
-    await updateById(userId, {
-      $inc: { tokens_used: count, credits: -creditCost },
-    }).catch(err => console.error('[tokenTracker] fallback error:', err.message));
+  // Fallback: direct read-modify-write
+  try {
+    const user = await findById(userId);
+    if (!user) { console.error('[tokenTracker] user not found:', userId); return; }
+    const currentCredits = parseFloat(user.credits) || 0;
+    const newTokensUsed  = (user.tokens_used || 0) + count;
+
+    // Try with full float precision first (requires numeric column type)
+    const newCreditsFloat = Math.max(0, currentCredits - creditCost);
+    const { error: floatErr } = await supabase
+      .from('users')
+      .update({ credits: newCreditsFloat, tokens_used: newTokensUsed })
+      .eq('id', userId);
+
+    if (!floatErr) {
+      console.log(`[tokenTracker] fallback ok — credits: ${currentCredits} → ${newCreditsFloat.toFixed(6)} for user ${userId}`);
+      return;
+    }
+
+    // If column is bigint/integer, round to nearest integer
+    if (floatErr.message?.includes('bigint') || floatErr.message?.includes('integer')) {
+      console.warn('[tokenTracker] credits column is integer type — rounding. Run: ALTER TABLE users ALTER COLUMN credits TYPE numeric(12,6) USING credits::numeric;');
+      const newCreditsInt = Math.max(0, Math.floor(currentCredits - creditCost));
+      const { error: intErr } = await supabase
+        .from('users')
+        .update({ credits: newCreditsInt, tokens_used: newTokensUsed })
+        .eq('id', userId);
+      if (intErr) {
+        console.error('[tokenTracker] integer fallback failed:', intErr.message);
+      } else {
+        console.log(`[tokenTracker] integer fallback ok — credits: ${currentCredits} → ${newCreditsInt} for user ${userId}`);
+      }
+    } else {
+      console.error('[tokenTracker] fallback update failed:', floatErr.message);
+    }
+  } catch (err) {
+    console.error('[tokenTracker] fallback exception:', err.message);
   }
 }
 

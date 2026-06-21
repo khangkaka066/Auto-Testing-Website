@@ -656,7 +656,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       runWorkspaceDir: pipeline.runWorkspaceDir,
       cleanupWorkspace: !!runStorage,
     });
-    addUserTokens(job.user_id, tokensUsed).catch(err => {
+    await addUserTokens(job.user_id, tokensUsed).catch(err => {
       console.error('[runPipelineJob] token accounting error:', err.message);
     });
   } catch (err) {

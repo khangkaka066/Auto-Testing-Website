@@ -291,6 +291,29 @@ export default function Dashboard() {
     if (uploadMode === "github" && githubStatus?.connected && repos.length === 0) loadRepos();
   }, [uploadMode, githubStatus?.connected, repos.length, loadRepos]);
 
+  // Re-fetch credits a few seconds after mount if user just returned from a completed test
+  useEffect(() => {
+    let lastResult = null;
+    try { lastResult = JSON.parse(localStorage.getItem("last_test_result") || "null"); } catch {}
+    if (!lastResult) return;
+    const finishedAt = lastResult.finished_at;
+    if (finishedAt) {
+      const elapsed = Date.now() - new Date(finishedAt).getTime();
+      if (elapsed > 120_000) return; // skip if test finished more than 2 minutes ago
+    }
+    const timer = setTimeout(async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/auth/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data.success) setUsageStats(res.data.data);
+      } catch {}
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const selectZip = (file) => {
     if (!file?.name.toLowerCase().endsWith(".zip")) { toast.error(t.toasts.selectZip); return; }
     setZipFile(file);
@@ -912,6 +935,7 @@ export default function Dashboard() {
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[12%]">{t.history.status}</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[13%]">{t.history.passedFailed}</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[10%]">{t.history.score}</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-[10%]">{t.history.creditsUsed}</th>
                       <th className="px-4 py-3 w-[2%]"></th>
                     </tr>
                   </thead>
@@ -989,6 +1013,20 @@ export default function Dashboard() {
                             ) : (
                               <span className="text-xs text-slate-400">—</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {(() => {
+                              const weighted = (item.input_tokens || 0) + (item.output_tokens || 0) * 4;
+                              const credits = weighted / 500_000;
+                              return credits > 0 ? (
+                                <div className="flex items-center gap-1">
+                                  <Zap className="h-3 w-3 text-violet-500" />
+                                  <span className="text-xs font-semibold text-violet-600">
+                                    {credits < 0.001 ? "<0.001" : credits.toFixed(3)}
+                                  </span>
+                                </div>
+                              ) : <span className="text-xs text-slate-400">—</span>;
+                            })()}
                           </td>
                           <td className="px-4 py-3">
                             {canOpenProgress ? (

@@ -147,7 +147,7 @@ export default function ContactWidget() {
     <>
       {/* Panel */}
       {open && (
-        <div className="fixed top-1/2 right-24 z-50 w-[360px] -translate-y-1/2 flex flex-col rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        <div className="fixed top-1/2 left-24 z-50 w-[360px] -translate-y-1/2 flex flex-col rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           style={{ maxHeight: "560px" }}>
 
           {/* Header */}
@@ -325,13 +325,13 @@ export default function ContactWidget() {
       <button
         onClick={open ? handleClose : handleOpen}
         aria-label={text.aria}
-        className="fixed top-1/2 right-6 z-50 h-14 w-14 translate-y-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group">
+        className="fixed top-1/2 left-6 z-50 h-14 w-14 translate-y-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center group">
         {open
           ? <X className="h-6 w-6" />
           : <Mail className="h-6 w-6 group-hover:scale-110 transition-transform" />
         }
         {!open && (
-          <span className="absolute -top-10 right-0 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          <span className="absolute -top-10 left-0 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             {text.contact}
           </span>
         )}
