@@ -131,18 +131,33 @@ export default function BillingPage() {
 
     try {
       const res = await axios.post(
-        `${API_BASE_URL}/api/billing/create-bank-transfer`,
+        `${API_BASE_URL}/api/billing/create-payos-payment`,
         { credit_amount: creditAmount },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       if (res.data.success) {
-        setPaymentInfo(res.data.data);
-        toast.success(t.toasts.qrReady || "Đã tạo mã QR thanh toán");
-        await loadTransactions(token);
+        const checkoutUrl = res.data.data?.checkout_url;
+
+        if (!checkoutUrl) {
+          throw new Error("PayOS checkout URL missing");
+        }
+
+        window.location.href = checkoutUrl;
+        return;
       }
+
+      throw new Error(res.data.message || "Cannot create PayOS payment");
     } catch (err) {
-      toast.error(err.response?.data?.message || t.toasts.checkoutFailed || "Không thể tạo QR thanh toán");
+      toast.error(
+        err.response?.data?.message ||
+        err.message ||
+        "Cannot create PayOS payment"
+      );
     } finally {
       setBuying(false);
     }
