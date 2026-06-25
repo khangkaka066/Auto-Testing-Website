@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const AdmZip = require('adm-zip');
 const { createJob, updateJob, getJobByProject, getJob, hasActiveJobsForUser } = require('../../lib/jobStore');
 const Pipeline = require('../../pipeline/Pipeline');
-const { addUserTokens } = require('../../lib/tokenTracker');
+const { addUserTokens, getUserStats } = require('../../lib/tokenTracker');
 const supabase = require('../../lib/supabase');
 const { getJsonObject, uploadRunJsonArtifacts } = require('../../lib/r2Storage');
 const {
@@ -761,6 +761,11 @@ async function startTest(req, res) {
     return res.status(403).json({ success: false, message: 'user_id does not match the authenticated user' });
   }
 
+  const userStats = await getUserStats(authenticatedUserId);
+  if (!userStats || (parseFloat(userStats.credits) || 0) <= 0) {
+    return res.status(402).json({ success: false, message: 'Insufficient credits. Please top up to continue testing.' });
+  }
+
   const resolvedSourcePath = path.resolve(source_path);
   const projectsDir = path.join(path.resolve(WORKSPACE_BASE_PATH), safeName(authenticatedUserId), 'projects');
   if (!isPathInside(projectsDir, resolvedSourcePath)) {
@@ -850,6 +855,11 @@ async function startTestFromGithub(req, res) {
   }
   if (!githubToken) {
     return res.status(403).json({ success: false, message: 'GitHub not connected. Please connect your GitHub account first.' });
+  }
+
+  const userStats = await getUserStats(userId);
+  if (!userStats || (parseFloat(userStats.credits) || 0) <= 0) {
+    return res.status(402).json({ success: false, message: 'Insufficient credits. Please top up to continue testing.' });
   }
 
   // Validate tên repo an toàn (không có command injection)

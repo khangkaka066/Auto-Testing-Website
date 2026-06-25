@@ -74,8 +74,10 @@ export const dashboardT = {
   },
   "credits": {
     "warning": "Credits running low",
+    "noCreditsTitle": "No credits remaining",
     "remaining": "remaining",
     "hint": "Top up now to avoid interruptions during test runs.",
+    "noCreditsHint": "You cannot start a new test without credits. Please top up to continue.",
     "topUp": "Top Up"
   },
   "history": {
@@ -104,6 +106,7 @@ export const dashboardT = {
     "selectRepo": "Please select a repository",
     "pipelineStarted": "Test pipeline started!",
     "cloningStarted": "pipeline started!",
-    "startFailed": "Failed to start test"
+    "startFailed": "Failed to start test",
+    "noCredits": "You have no credits remaining. Please top up to continue testing."
   }
 };

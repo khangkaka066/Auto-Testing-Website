@@ -328,6 +328,10 @@ export default function Dashboard() {
   const handleStartTest = async () => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
+    if (usageStats && creditUsage(usageStats).creditsLeft <= 0) {
+      toast.error(t.toasts.noCredits, { duration: 6000 });
+      return;
+    }
     if (uploadMode === "zip" && !zipFile) { toast.error(t.toasts.selectZipFirst); return; }
     if (uploadMode === "github" && !selectedRepo) { toast.error(t.toasts.selectRepo); return; }
 
@@ -567,20 +571,35 @@ export default function Dashboard() {
         {/* Content */}
         <main ref={mainRef} className="flex-1 overflow-y-auto p-6">
 
-          {/* Low credits warning */}
+          {/* Low / no credits warning */}
           {usageStats && creditUsage(usageStats).creditsLeft < 1 && (
-            <div className="mb-5 flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-              <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-orange-800">{t.credits.warning} — {formatCredits(creditUsage(usageStats).creditsLeft)} {t.credits.remaining}</p>
-                <p className="text-xs text-orange-600 mt-0.5">{t.credits.hint}</p>
-              </div>
-              <Link to="/billing"
-                className="shrink-0 flex items-center gap-1.5 bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                <CreditCard className="h-3.5 w-3.5" /> {t.credits.topUp}
-              </Link>
-            </div>
+            (() => {
+              const noCredits = creditUsage(usageStats).creditsLeft <= 0;
+              return (
+                <div className={`mb-5 flex items-center gap-3 rounded-xl px-4 py-3 border ${
+                  noCredits
+                    ? "bg-red-50 border-red-300"
+                    : "bg-orange-50 border-orange-200"
+                }`}>
+                  <AlertTriangle className={`h-5 w-5 shrink-0 ${noCredits ? "text-red-500" : "text-orange-500"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${noCredits ? "text-red-800" : "text-orange-800"}`}>
+                      {noCredits ? t.credits.noCreditsTitle : t.credits.warning} — {formatCredits(creditUsage(usageStats).creditsLeft)} {t.credits.remaining}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${noCredits ? "text-red-600" : "text-orange-600"}`}>
+                      {noCredits ? t.credits.noCreditsHint : t.credits.hint}
+                    </p>
+                  </div>
+                  <Link to="/billing"
+                    className={`shrink-0 flex items-center gap-1.5 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                      noCredits ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
+                    }`}
+                  >
+                    <CreditCard className="h-3.5 w-3.5" /> {t.credits.topUp}
+                  </Link>
+                </div>
+              );
+            })()
           )}
 
           {/* ── Stats grid (8 cards, 4 per row) ── */}
