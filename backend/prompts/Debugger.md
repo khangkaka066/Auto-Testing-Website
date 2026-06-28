@@ -27,6 +27,21 @@ Produce a corrected test file that compiles and matches the intended test behavi
 - Correct invalid Playwright APIs to official ones.
 - Prefer robust locators and assertions that reflect the described user flow in the test plan.
 
+# TIMEOUT / SELECTOR-NOT-FOUND RULES (most common E2E failures)
+When the error log contains `TimeoutError`, `waiting for locator`, `locator.click: Timeout`, or `strict mode violation`:
+1. The selector likely targets a **conditionally-rendered element** (modal, dialog, dropdown option, step 2 form, etc.).
+2. Fix pattern — always insert a visibility guard BEFORE the failing interaction:
+   ```typescript
+   // Trigger the parent action first (if missing, add it)
+   await page.locator('#trigger-btn').click();
+   // Wait for the conditional element to appear
+   await expect(page.locator('#conditional-element')).toBeVisible({ timeout: 8000 });
+   // Now interact
+   await page.locator('#conditional-element').click();
+   ```
+3. If the trigger action is already present but the wait is missing, add `await expect(page.locator(selector)).toBeVisible({ timeout: 8000 })` between trigger and interaction.
+4. If the selector itself looks wrong (deep CSS chain, dynamic class), try simpler fallbacks: `[data-testid="..."]`, `role` attribute, or visible text via `page.getByText()`.
+
 # SPECIAL TYPE RULES
 - For `Cannot find name 'process'` (TS2591), either:
   - add `declare const process: any;` and safely use env fallback, or

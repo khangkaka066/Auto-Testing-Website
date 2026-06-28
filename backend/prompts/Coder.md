@@ -56,7 +56,28 @@ These are Playwright E2E tests, not component unit tests.
 - NEVER inject `document.body.innerHTML`.
 - NEVER use Jest, Vitest, Sinon, Testing Library, Enzyme, Storybook mount, or component-test APIs.
 
-### Selector Priority Rules (CRITICAL)
+### ### Visibility Guard Rules (CRITICAL — prevents TimeoutError on conditional elements)
+Before interacting with ANY element that might be conditionally rendered:
+1. **Check `is_conditional`**: If the element's entry in `interactive_elements` has `is_conditional: true` OR if the step description says "wait for", you MUST add a visibility guard line before click/fill:
+   ```typescript
+   await expect(page.locator('selector')).toBeVisible({ timeout: 8000 });
+   ```
+2. **Check step text**: If a planner step says "Wait for X to become visible", translate it exactly into:
+   ```typescript
+   await expect(page.locator('selector')).toBeVisible({ timeout: 8000 });
+   ```
+3. **Never skip the trigger step**: If a test plan step says "Click [A] to open [B]", generate BOTH the click on A AND the wait for B before interacting with B.
+4. **Pattern for dependent interactions**:
+   ```typescript
+   // Step 1: trigger
+   await page.locator('#open-dialog-btn').click();
+   // Step 2: wait guard (mandatory for conditional elements)
+   await expect(page.locator('#dialog-confirm-btn')).toBeVisible({ timeout: 8000 });
+   // Step 3: interact
+   await page.locator('#dialog-confirm-btn').click();
+   ```
+
+Selector Priority Rules (CRITICAL)
 When `component.interactive_elements` is provided in the input:
 1. **Always use the `selector` field** from `interactive_elements` via `page.locator('selector')` for that element.
 2. **Never override** a provided selector with `getByRole`, `getByLabel`, or `getByText` — these fabricate locators that may not match the real DOM.

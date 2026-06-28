@@ -43,6 +43,8 @@ const PlannerOutputSchema = z.object({
   impact_level: z.string(),
   should_generate_plan: z.boolean(),
   skip_reason: z.string(),
+  // FULL = all assertions; INTERACTION = actions only, minimal assertions; SMOKE = page loads only
+  test_scope: z.enum(['FULL', 'INTERACTION', 'SMOKE']).optional(),
   requested_test_types: z.array(z.string()),
   skipped_test_types: z.array(z.string()),
   generation_notes: z.array(z.string()),
@@ -117,6 +119,8 @@ function normalizeTestCase(testCase, index) {
   };
 }
 
+const VALID_TEST_SCOPES = ['FULL', 'INTERACTION', 'SMOKE'];
+
 function normalizePlannerOutput(result) {
   return {
     planner_version: result.planner_version || '1.3',
@@ -125,6 +129,7 @@ function normalizePlannerOutput(result) {
     impact_level: result.impact_level || 'Low',
     should_generate_plan: result.should_generate_plan !== false,
     skip_reason: result.skip_reason || '',
+    test_scope: VALID_TEST_SCOPES.includes(result.test_scope) ? result.test_scope : 'FULL',
     requested_test_types: Array.isArray(result.requested_test_types) ? result.requested_test_types : [],
     skipped_test_types: Array.isArray(result.skipped_test_types) ? result.skipped_test_types : [],
     generation_notes: Array.isArray(result.generation_notes) ? result.generation_notes : [],
@@ -180,13 +185,29 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
   );
 
   const normalizedResult = normalizePlannerOutput(result);
+
+  // Downgrade to INTERACTION scope when the component has conditional rendering and
+  // the AI didn't already choose a more conservative scope. FULL scope on components
+  // with conditional elements causes TimeoutErrors because the Coder generates clicks
+  // on elements that are not yet in the DOM.
+  const hasConditionalElements = Boolean(content.has_conditional_rendering) ||
+    (content.interactive_elements || []).some(el => el.is_conditional);
+  const resolvedScope = hasConditionalElements && normalizedResult.test_scope === 'FULL'
+    ? 'INTERACTION'
+    : normalizedResult.test_scope;
+
+  const conditionalNote = hasConditionalElements && normalizedResult.test_scope === 'FULL'
+    ? ['test_scope downgraded FULL→INTERACTION: component has conditional rendering or conditional interactive elements.']
+    : [];
+
   const data = {
     ...normalizedResult,
+    test_scope: resolvedScope,
     should_generate_plan: true,
     skip_reason: '',
     requested_test_types: applicable,
     skipped_test_types: skipped,
-    generation_notes: [...notes, ...normalizedResult.generation_notes],
+    generation_notes: [...notes, ...normalizedResult.generation_notes, ...conditionalNote],
     file_path: content.file_path,
   };
 

@@ -117,6 +117,10 @@ const UIElementSchema = z.object({
   element_type: z.string(),
   selector: z.string(),
   purpose: z.string(),
+  // "Click the dropdown button first", "Submit step 1 form first", etc.
+  depends_on: z.string().optional(),
+  // true if this element is hidden until another action occurs
+  is_conditional: z.boolean().optional(),
 });
 
 const APIEndpointSchema = z.object({
