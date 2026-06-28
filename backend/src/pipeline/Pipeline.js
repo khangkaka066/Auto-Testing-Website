@@ -11,7 +11,8 @@ const coder     = require('./stages/coder');
 const validator = require('./stages/validator');
 const debugger_ = require('./stages/debugger');
 const executor  = require('./stages/executor');
-const reporter  = require('./stages/reporter');
+const reporter    = require('./stages/reporter');
+const recommender = require('./stages/recommender');
 const { startRuntimeServices } = require('./runtime/serviceManager');
 const { enrichInfrastructureWithAI } = require('./runtime/backendInference');
 const { bootstrapDatabases } = require('./runtime/dbBootstrap');
@@ -26,7 +27,8 @@ const PROGRESS_STAGES = [
   { key: 'validator', label: 'Validating generated tests', percent: 78 },
   { key: 'debugger', label: 'Repairing generated tests when needed', percent: 84 },
   { key: 'executor', label: 'Running Playwright tests', percent: 92 },
-  { key: 'reporter', label: 'Preparing final report', percent: 97 },
+  { key: 'reporter',     label: 'Preparing final report',          percent: 97 },
+  { key: 'recommender', label: 'Generating fix recommendations',   percent: 99 },
 ];
 
 const STAGE_INDEX = PROGRESS_STAGES.reduce((acc, stage, index) => {
@@ -93,8 +95,9 @@ class Pipeline {
       filter:    path.join(this.runWorkspaceDir, '4_filter'),
       coder:     path.join(this.runWorkspaceDir, '5_coder'),
       validator: path.join(this.runWorkspaceDir, '5.5_validator'),
-      executor:  path.join(this.runWorkspaceDir, '6_executor'),
-      reporter:  path.join(this.runWorkspaceDir, '7_reporter'),
+      executor:     path.join(this.runWorkspaceDir, '6_executor'),
+      reporter:     path.join(this.runWorkspaceDir, '7_reporter'),
+      recommender:  path.join(this.runWorkspaceDir, '8_recommender'),
     };
 
     this._setupDirectories();
@@ -334,6 +337,29 @@ class Pipeline {
     return reporter.run(executorJsonPath, this.dirs.reporter);
   }
 
+  async runRecommender() {
+    this._reportProgress('recommender', 'Generating fix recommendations for failed tests');
+    console.log('[STAGE 7] Recommender...');
+    const result = await recommender.run(
+      this.dirs.reporter,
+      this.dirs.analyzer,
+      this.sourceCodePath,
+      this.dirs.recommender
+    );
+
+    // Merge recommendations into final_report.json so it's included in R2 uploads
+    if (result?.recommendations?.length > 0) {
+      const finalReportPath = path.join(this.dirs.reporter, 'final_report.json');
+      if (fs.existsSync(finalReportPath)) {
+        const finalReport = JSON.parse(fs.readFileSync(finalReportPath, 'utf-8'));
+        finalReport.recommendations = result.recommendations;
+        fs.writeFileSync(finalReportPath, JSON.stringify(finalReport, null, 2), 'utf-8');
+      }
+    }
+
+    return result;
+  }
+
   // ── Orchestrate all stages ──────────────────────────────────────
 
   async execute(baseUrl) {
@@ -385,6 +411,7 @@ class Pipeline {
         } else {
           await this.runExecutor(baseUrl);
           const report = await this.runReporter();
+          await this.runRecommender();
           if (!report) {
             throw pipelineError('Executor did not produce a report that can be summarized.', {
               stage: 'executor',
@@ -419,13 +446,14 @@ class Pipeline {
   }
 
   loadFinalReport() {
-    const finalReportPath  = path.join(this.dirs.reporter, 'final_report.json');
-    const executorReportPath = path.join(this.dirs.executor, 'test_report.json');
+    const finalReportPath     = path.join(this.dirs.reporter, 'final_report.json');
+    const executorReportPath  = path.join(this.dirs.executor, 'test_report.json');
     const runtimeServicesPath = path.join(this.dirs.executor, 'runtime_services.json');
+
     return {
-      run_workspace_dir:    this.runWorkspaceDir,
-      final_report_path:   fs.existsSync(finalReportPath)   ? finalReportPath   : null,
-      executor_report_path: fs.existsSync(executorReportPath) ? executorReportPath : null,
+      run_workspace_dir:     this.runWorkspaceDir,
+      final_report_path:     fs.existsSync(finalReportPath)     ? finalReportPath     : null,
+      executor_report_path:  fs.existsSync(executorReportPath)  ? executorReportPath  : null,
       runtime_services_path: fs.existsSync(runtimeServicesPath) ? runtimeServicesPath : null,
       final_report: fs.existsSync(finalReportPath)
         ? JSON.parse(fs.readFileSync(finalReportPath, 'utf-8'))

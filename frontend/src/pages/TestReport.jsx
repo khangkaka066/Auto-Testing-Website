@@ -8,8 +8,10 @@ import {
   CheckCircle2,
   Clock3,
   FileWarning,
+  Wrench,
   XCircle,
 } from "lucide-react";
+import DiffViewer from "../components/DiffViewer";
 import Navbar from "../components/landing/Navbar";
 import { toast } from "sonner";
 import { useT } from "../lib/i18n";
@@ -268,6 +270,7 @@ export default function TestReport() {
   const { testReportT: t } = useT("testing");
   const [run, setRun] = useState(() => loadLocalReport(projectId));
   const [loading, setLoading] = useState(true);
+  const [openFixIndex, setOpenFixIndex] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -331,6 +334,7 @@ export default function TestReport() {
   const score = useMemo(() => parseScore(report.health_score), [report.health_score]);
   const summary = report.summary || {};
   const issues = Array.isArray(report.issues) ? report.issues : [];
+  const recommendations = Array.isArray(report.recommendations) ? report.recommendations : [];
   const finishedAt = run?.finished_at || run?.result?.finished_at;
   const isFailedWithoutReport = run?.status === "failed" && !hasReportContent(report);
 
@@ -413,22 +417,40 @@ export default function TestReport() {
               {issues.length > 0 ? (
                 <div className="space-y-3">
                   {issues.map((issue, index) => {
-                    const file = issue.file || issue.file_path || issue.source_file || issue.page || "Unknown file";
                     const title = issue.title || issue.page || `Issue ${index + 1}`;
+                    const rec = recommendations.find(r => r.issue_index === index);
+                    const isFixOpen = openFixIndex === index;
                     return (
-                      <div key={`${file}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                      <div key={index} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900">{title}</p>
-                            <p className="mt-1 font-mono text-xs text-slate-500 break-all">{file}</p>
                           </div>
-                          <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${severityTone(issue.severity)}`}>
-                            {issue.severity || "Info"}
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${severityTone(issue.severity)}`}>
+                              {issue.severity || "Info"}
+                            </span>
+                            {rec && (
+                              <button
+                                onClick={() => setOpenFixIndex(isFixOpen ? null : index)}
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                  isFixOpen
+                                    ? "bg-violet-600 border-violet-600 text-white"
+                                    : "bg-white border-violet-200 text-violet-700 hover:bg-violet-50"
+                                }`}
+                              >
+                                <Wrench className="h-3 w-3" />
+                                Fix code
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                           {issue.error || issue.message || "No error details were provided."}
                         </p>
+                        {isFixOpen && rec && (
+                          <DiffViewer recommendation={rec} />
+                        )}
                       </div>
                     );
                   })}
