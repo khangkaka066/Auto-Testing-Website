@@ -122,7 +122,12 @@ export default function Dashboard() {
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isEstimating, setIsEstimating] = useState(false);
   const [testType, setTestType] = useState("UI Testing");
+
+  const [showEstimateDialog, setShowEstimateDialog] = useState(false);
+  const [estimateData, setEstimateData] = useState(null);
+  const [pendingUploadedSource, setPendingUploadedSource] = useState(null);
 
   const [githubStatus, setGithubStatus] = useState(null);
   const [repos, setRepos] = useState([]);
@@ -325,6 +330,7 @@ export default function Dashboard() {
     if (e.dataTransfer.files?.[0]) selectZip(e.dataTransfer.files[0]);
   };
 
+  // Step 1: upload zip + estimate → show dialog; GitHub runs directly
   const handleStartTest = async () => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
@@ -335,15 +341,90 @@ export default function Dashboard() {
     if (uploadMode === "zip" && !zipFile) { toast.error(t.toasts.selectZipFirst); return; }
     if (uploadMode === "github" && !selectedRepo) { toast.error(t.toasts.selectRepo); return; }
 
-    setIsTesting(true);
+    if (uploadMode === "github") {
+      // GitHub mode: clone repo silently → run detector → show estimate dialog
+      setIsEstimating(true);
+      let estData = null;
+      let clonedPath = null;
+      try {
+        console.log("[handleStartTest] cloning github repo for estimate...");
+        const estimateRes = await axios.post(`${API_BASE_URL}/api/test/estimate-github`, {
+          repo_full_name: selectedRepo.full_name,
+          branch: selectedBranch || selectedRepo.default_branch || "main",
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        estData = estimateRes.data.data;
+        clonedPath = estData.cloned_path;
+        console.log("[handleStartTest] github estimate ok:", estData);
+      } catch (err) {
+        console.warn("[handleStartTest] github estimate failed (basic dialog):", err?.response?.data || err.message);
+      }
+      setPendingUploadedSource({ mode: "github", cloned_path: clonedPath });
+      setEstimateData(estData);
+      setShowEstimateDialog(true);
+      setIsEstimating(false);
+      return;
+    }
+
+    // ZIP mode: upload → estimate → show dialog
+    setIsEstimating(true);
+    let uploadedSrc = null;
     try {
-      if (uploadMode === "zip") {
-        const form = new FormData();
-        form.append("sourceZip", zipFile);
-        const uploadRes = await axios.post(`${API_BASE_URL}/api/test/upload-source`, form, {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-        });
-        const src = uploadRes.data.data;
+      console.log("[handleStartTest] uploading zip...");
+      const form = new FormData();
+      form.append("sourceZip", zipFile);
+      const uploadRes = await axios.post(`${API_BASE_URL}/api/test/upload-source`, form, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+      });
+      uploadedSrc = uploadRes.data.data;
+      console.log("[handleStartTest] upload ok, source_path:", uploadedSrc.source_path);
+    } catch (err) {
+      console.error("[handleStartTest] upload failed:", err);
+      toast.error(err.response?.data?.message || t.toasts.startFailed);
+      setIsEstimating(false);
+      return;
+    }
+
+    // Estimate credits (best-effort — show dialog even if this fails)
+    let estData = null;
+    try {
+      console.log("[handleStartTest] calling /estimate...");
+      const estimateRes = await axios.post(`${API_BASE_URL}/api/test/estimate`,
+        { source_path: uploadedSrc.source_path },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      estData = estimateRes.data.data;
+      console.log("[handleStartTest] estimate ok:", estData);
+    } catch (err) {
+      console.warn("[handleStartTest] estimate failed (will show basic dialog):", err?.response?.data || err.message);
+    }
+
+    setPendingUploadedSource(uploadedSrc);
+    setEstimateData(estData);     // null if estimate failed → dialog shows fallback UI
+    setShowEstimateDialog(true);
+    setIsEstimating(false);
+  };
+
+  // Step 2: user confirmed → run pipeline
+  const handleConfirmTest = async () => {
+    if (!pendingUploadedSource) return;
+    setShowEstimateDialog(false);
+    setIsTesting(true);
+    const token = localStorage.getItem("token");
+
+    try {
+      if (pendingUploadedSource.mode === "github") {
+        const runRes = await axios.post(`${API_BASE_URL}/api/test/run-github`, {
+          repo_full_name: selectedRepo.full_name,
+          branch: selectedBranch || selectedRepo.default_branch || "main",
+          test_type: testType,
+          pre_cloned_path: pendingUploadedSource.cloned_path || undefined,
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        const projectId = runRes.data.data.project_id;
+        toast.success(`Cloning ${selectedRepo.full_name} — ${t.toasts.cloningStarted}`);
+        sessionStorage.setItem("latest_test_progress", JSON.stringify({ projectId }));
+        navigate(`/test-progress/${projectId}`, { replace: true, state: { projectId } });
+      } else {
+        const src = pendingUploadedSource;
         const runRes = await axios.post(`${API_BASE_URL}/api/test/run`, {
           user_id: src.user_id,
           project_id: src.project_id,
@@ -355,21 +436,17 @@ export default function Dashboard() {
         toast.success(t.toasts.pipelineStarted);
         sessionStorage.setItem("latest_test_progress", JSON.stringify({ projectId, sourcePath: src.source_path }));
         navigate(`/test-progress/${projectId}`, { replace: true, state: { projectId, sourcePath: src.source_path } });
-      } else {
-        const runRes = await axios.post(`${API_BASE_URL}/api/test/run-github`, {
-          repo_full_name: selectedRepo.full_name,
-          branch: selectedBranch || selectedRepo.default_branch || "main",
-          test_type: testType,
-        }, { headers: { Authorization: `Bearer ${token}` } });
-        const projectId = runRes.data.data.project_id;
-        toast.success(`Cloning ${selectedRepo.full_name} — ${t.toasts.cloningStarted}`);
-        sessionStorage.setItem("latest_test_progress", JSON.stringify({ projectId }));
-        navigate(`/test-progress/${projectId}`, { replace: true, state: { projectId } });
       }
     } catch (err) {
       toast.error(err.response?.data?.message || t.toasts.startFailed);
       setIsTesting(false);
     }
+  };
+
+  const handleCancelEstimate = () => {
+    setShowEstimateDialog(false);
+    setEstimateData(null);
+    setPendingUploadedSource(null);
   };
 
   const handleLogout = () => {
@@ -785,16 +862,18 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                   <p className="text-xs text-slate-400">{t.runTests.aiPowered}</p>
                   <button onClick={handleStartTest}
-                    disabled={isTesting || (uploadMode === "zip" && !zipFile) || (uploadMode === "github" && (!githubStatus?.connected || !selectedRepo))}
+                    disabled={isTesting || isEstimating || (uploadMode === "zip" && !zipFile) || (uploadMode === "github" && (!githubStatus?.connected || !selectedRepo))}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all shadow-sm ${
-                      isTesting ? "bg-orange-400 cursor-wait"
+                      isTesting || isEstimating ? "bg-orange-400 cursor-wait"
                       : (uploadMode === "zip" && !zipFile) || (uploadMode === "github" && (!githubStatus?.connected || !selectedRepo))
                         ? "bg-slate-300 cursor-not-allowed"
                         : "bg-orange-600 hover:bg-orange-700 hover:shadow-md active:scale-95"
                     }`}
                   >
                     <Rocket className="h-4 w-4" />
-                    {isTesting ? t.runTests.starting : t.runTests.startTesting}
+                    {isEstimating
+                      ? (uploadMode === "github" ? "Repository Downloading..." : "Đang phân tích...")
+                      : isTesting ? t.runTests.starting : t.runTests.startTesting}
                   </button>
                 </div>
               </div>
@@ -1081,6 +1160,92 @@ export default function Dashboard() {
 
         </main>
       </div>
+
+      {/* Credit Estimate Dialog */}
+      {showEstimateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleCancelEstimate} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-10 w-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Zap className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Confirm Testing</h2>
+                <p className="text-sm text-slate-500">
+                  {estimateData ? "Credit estimate before running" : "Confirm before running"}
+                </p>
+              </div>
+            </div>
+
+            {estimateData ? (
+              <div className="bg-slate-50 rounded-xl p-4 mb-4 space-y-3">
+                {estimateData.file_count !== null && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Estimated credits</span>
+                      <span className="text-sm font-bold text-orange-600">
+                        {estimateData.estimated_credits.min.toFixed(3)} – {estimateData.estimated_credits.max.toFixed(3)}
+                      </span>
+                    </div>
+                    <div className="h-px bg-slate-200" />
+                  </>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Your credits</span>
+                  <span className={`text-sm font-bold ${estimateData.sufficient ? "text-green-600" : "text-red-600"}`}>
+                    {typeof estimateData.current_credits === "number" ? estimateData.current_credits.toFixed(3) : "—"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                <p className="text-sm text-slate-600">
+                  This test will consume your credits. Do you want to continue?
+                </p>
+              </div>
+            )}
+
+            {estimateData && !estimateData.sufficient && (
+              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700">Insufficient credits</p>
+                  <p className="text-xs text-red-600 mt-0.5">You may not have enough credits to complete this test. Please top up.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelEstimate}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              {estimateData && !estimateData.sufficient ? (
+                <button
+                  onClick={() => { handleCancelEstimate(); navigate("/billing"); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-sm font-semibold text-white transition-colors"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Top up credits
+                </button>
+              ) : (
+                <button
+                  onClick={handleConfirmTest}
+                  disabled={isTesting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-sm font-semibold text-white transition-colors disabled:opacity-60"
+                >
+                  <Rocket className="h-4 w-4" />
+                  Start Testing
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

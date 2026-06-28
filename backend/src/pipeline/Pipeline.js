@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { WORKSPACE_BASE_PATH, TARGET_BASE_URL } = require('../config/env');
+const { WORKSPACE_BASE_PATH, TARGET_BASE_URL, KEEP_TEST_CASE } = require('../config/env');
 const { runWithTracking, weightedTokens } = require('../lib/tokenTracker');
 
 const detector  = require('./stages/detector');
@@ -360,10 +360,14 @@ class Pipeline {
       }
 
       if (!isValid) {
-        console.log('[FALLBACK] Removing failed specs...');
-        const removed = validator.removeFailedSpecs(this.specsDir, this.dirs.validator);
-        console.log(`  → Removed ${removed.length} failed spec file(s).`);
-        if (removed.length > 0) isValid = true;
+        if (KEEP_TEST_CASE) {
+          console.log('[FALLBACK] KEEP_TEST_CASE=true — skipping removal of failed specs for debugging.');
+        } else {
+          console.log('[FALLBACK] Removing failed specs...');
+          const removed = validator.removeFailedSpecs(this.specsDir, this.dirs.validator);
+          console.log(`  → Removed ${removed.length} failed spec file(s).`);
+          if (removed.length > 0) isValid = true;
+        }
       }
 
       if (isValid) {

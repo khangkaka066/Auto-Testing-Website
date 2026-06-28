@@ -5,7 +5,9 @@ const { v4: uuidv4 } = require('uuid');
 const AdmZip = require('adm-zip');
 const { createJob, updateJob, getJobByProject, getJob, hasActiveJobsForUser } = require('../../lib/jobStore');
 const Pipeline = require('../../pipeline/Pipeline');
-const { addUserTokens, getUserStats } = require('../../lib/tokenTracker');
+const { addUserTokens, getUserStats, creditsForTokens } = require('../../lib/tokenTracker');
+const detector = require('../../pipeline/stages/detector');
+const { prioritizeFiles } = require('../../pipeline/stages/analyzer');
 const supabase = require('../../lib/supabase');
 const { getJsonObject, uploadRunJsonArtifacts } = require('../../lib/r2Storage');
 const {
@@ -13,6 +15,7 @@ const {
   SOURCE_WORKSPACE_BASE_PATH,
   TARGET_BASE_URL,
   AI_DEBUG,
+  KEEP_TEST_CASE,
 } = require('../../config/env');
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -255,6 +258,7 @@ async function persistRunJsonArtifacts(jobId, pipeline, status) {
       runId: pipeline.runId,
       jobId,
       status,
+      keepTestCase: KEEP_TEST_CASE,
     });
 
     updateJob(jobId, {
@@ -654,7 +658,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       userId: job.user_id,
       sourcePath,
       runWorkspaceDir: pipeline.runWorkspaceDir,
-      cleanupWorkspace: !!runStorage,
+      cleanupWorkspace: KEEP_TEST_CASE ? false : !!runStorage,
     });
     await addUserTokens(job.user_id, tokensUsed).catch(err => {
       console.error('[runPipelineJob] token accounting error:', err.message);
@@ -688,7 +692,7 @@ async function runPipelineJob(jobId, sourcePath, baseUrl, testType = 'UI Testing
       userId: currentJob?.user_id || failedJob?.user_id,
       sourcePath,
       runWorkspaceDir: pipeline?.runWorkspaceDir,
-      cleanupWorkspace: !!runStorage,
+      cleanupWorkspace: KEEP_TEST_CASE ? false : !!runStorage,
     });
   }
 }
@@ -845,8 +849,63 @@ async function getTestDashboardStats(req, res) {
   return res.json({ success: true, data: stats });
 }
 
+async function estimateCreditsGithub(req, res) {
+  const { repo_full_name, branch = 'main' } = req.body;
+  const userId = req.user.id;
+  const githubToken = req.user.github_token;
+
+  if (!repo_full_name) {
+    return res.status(400).json({ success: false, message: 'repo_full_name is required' });
+  }
+  if (!githubToken) {
+    return res.status(403).json({ success: false, message: 'GitHub not connected' });
+  }
+  if (!/^[\w.\-]+\/[\w.\-]+$/.test(repo_full_name)) {
+    return res.status(400).json({ success: false, message: 'Invalid repo name format' });
+  }
+
+  const userSourceDir = path.join(path.resolve(SOURCE_WORKSPACE_BASE_PATH), safeName(userId));
+  const cloneDir = path.join(userSourceDir, `github_estimate_${uuidv4()}`);
+
+  try {
+    fs.mkdirSync(cloneDir, { recursive: true });
+    await downloadGithubArchive({ repoFullName: repo_full_name, branch, githubToken, destinationDir: cloneDir });
+
+    const { totalFiles, eligibleFiles } = countEligibleFiles(cloneDir);
+
+    const minCredits = creditsForTokens(eligibleFiles * ESTIMATE_TOKENS_MIN_PER_FILE);
+    const maxCredits = creditsForTokens(eligibleFiles * ESTIMATE_TOKENS_MAX_PER_FILE);
+
+    const userStats = await getUserStats(userId);
+    const currentCredits = parseFloat(userStats.credits) || 0;
+
+    return res.json({
+      success: true,
+      data: {
+        file_count: eligibleFiles,
+        total_file_count: totalFiles,
+        estimated_credits: {
+          min: parseFloat(minCredits.toFixed(4)),
+          max: parseFloat(maxCredits.toFixed(4)),
+        },
+        current_credits: parseFloat(currentCredits.toFixed(4)),
+        sufficient: currentCredits >= minCredits,
+        cloned_path: cloneDir,
+      },
+    });
+  } catch (err) {
+    fs.rmSync(cloneDir, { recursive: true, force: true });
+    const status = err.response?.status;
+    const reason = status === 404
+      ? `repository or branch not found: ${repo_full_name}@${branch}`
+      : (err.message || 'clone failed');
+    console.error('[estimateCreditsGithub]', reason);
+    return res.status(500).json({ success: false, message: `Clone failed: ${reason}` });
+  }
+}
+
 async function startTestFromGithub(req, res) {
-  const { repo_full_name, branch = 'main', base_url, test_type } = req.body;
+  const { repo_full_name, branch = 'main', base_url, test_type, pre_cloned_path } = req.body;
   const userId = req.user.id;
   const githubToken = req.user.github_token;
 
@@ -862,36 +921,39 @@ async function startTestFromGithub(req, res) {
     return res.status(402).json({ success: false, message: 'Insufficient credits. Please top up to continue testing.' });
   }
 
-  // Validate tên repo an toàn (không có command injection)
   if (!/^[\w.\-]+\/[\w.\-]+$/.test(repo_full_name)) {
     return res.status(400).json({ success: false, message: 'Invalid repo name format' });
   }
 
   const projectId = uuidv4();
-  const cloneDir = path.join(
-    path.resolve(SOURCE_WORKSPACE_BASE_PATH),
-    safeName(userId), `github_${projectId}`
-  );
+  const userSourceDir = path.join(path.resolve(SOURCE_WORKSPACE_BASE_PATH), safeName(userId));
+  let cloneDir;
 
-  try {
-    fs.mkdirSync(path.dirname(cloneDir), { recursive: true });
-    await downloadGithubArchive({
-      repoFullName: repo_full_name,
-      branch,
-      githubToken,
-      destinationDir: cloneDir,
-    });
-  } catch (err) {
-    const status = err.response?.status;
-    const githubMessage = Buffer.isBuffer(err.response?.data)
-      ? err.response.data.toString('utf8')
-      : typeof err.response?.data === 'string'
-        ? err.response.data
-        : err.response?.data?.message || '';
-    const reason = status === 404
-      ? `repository or branch not found: ${repo_full_name}@${branch}`
-      : (githubMessage || err.message || 'download failed');
-    return res.status(400).json({ success: false, message: `Clone failed: ${reason}` });
+  if (pre_cloned_path) {
+    // Reuse previously cloned source from estimate step
+    const resolved = path.resolve(pre_cloned_path);
+    if (!isPathInside(userSourceDir, resolved) || !fs.existsSync(resolved)) {
+      return res.status(400).json({ success: false, message: 'Invalid pre_cloned_path' });
+    }
+    cloneDir = resolved;
+  } else {
+    // Fresh clone
+    cloneDir = path.join(userSourceDir, `github_${projectId}`);
+    try {
+      fs.mkdirSync(path.dirname(cloneDir), { recursive: true });
+      await downloadGithubArchive({ repoFullName: repo_full_name, branch, githubToken, destinationDir: cloneDir });
+    } catch (err) {
+      const status = err.response?.status;
+      const githubMessage = Buffer.isBuffer(err.response?.data)
+        ? err.response.data.toString('utf8')
+        : typeof err.response?.data === 'string'
+          ? err.response.data
+          : err.response?.data?.message || '';
+      const reason = status === 404
+        ? `repository or branch not found: ${repo_full_name}@${branch}`
+        : (githubMessage || err.message || 'download failed');
+      return res.status(400).json({ success: false, message: `Clone failed: ${reason}` });
+    }
   }
 
   await ensureProjectRecord({
@@ -915,4 +977,61 @@ async function startTestFromGithub(req, res) {
   return res.json({ success: true, data: { ...job, repo: repo_full_name, branch } });
 }
 
-module.exports = { uploadSource, startTest, startTestFromGithub, getTestStatus, addTestHistory, getTestHistory, getTestDashboardStats };
+// Heuristic constants (weighted tokens per eligible source file after ranking)
+// ×1.75 to account for output tokens in addition to input tokens
+const ESTIMATE_TOKENS_MIN_PER_FILE = 20_000 * 1.75;
+const ESTIMATE_TOKENS_MAX_PER_FILE = 50_000 * 1.75;
+
+function countEligibleFiles(sourcePath) {
+  const results = detector.run(sourcePath);
+  const allFiles = results.source_files || [];
+  const eligible = prioritizeFiles(allFiles, sourcePath);
+  return { totalFiles: allFiles.length, eligibleFiles: eligible.length };
+}
+
+async function estimateCredits(req, res) {
+  const { source_path } = req.body;
+  const authenticatedUserId = req.user.id;
+
+  if (!source_path) {
+    return res.status(400).json({ success: false, message: 'source_path is required' });
+  }
+
+  const resolvedSourcePath = path.resolve(source_path);
+  const projectsDir = path.join(path.resolve(WORKSPACE_BASE_PATH), safeName(authenticatedUserId), 'projects');
+  if (!isPathInside(projectsDir, resolvedSourcePath)) {
+    return res.status(400).json({ success: false, message: 'source_path must be inside the user projects workspace' });
+  }
+  if (!fs.existsSync(resolvedSourcePath) || !fs.statSync(resolvedSourcePath).isDirectory()) {
+    return res.status(400).json({ success: false, message: 'source_path does not exist or is not a directory' });
+  }
+
+  try {
+    const { totalFiles, eligibleFiles } = countEligibleFiles(resolvedSourcePath);
+
+    const minCredits = creditsForTokens(eligibleFiles * ESTIMATE_TOKENS_MIN_PER_FILE);
+    const maxCredits = creditsForTokens(eligibleFiles * ESTIMATE_TOKENS_MAX_PER_FILE);
+
+    const userStats = await getUserStats(authenticatedUserId);
+    const currentCredits = parseFloat(userStats.credits) || 0;
+
+    return res.json({
+      success: true,
+      data: {
+        file_count: eligibleFiles,
+        total_file_count: totalFiles,
+        estimated_credits: {
+          min: parseFloat(minCredits.toFixed(4)),
+          max: parseFloat(maxCredits.toFixed(4)),
+        },
+        current_credits: parseFloat(currentCredits.toFixed(4)),
+        sufficient: currentCredits >= minCredits,
+      },
+    });
+  } catch (err) {
+    console.error('[estimateCredits]', err.message);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+module.exports = { uploadSource, startTest, startTestFromGithub, getTestStatus, addTestHistory, getTestHistory, getTestDashboardStats, estimateCredits, estimateCreditsGithub };

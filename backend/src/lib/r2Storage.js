@@ -77,6 +77,10 @@ function isJsonFile(filePath) {
   return path.extname(filePath).toLowerCase() === '.json';
 }
 
+function isSpecFile(filePath) {
+  return filePath.endsWith('.spec.ts') || filePath.endsWith('.spec.js');
+}
+
 function isServiceLogFile(filePath) {
   const normalized = filePath.replace(/\\/g, '/');
   return normalized.endsWith('/service_logs/backend.log') ||
@@ -107,6 +111,10 @@ function walkJsonFiles(rootDir) {
   return walkArtifactFiles(rootDir, isJsonFile);
 }
 
+function walkSpecFiles(rootDir) {
+  return walkArtifactFiles(rootDir, isSpecFile);
+}
+
 function walkServiceLogFiles(rootDir) {
   return walkArtifactFiles(rootDir, isServiceLogFile);
 }
@@ -127,6 +135,7 @@ async function uploadRunJsonArtifacts({
   runId,
   jobId,
   status,
+  keepTestCase = false,
 }) {
   const rootDir = path.resolve(runWorkspaceDir);
   const safeUserId = safeKeySegment(userId, 'user');
@@ -134,6 +143,7 @@ async function uploadRunJsonArtifacts({
   const prefix = `users/${safeUserId}/${safeProjectId}`;
   const jsonFiles = walkJsonFiles(rootDir);
   const logFiles = walkServiceLogFiles(rootDir);
+  const specFiles = keepTestCase ? walkSpecFiles(rootDir) : [];
 
   const uploadedFiles = [];
   for (const filePath of jsonFiles) {
@@ -193,6 +203,35 @@ async function uploadRunJsonArtifacts({
     });
   }
 
+  const uploadedSpecs = [];
+  for (const filePath of specFiles) {
+    const relativePath = path.relative(rootDir, filePath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) continue;
+
+    const stats = fs.statSync(filePath);
+    const key = `${prefix}/${toObjectKeyPath(relativePath)}`;
+    await putObject({
+      key,
+      body: fs.createReadStream(filePath),
+      contentType: 'text/plain; charset=utf-8',
+      contentLength: stats.size,
+      metadata: {
+        user_id: String(userId),
+        project_id: String(projectId),
+        run_id: String(runId),
+        job_id: String(jobId || ''),
+        stage: stageFromRelativePath(relativePath),
+      },
+    });
+
+    uploadedSpecs.push({
+      path: relativePath.replace(/\\/g, '/'),
+      key,
+      size: stats.size,
+      stage: stageFromRelativePath(relativePath),
+    });
+  }
+
   const manifestKey = `${prefix}/manifest.json`;
   const manifest = {
     schema_version: 1,
@@ -212,8 +251,11 @@ async function uploadRunJsonArtifacts({
     total_json_bytes: uploadedFiles.reduce((sum, file) => sum + file.size, 0),
     log_file_count: uploadedLogs.length,
     total_log_bytes: uploadedLogs.reduce((sum, file) => sum + file.size, 0),
+    spec_file_count: uploadedSpecs.length,
+    total_spec_bytes: uploadedSpecs.reduce((sum, file) => sum + file.size, 0),
     files: uploadedFiles,
     logs: uploadedLogs,
+    specs: uploadedSpecs,
   };
   const manifestBody = JSON.stringify(manifest, null, 2);
 
@@ -239,8 +281,11 @@ async function uploadRunJsonArtifacts({
     totalJsonBytes: manifest.total_json_bytes,
     logFileCount: manifest.log_file_count,
     totalLogBytes: manifest.total_log_bytes,
+    specFileCount: manifest.spec_file_count,
+    totalSpecBytes: manifest.total_spec_bytes,
     files: uploadedFiles,
     logs: uploadedLogs,
+    specs: uploadedSpecs,
   };
 }
 

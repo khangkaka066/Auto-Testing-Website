@@ -278,4 +278,4 @@ async function run(workspaceDir, detectorResultsPath, outputDir, cacheDir, optio
   }
 }
 
-module.exports = { run };
+module.exports = { run, prioritizeFiles };
