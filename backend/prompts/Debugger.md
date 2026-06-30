@@ -1,5 +1,6 @@
 ---
 model: "gpt-5-nano"
+temperature: 0.1
 ---
 
 # ROLE

@@ -308,9 +308,9 @@ async function inferSchema(dialect, backendRoot, cacheDir) {
   }
 
   console.log('  [DbBootstrap] Calling AI for schema inference...');
-  const { model, systemPrompt } = loadPrompt('DbSchemaInference');
+  const { model, systemPrompt, temperature } = loadPrompt('DbSchemaInference');
   try {
-    const result = await parseStructured(model, systemPrompt, userContent, DbSchemaResultSchema, 'db_schema');
+    const result = await parseStructured(model, systemPrompt, userContent, DbSchemaResultSchema, 'db_schema', { temperature });
     writeCache(cacheSubDir, cacheKey, result);
     return result;
   } catch (err) {

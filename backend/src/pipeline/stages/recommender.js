@@ -4,7 +4,6 @@ const { z } = require('zod');
 const { loadPrompt, parseStructured } = require('../../lib/openai');
 const { optimizeCodeForLLM } = require('../../lib/astParser');
 
-const MAX_ISSUES = 5;
 const MAX_CODE_CHARS = 4000;
 const MAX_SOURCE_FILES_PER_ISSUE = 2;
 
@@ -136,14 +135,13 @@ async function run(reporterDir, analyzerDir, sourceCodePath, outputDir) {
     return result;
   }
 
-  // Prioritize Critical/High issues first, cap at MAX_ISSUES; preserve original index
+  // Prioritize Critical/High issues first; preserve original index
   const severityOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 };
   const prioritizedIssues = allIssues
     .map((issue, i) => ({ ...issue, _originalIndex: i }))
-    .sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4))
-    .slice(0, MAX_ISSUES);
+    .sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4));
 
-  console.log(`[Recommender] Processing ${prioritizedIssues.length}/${allIssues.length} issues...`);
+  console.log(`[Recommender] Processing all ${prioritizedIssues.length} issues...`);
 
   const analyzerEntries = loadAnalyzerEntries(analyzerDir);
   console.log(`[Recommender] Loaded ${analyzerEntries.length} analyzer entries.`);
@@ -161,7 +159,7 @@ async function run(reporterDir, analyzerDir, sourceCodePath, outputDir) {
     };
   });
 
-  const { model, systemPrompt } = loadPrompt('Recommender');
+  const { model, systemPrompt, temperature } = loadPrompt('Recommender');
   const userContent = JSON.stringify({ issues: issuesPayload, all_source_summaries: analyzerEntries.map(e => ({
     file_path: e.file_path,
     component_name: e.component_name,
@@ -170,7 +168,7 @@ async function run(reporterDir, analyzerDir, sourceCodePath, outputDir) {
 
   let result;
   try {
-    result = await parseStructured(model, systemPrompt, userContent, RecommenderOutputSchema, 'RecommenderOutput');
+    result = await parseStructured(model, systemPrompt, userContent, RecommenderOutputSchema, 'RecommenderOutput', { temperature });
   } catch (err) {
     console.error(`[Recommender] Parse error: ${err.message}`);
     result = { recommendations: prioritizedIssues.map((issue) => ({
@@ -184,6 +182,19 @@ async function run(reporterDir, analyzerDir, sourceCodePath, outputDir) {
   }
 
   result.recommendations = result.recommendations.map(rec => normalizeRecommendation(rec, prioritizedIssues.length));
+
+  // Ensure every issue has exactly one recommendation, even when the model omits one.
+  const recMap = new Map(result.recommendations.map(rec => [rec.issue_index, rec]));
+  result.recommendations = prioritizedIssues.map(issue =>
+    recMap.get(issue._originalIndex) ?? {
+      issue_index: issue._originalIndex,
+      page: issue.page,
+      source_file: 'unknown',
+      root_cause: 'Không xác định được nguyên nhân gốc rễ.',
+      fix_description: `Lỗi: ${issue.error}`,
+      code_suggestion: '# Note: Không có gợi ý nào.',
+    }
+  );
 
   const outputPath = path.join(outputDir, 'recommendations.json');
   fs.writeFileSync(outputPath, JSON.stringify(result, null, 2), 'utf-8');

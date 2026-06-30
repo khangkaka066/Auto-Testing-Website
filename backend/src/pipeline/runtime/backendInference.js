@@ -63,8 +63,8 @@ async function inferBackendRunConfig(project, cacheDir) {
     return cached;
   }
 
-  const { model, systemPrompt } = loadPrompt('BackendInference');
-  const result = await parseStructured(model, systemPrompt, userContent, BackendRunConfigSchema, 'backend_run_config');
+  const { model, systemPrompt, temperature } = loadPrompt('BackendInference');
+  const result = await parseStructured(model, systemPrompt, userContent, BackendRunConfigSchema, 'backend_run_config', { temperature });
 
   if (!result || !result.start_command) return null;
 

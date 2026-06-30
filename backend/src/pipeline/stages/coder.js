@@ -131,7 +131,7 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
     userPrompt,
     CoderBatchOutputSchema,
     'CoderBatchOutput',
-    NO_RETRY
+    { ...NO_RETRY, temperature: prompt.temperature }
   ));
 
   const violations = validateOutput(output);
@@ -149,11 +149,11 @@ async function generateOne(item, prompt, baseUrl, cacheDir, runtimeUrls = {}, te
     output = normalizeCoderOutput(await parseStructured(
       prompt.model,
       prompt.systemPrompt,
-      repairPrompt,
-      CoderBatchOutputSchema,
-      'CoderBatchOutput',
-      NO_RETRY
-    ));
+    repairPrompt,
+    CoderBatchOutputSchema,
+    'CoderBatchOutput',
+    { ...NO_RETRY, temperature: prompt.temperature }
+  ));
   }
 
   writeCache(cacheDir, cacheKey, output);

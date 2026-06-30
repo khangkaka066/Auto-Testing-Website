@@ -15,7 +15,7 @@ const ReporterOutputSchema = z.object({
   }),
   issues: z.array(z.object({
     page: z.string(),
-    file: z.string().optional(),
+    file: z.string().nullable(),
     error: z.string(),
     severity: z.enum(['Critical', 'High', 'Medium', 'Low']),
   })),
@@ -81,12 +81,12 @@ async function run(executorJsonPath, outputDir) {
   const rawReport = JSON.parse(fs.readFileSync(executorJsonPath, 'utf-8'));
   const data = optimizeReportForLLM(rawReport);
 
-  const { model, systemPrompt } = loadPrompt('Reporter');
+  const { model, systemPrompt, temperature } = loadPrompt('Reporter');
   const userPrompt = '\n' + JSON.stringify(data, null, 2);
 
   let result;
   try {
-    result = normalizeReporterOutput(await parseStructured(model, systemPrompt, userPrompt, ReporterOutputSchema, 'ReporterOutput'));
+    result = normalizeReporterOutput(await parseStructured(model, systemPrompt, userPrompt, ReporterOutputSchema, 'ReporterOutput', { temperature }));
   } catch (err) {
     console.error(`[Reporter] Parse error: ${err.message}`);
     result = {

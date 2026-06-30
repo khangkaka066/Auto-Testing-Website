@@ -118,9 +118,9 @@ const UIElementSchema = z.object({
   selector: z.string(),
   purpose: z.string(),
   // "Click the dropdown button first", "Submit step 1 form first", etc.
-  depends_on: z.string().optional(),
+  depends_on: z.string().nullable(),
   // true if this element is hidden until another action occurs
-  is_conditional: z.boolean().optional(),
+  is_conditional: z.boolean().nullable(),
 });
 
 const APIEndpointSchema = z.object({
@@ -198,7 +198,8 @@ async function analyzeFile(workspaceDir, fileInfo, prompt, cacheDir, routeContex
     prompt.systemPrompt,
     userPrompt,
     TechnicalAnalysisOutputSchema,
-    'TechnicalAnalysisOutput'
+    'TechnicalAnalysisOutput',
+    { temperature: prompt.temperature }
   );
 
   const data = {

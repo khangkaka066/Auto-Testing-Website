@@ -44,7 +44,7 @@ const PlannerOutputSchema = z.object({
   should_generate_plan: z.boolean(),
   skip_reason: z.string(),
   // FULL = all assertions; INTERACTION = actions only, minimal assertions; SMOKE = page loads only
-  test_scope: z.enum(['FULL', 'INTERACTION', 'SMOKE']).optional(),
+  test_scope: z.enum(['FULL', 'INTERACTION', 'SMOKE']).nullable(),
   requested_test_types: z.array(z.string()),
   skipped_test_types: z.array(z.string()),
   generation_notes: z.array(z.string()),
@@ -181,7 +181,8 @@ async function planFile(analyzerFilePath, prompt, cacheDir, testType = 'UI Testi
     prompt.systemPrompt,
     userPrompt,
     PlannerOutputSchema,
-    'PlannerOutput'
+    'PlannerOutput',
+    { temperature: prompt.temperature }
   );
 
   const normalizedResult = normalizePlannerOutput(result);
