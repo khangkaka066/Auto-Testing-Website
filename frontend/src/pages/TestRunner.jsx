@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import API_BASE_URL from "../config";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/landing/Navbar";
-import { ArrowLeft, UploadCloud, FileText, Play, X } from "lucide-react";
+import { ArrowLeft, UploadCloud, FileText, Play, X, Zap, AlertTriangle, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { useT } from "../lib/i18n";
@@ -15,7 +15,13 @@ export default function TestRunner() {
   const [zipFile, setZipFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isEstimating, setIsEstimating] = useState(false);
   const [testType, setTestType] = useState("UI Testing");
+
+  // Credit estimate dialog state
+  const [showEstimateDialog, setShowEstimateDialog] = useState(false);
+  const [estimateData, setEstimateData] = useState(null);
+  const [pendingUploadedSource, setPendingUploadedSource] = useState(null);
 
   const TEST_TYPES = [
     {
@@ -75,37 +81,70 @@ export default function TestRunner() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Step 1: upload zip + estimate → show dialog
   const handleStartTest = async () => {
     if (!zipFile) {
       toast.error(t.toasts.uploadFirst);
       return;
     }
 
-    setIsTesting(true);
+    setIsEstimating(true);
     const token = localStorage.getItem("token");
     const formData = new FormData();
     formData.append("sourceZip", zipFile);
 
+    let uploadedSource = null;
     try {
+      console.log("[handleStartTest] uploading zip...");
       const uploadRes = await axios.post(
         `${API_BASE_URL}/api/test/upload-source`,
         formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
       );
-      const uploadedSource = uploadRes.data.data;
+      uploadedSource = uploadRes.data.data;
+      console.log("[handleStartTest] upload ok, source_path:", uploadedSource.source_path);
+    } catch (err) {
+      console.error("[handleStartTest] upload failed:", err);
+      toast.error(err.response?.data?.message || t.toasts.uploadError);
+      setIsEstimating(false);
+      return;
+    }
 
+    let estData = null;
+    try {
+      console.log("[handleStartTest] calling /estimate...");
+      const estimateRes = await axios.post(
+        `${API_BASE_URL}/api/test/estimate`,
+        { source_path: uploadedSource.source_path },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      estData = estimateRes.data.data;
+      console.log("[handleStartTest] estimate ok:", estData);
+    } catch (err) {
+      console.warn("[handleStartTest] estimate failed (will show basic dialog):", err?.response?.data || err.message);
+    }
+
+    setPendingUploadedSource(uploadedSource);
+    setEstimateData(estData);
+    setShowEstimateDialog(true);
+    setIsEstimating(false);
+  };
+
+  // Step 2: user confirmed → run pipeline
+  const handleConfirmTest = async () => {
+    if (!pendingUploadedSource) return;
+    setShowEstimateDialog(false);
+    setIsTesting(true);
+    const token = localStorage.getItem("token");
+
+    try {
       const runRes = await axios.post(
         `${API_BASE_URL}/api/test/run`,
         {
-          user_id: uploadedSource.user_id,
-          project_id: uploadedSource.project_id,
-          source_path: uploadedSource.source_path,
-          source_name: uploadedSource.project_name,
+          user_id: pendingUploadedSource.user_id,
+          project_id: pendingUploadedSource.project_id,
+          source_path: pendingUploadedSource.source_path,
+          source_name: pendingUploadedSource.project_name,
           test_type: testType,
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -114,27 +153,35 @@ export default function TestRunner() {
         throw new Error(runRes.data.message || "Pipeline AI chạy thất bại");
       }
 
-      setIsTesting(false);
       toast.success(t.toasts.pipelineStarted);
       sessionStorage.setItem(
         "latest_test_progress",
         JSON.stringify({
-          projectId: uploadedSource.project_id,
-          sourcePath: uploadedSource.source_path,
+          projectId: pendingUploadedSource.project_id,
+          sourcePath: pendingUploadedSource.source_path,
         })
       );
-      navigate(`/test-progress/${uploadedSource.project_id}`, {
+      navigate(`/test-progress/${pendingUploadedSource.project_id}`, {
         replace: true,
         state: {
-          projectId: uploadedSource.project_id,
-          sourcePath: uploadedSource.source_path,
+          projectId: pendingUploadedSource.project_id,
+          sourcePath: pendingUploadedSource.source_path,
         },
       });
     } catch (err) {
-      setIsTesting(false);
       toast.error(err.response?.data?.message || t.toasts.uploadError);
+    } finally {
+      setIsTesting(false);
     }
   };
+
+  const handleCancelTest = () => {
+    setShowEstimateDialog(false);
+    setEstimateData(null);
+    setPendingUploadedSource(null);
+  };
+
+  const isLoading = isEstimating || isTesting;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -242,19 +289,19 @@ export default function TestRunner() {
           <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
             <button
               onClick={handleStartTest}
-              disabled={!zipFile || isTesting}
+              disabled={!zipFile || isLoading}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white shadow-sm transition-all ${
                 !zipFile ? "bg-slate-300 cursor-not-allowed" :
-                isTesting ? "bg-orange-500 cursor-wait opacity-80" : "bg-orange-600 hover:bg-orange-700 hover:shadow-md"
+                isLoading ? "bg-orange-500 cursor-wait opacity-80" : "bg-orange-600 hover:bg-orange-700 hover:shadow-md"
               }`}
             >
-              {isTesting ? (
+              {isLoading ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {t.starting}
+                  {isEstimating ? "Đang phân tích..." : t.starting}
                 </>
               ) : (
                 <>
@@ -267,6 +314,92 @@ export default function TestRunner() {
 
         </div>
       </main>
+
+      {/* Credit Estimate Dialog */}
+      {showEstimateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleCancelTest} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-10 w-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Zap className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Confirm Testing</h2>
+                <p className="text-sm text-slate-500">
+                  {estimateData ? "Credit estimate before running" : "Confirm before running"}
+                </p>
+              </div>
+            </div>
+
+            {estimateData ? (
+              <div className="bg-slate-50 rounded-xl p-4 mb-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Estimated credits</span>
+                  <span className="text-sm font-bold text-orange-600">
+                    {estimateData.estimated_credits.min.toFixed(3)} – {estimateData.estimated_credits.max.toFixed(3)}
+                  </span>
+                </div>
+                <div className="h-px bg-slate-200" />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">Your credits</span>
+                  <span className={`text-sm font-bold ${estimateData.sufficient ? "text-green-600" : "text-red-600"}`}>
+                    {estimateData.current_credits.toFixed(3)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                <p className="text-sm text-slate-600">
+                  This test will consume your credits. Do you want to continue?
+                </p>
+              </div>
+            )}
+
+            {estimateData && !estimateData.sufficient && (
+              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700">Insufficient credits</p>
+                  <p className="text-xs text-red-600 mt-0.5">
+                    You may not have enough credits to complete this test. Please top up.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelTest}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+
+              {estimateData && !estimateData.sufficient ? (
+                <button
+                  onClick={() => { handleCancelTest(); navigate("/billing"); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-sm font-semibold text-white transition-colors"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Top up credits
+                </button>
+              ) : (
+                <button
+                  onClick={handleConfirmTest}
+                  disabled={isTesting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-sm font-semibold text-white transition-colors disabled:opacity-60"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  Start Testing
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -15,7 +15,10 @@ async function fixFile(filePath, errorLog, testPlanContent, prompt) {
     const code = fs.readFileSync(filePath, 'utf-8');
     const userPrompt = `[TSC ERROR LOG]:\n${errorLog}\n\n[TEST PLAN CONTEXT]:\n${testPlanContent}\n\n[CURRENT SOURCE CODE]:\n${code}`;
 
-    const fixedCode = await createCompletion(prompt.model, prompt.systemPrompt, userPrompt, NO_RETRY);
+    const fixedCode = await createCompletion(prompt.model, prompt.systemPrompt, userPrompt, {
+      ...NO_RETRY,
+      temperature: prompt.temperature,
+    });
     fs.writeFileSync(filePath, fixedCode, 'utf-8');
     return { file_path: filePath, status: 'fixed', reason: '' };
   } catch (err) {

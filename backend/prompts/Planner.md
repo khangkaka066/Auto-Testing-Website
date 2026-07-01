@@ -22,6 +22,19 @@ If a `framework_profile` object is provided:
 4. **Framework notes**: Include any important caveats from `framework_profile.notes` (e.g., "wait for SSR hydration") as preconditions or step annotations.
 5. If no `framework_profile` is provided, use generic web defaults.
 
+### Interaction Dependency Rules (CRITICAL — apply whenever `interactive_elements` has `is_conditional: true`)
+When an element has `is_conditional: true` or has a `depends_on` field:
+1. **Never write a step that directly interacts with that element without first including the trigger step**.
+2. **Step ordering**: Always write the prerequisite action (the one described in `depends_on`) as an explicit earlier step before the dependent element step.
+3. **Add an explicit wait step** between the trigger and the interaction: `Wait for [element selector] to become visible`.
+4. **Example**:
+   - BAD: `Click the 'Confirm Delete' button (selector: '#confirm-delete-btn')`
+   - GOOD:
+     1. `Click the 'Delete' button to open the confirmation dialog (selector: '#delete-btn')`
+     2. `Wait for the confirmation dialog to become visible (selector: '#confirm-delete-btn')`
+     3. `Click the 'Confirm Delete' button (selector: '#confirm-delete-btn')`
+5. If an element has `is_conditional: true` and no `depends_on` hint, note in `generation_notes` that the selector is uncertain and set `test_scope: "INTERACTION"` instead of `"FULL"` for any test case that involves it.
+
 ### Route Context Rules (CRITICAL — apply whenever `analyzer_output.route_context` is present)
 1. **Navigate to the correct URL**: Use `route_context.rendered_at[0]` as the `page.goto()` target in test steps. Never use the homepage `/` unless `rendered_at` explicitly contains `/` or `rendered_at` is `['*']`.
 2. **Authentication precondition**: If `route_context.requires_auth === true`, the precondition MUST describe an explicit login flow: navigate to `/signin`, fill email + password, click submit, wait for redirect. If `route_context.auth_role === 'admin'`, login must use an admin account.
@@ -68,3 +81,7 @@ Available requested test types:
 - Return ONLY valid JSON matching the provided schema.
 - Do not include markdown code fences.
 - Do not include explanation outside JSON.
+- Include `test_scope` in your output (one of `"FULL"`, `"INTERACTION"`, `"SMOKE"`):
+  - `"FULL"`: only when ALL interactive elements are unconditionally visible and selectors are high-confidence.
+  - `"INTERACTION"`: when the component has `has_conditional_rendering: true` OR any element has `is_conditional: true`. The Coder will add visibility guards and execute trigger→wait→interact sequences.
+  - `"SMOKE"`: when selectors are very uncertain — only assert the page loads.

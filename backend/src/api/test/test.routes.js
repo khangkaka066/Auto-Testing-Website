@@ -44,6 +44,8 @@ router.post('/upload-source', authMiddleware, (req, res, next) => {
   });
 });
 
+router.post('/estimate',           authMiddleware, (req, res, next) => ctrl.estimateCredits(req, res).catch(next));
+router.post('/estimate-github',    authMiddleware, (req, res, next) => ctrl.estimateCreditsGithub(req, res).catch(next));
 router.post('/history',            authMiddleware, ctrl.addTestHistory);
 router.get('/history',             authMiddleware, ctrl.getTestHistory);
 router.get('/dashboard-stats',     authMiddleware, (req, res, next) => ctrl.getTestDashboardStats(req, res).catch(next));
