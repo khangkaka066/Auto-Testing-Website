@@ -362,13 +362,23 @@ export default function BillingPage() {
                 </ul>
 
                 <button
-                  type="button"
-                  disabled
-                  className="relative mt-6 w-full py-3 rounded-xl text-sm font-bold bg-slate-200 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  {t.packages.subscribeComingSoon}
-                </button>
+  type="button"
+    onClick={() => handleBuy(10)} 
+    disabled={buying}
+    className="mt-6 w-full py-3 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm shadow-orange-200"
+  >
+    {buying ? (
+      <>
+        <span className="h-3.5 w-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+        {t.packages.generatingQr || "Đang tạo QR..."}
+      </>
+    ) : (
+      <>
+        <CreditCard className="h-3.5 w-3.5" />
+        Subscribe Now!!
+      </>
+    )}
+</button>
               </div>
 
               <div className="bg-white rounded-xl border-2 border-violet-400 shadow-sm p-6 flex flex-col relative">
