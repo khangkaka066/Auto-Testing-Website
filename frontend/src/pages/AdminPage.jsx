@@ -15,17 +15,11 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const VND_PER_USD = 25_000; // 1 credit = 25,000 VND = $1 USD
-
 function fmt(n, opts = {}) {
   return Number(n || 0).toLocaleString("en-US", opts);
 }
-function fmtUsd(vnd) {
-  const usd = Number(vnd || 0) / VND_PER_USD;
-  return usd.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-function vndToUsd(vnd) {
-  return Number(vnd || 0) / VND_PER_USD;
+function fmtVnd(vnd) {
+  return Number(vnd || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 }
 function fmtDate(v) {
   if (!v) return "-";
@@ -148,7 +142,7 @@ function OverviewTab({ stats, statsLoading }) {
       {/* Stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard icon={DollarSign} label="Total Revenue" color="orange"
-          value={fmtUsd(stats?.totalRevenue)} sub={`Avg: ${fmtUsd(avgRevenue)} / tx`} />
+          value={fmtVnd(stats?.totalRevenue)} sub={`Avg: ${fmtVnd(avgRevenue)} / tx`} />
         <StatCard icon={Users}      label="Total Users" color="blue"
           value={fmt(stats?.totalUsers)} sub="registered accounts" />
         <StatCard icon={Activity}   label="Total Tests" color="green"
@@ -163,7 +157,7 @@ function OverviewTab({ stats, statsLoading }) {
         <StatCard icon={Zap}        label="Credits Sold" color="orange"
           value={fmt(stats?.totalCredits)} sub="credits" />
         <StatCard icon={TestTube}   label="Revenue / User" color="blue"
-          value={stats?.totalUsers > 0 ? fmtUsd((stats?.totalRevenue || 0) / stats.totalUsers) : "$0.00"}
+          value={stats?.totalUsers > 0 ? fmtVnd((stats?.totalRevenue || 0) / stats.totalUsers) : fmtVnd(0)}
           sub="average per user" />
       </div>
 
@@ -210,7 +204,7 @@ function OverviewTab({ stats, statsLoading }) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-slate-800">Revenue Growth</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Revenue (USD) in the last 6 months</p>
+              <p className="text-xs text-slate-400 mt-0.5">Revenue (VND) in the last 6 months</p>
             </div>
             <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-orange-500" />
@@ -232,8 +226,8 @@ function OverviewTab({ stats, statsLoading }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false}
-                  tickFormatter={v => { const u = v / VND_PER_USD; return u >= 1000 ? `$${(u / 1000).toFixed(0)}K` : `$${u.toFixed(0)}`; }} />
-                <Tooltip content={<ChartTooltip formatValue={fmtUsd} />} />
+                  tickFormatter={v => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K` : v} />
+                <Tooltip content={<ChartTooltip formatValue={fmtVnd} />} />
                 <Bar dataKey="revenue" name="Revenue" fill="url(#revGrad)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -277,7 +271,7 @@ function OverviewTab({ stats, statsLoading }) {
                   <p className="text-xs text-slate-400">{t.package_name || "–"}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-semibold text-orange-600">{fmtUsd(t.amount_usd)}</p>
+                  <p className="text-sm font-semibold text-orange-600">{fmtVnd(t.amount_usd)}</p>
                   <Badge status={t.status} />
                 </div>
               </div>
@@ -442,7 +436,7 @@ function TransactionsTab() {
       <div className="p-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-slate-800">Transaction History</h3>
-          <p className="text-xs text-slate-400 mt-0.5">This page: {fmtUsd(totalRevenue)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">This page: {fmtVnd(totalRevenue)}</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg hover:bg-slate-100">
           <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? "animate-spin" : ""}`} />
